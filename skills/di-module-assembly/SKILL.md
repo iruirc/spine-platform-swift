@@ -8,10 +8,10 @@ description: "Use when assembling UI modules (MVVM/MVVM+Coordinator), creating C
 Connects Dependency Injection with Coordinators through explicit Factory objects. Coordinators never touch the DI container directly — they receive pre-built modules from Factories.
 
 > **Related skills:**
-> - `di-composition-root` — где живёт CR, как он передаёт зависимости в Factory-и (вынесено отдельно — этот скилл больше **не описывает CR подробно**, только использует)
-> - `di-swinject` — Swinject-специфика, если выбран как DI-framework
-> - `di-factory` — Factory (hmlongco) специфика. Архитектурный pattern (`AppDependencies` → `CoordinatorFactory` → `ModuleFactory`) идентичен; меняется только реализация фасада `AppDependencyContainer` (вместо `container.resolve(...)` — `Container.shared.foo()`)
-> - `pkg-spm-design` — как Module Assembly применяется внутри SPM-пакета (Feature-архетип)
+> - `di-composition-root` — where the CR lives, how it passes dependencies to Factories (extracted separately — this skill **no longer describes CR in detail**, just uses it)
+> - `di-swinject` — Swinject specifics, if chosen as the DI framework
+> - `di-factory` — Factory (hmlongco) specifics. The architectural pattern (`AppDependencies` → `CoordinatorFactory` → `ModuleFactory`) is identical; only the `AppDependencyContainer` facade implementation changes (instead of `container.resolve(...)` — `Container.shared.foo()`)
+> - `pkg-spm-design` — how Module Assembly applies inside an SPM package (Feature archetype)
 
 ## Problem
 
@@ -319,11 +319,11 @@ final class ProfileCoordinator: BaseCoordinator {
 }
 ```
 
-## Composition Root (краткая роль в Module Assembly)
+## Composition Root (its brief role in Module Assembly)
 
-CR создаёт `AppDependencyContainer`, передаёт его в `CoordinatorFactoryImp`, создаёт root-Coordinator и стартует UI. Полное описание CR — паттерны bootstrap, scope-стратегии, тестирование, что в нём НЕ должно быть — см. **`di-composition-root` skill**.
+The CR creates `AppDependencyContainer`, passes it to `CoordinatorFactoryImp`, creates the root Coordinator and starts the UI. Full CR description — bootstrap patterns, scope strategies, testing, what does NOT belong there — see the **`di-composition-root` skill**.
 
-Минимальный пример для контекста (UIKit, SceneDelegate):
+Minimal example for context (UIKit, SceneDelegate):
 
 ```swift
 let container = AppDependencyContainer()
@@ -384,9 +384,9 @@ final class AppDependencyContainer: AppDependencies {
 
 **Key insight:** Swinject `container.resolve()` calls happen **only inside AppDependencyContainer**. The rest of the app works with typed protocols — no container leaks out.
 
-### Реализация без DI-framework
+### Implementation without a DI framework
 
-`AppDependencyContainer` можно реализовать через `lazy var` поля вместо Swinject — внешний контракт (`AppDependencies` + фичевые `*FeatureDependencies`) идентичен, остальная цепочка (`CoordinatorFactory`, `ModuleFactory`, `Assembly`) не меняется.
+`AppDependencyContainer` can be implemented with `lazy var` fields instead of Swinject — the external contract (`AppDependencies` + per-feature `*FeatureDependencies`) is identical, the rest of the chain (`CoordinatorFactory`, `ModuleFactory`, `Assembly`) is unchanged.
 
 ```swift
 @MainActor
@@ -399,7 +399,7 @@ final class AppDependencyContainer: AppDependencies {
 }
 ```
 
-Для маленьких app (< 30 сервисов) и **обязательно** для SPM-пакетов (см. `pkg-spm-design`). Полное сравнение, scope-стратегии и обработка циклов — в `di-composition-root`, секция «DI: контейнер vs ручной граф».
+Use for small apps (< 30 services) and **mandatory** for SPM packages (see `pkg-spm-design`). Full comparison, scope strategies, and handling of cycles — in `di-composition-root`, section "DI: container vs manual graph".
 
 ## File Structure
 
@@ -530,51 +530,51 @@ static func assemble(dependencies: ProfileFeatureDependencies, userId: String)
 
 ## Beyond UI Modules
 
-Factory-паттерн применим **не только к парам View+ViewModel**. В реальных проектах нужны ещё несколько разновидностей фабрик и стратегий late initialization.
+The Factory pattern applies **not only to View+ViewModel pairs**. Real projects need a few more flavors of factories and late-initialization strategies.
 
 ### Non-UI factories
 
-Когда нужно создавать сложные не-UI объекты с runtime-параметрами или контекстом:
+When you need to build complex non-UI objects with runtime parameters or context:
 
-| Тип | Что собирает | Пример |
+| Type | What it assembles | Example |
 |---|---|---|
-| **AlertFactory** | UIAlertController с типизированными actions | `DeleteItemAlertFactory.makeConfirmation(onConfirm:)` |
-| **DataProviderFactory** | DataSource/Adapter под конкретный экран или коллекцию | `ItemListDataProviderFactory.make(for: category)` |
-| **Stub/Mock factories** | Тестовые двойники для UI-screenshots, demo-mode | `StubServicesFactory.makeOfflineMode()` |
-| **DTO factories** | Сложные доменные структуры из множества полей | `OrderRequestFactory.make(cart:address:)` |
+| **AlertFactory** | UIAlertController with typed actions | `DeleteItemAlertFactory.makeConfirmation(onConfirm:)` |
+| **DataProviderFactory** | DataSource/Adapter for a specific screen or collection | `ItemListDataProviderFactory.make(for: category)` |
+| **Stub/Mock factories** | Test doubles for UI screenshots, demo mode | `StubServicesFactory.makeOfflineMode()` |
+| **DTO factories** | Complex domain structures built from many fields | `OrderRequestFactory.make(cart:address:)` |
 
-Правила те же, что для ModuleFactory:
-- Зависимости через init (от своего узкого `Dependencies`-протокола)
-- Чистая функция `make(...)` — без побочных эффектов
-- `enum` для stateless / `final class` для тех, что хранят кэш или зависимости
-- Только internal API наружу — никаких `static let shared`
+The rules are the same as for ModuleFactory:
+- Dependencies via init (from a narrow `Dependencies` protocol)
+- Pure `make(...)` function — no side effects
+- `enum` for stateless / `final class` for those that hold a cache or dependencies
+- Only internal API exposed — no `static let shared`
 
 ### Late & Conditional Initialization
 
-CR создаёт **корень** графа, но не все объекты создаются на старте. Несколько типичных сценариев:
+The CR creates the **root** of the graph, but not all objects are created at startup. Several typical scenarios:
 
-| Сценарий | Решение | Пример |
+| Scenario | Solution | Example |
 |---|---|---|
-| **Runtime-параметр** (`itemId`, `userId`) | Assembly принимает `(deps, param)` | `DetailAssembly.assemble(dependencies:, itemId:)` — см. секцию выше «Modules that need runtime parameters» |
-| **Тяжёлый ресурс** | `lazy var` в AppDependencyContainer | `lazy var imageCache: ImageCache = makeImageCache()` |
-| **Per-flow сервис** | Создаётся Coordinator-ом на `start()`, dispose на `finish` | `OnboardingState`, `CheckoutSession` |
-| **Конфиг из user input** | Сервис имеет `configure(with:)` или `bootstrap(token:)` | `APIClient.configure(token:)` после логина |
-| **Async init** | См. `di-composition-root`, секция «Async bootstrap» | БД с миграциями, прогрев кэша |
-| **Условное создание** (Pro-only фича) | Lazy + проверка флага в getter; либо отдельный фабричный метод, который Coordinator вызывает только при нужном условии | Экспорт с Pro-форматами или без — ветка в `makeExportModule()` |
-| **Циклические зависимости** | См. `di-swinject` skill, «Circular Dependencies» — property injection или ввод третьего типа | A↔B → A→C, B→C |
+| **Runtime parameter** (`itemId`, `userId`) | Assembly takes `(deps, param)` | `DetailAssembly.assemble(dependencies:, itemId:)` — see section above "Modules that need runtime parameters" |
+| **Heavy resource** | `lazy var` in AppDependencyContainer | `lazy var imageCache: ImageCache = makeImageCache()` |
+| **Per-flow service** | Created by the Coordinator on `start()`, disposed on `finish` | `OnboardingState`, `CheckoutSession` |
+| **Config from user input** | Service has `configure(with:)` or `bootstrap(token:)` | `APIClient.configure(token:)` after login |
+| **Async init** | See `di-composition-root`, section "Async bootstrap" | DB with migrations, cache warm-up |
+| **Conditional creation** (Pro-only feature) | Lazy + flag check in the getter; or a separate factory method that the Coordinator calls only under the right condition | Export with or without Pro formats — branch in `makeExportModule()` |
+| **Circular dependencies** | See `di-swinject` skill, "Circular Dependencies" — property injection or introducing a third type | A↔B → A→C, B→C |
 
-Общее правило: **CR — это корень, а не единственное место создания.** Если что-то нельзя создать в CR — это не повод тащить контейнер в место использования (Service Locator). Это повод вынести логику создания в фабрику или Assembly с явными параметрами.
+General rule: **CR is the root, not the only place where things get created.** If something can't be created at the CR — that's not a reason to drag the container into the call site (Service Locator). It's a reason to extract the creation logic into a factory or Assembly with explicit parameters.
 
-### Когда применять Factory-паттерн вне UI
+### When to apply the Factory pattern outside UI
 
-Не каждое создание объекта требует фабрики. Применяй её, когда выполнено хотя бы одно:
-- Объект сложный (≥3 зависимости)
-- Объект собирается из контекстных параметров, известных только в рантайме
-- Создание требует условной логики (платформа, фича-флаг, конфиг)
-- Один и тот же тип создаётся в нескольких местах (DRY)
-- Создание имеет побочные эффекты, которые надо изолировать (регистрация observer-а, запуск таймера)
+Not every object creation needs a factory. Use one when at least one of the following holds:
+- The object is complex (≥3 dependencies)
+- The object is built from context parameters known only at runtime
+- Creation requires conditional logic (platform, feature flag, config)
+- The same type is created in multiple places (DRY)
+- Creation has side effects that need to be isolated (observer registration, starting a timer)
 
-Если ничего из этого нет — обычный init на месте лучше. Преждевременное введение фабрики усложняет код без пользы.
+If none of these apply — a plain inline init is better. Premature factory introduction complicates the code without any benefit.
 
 ## Common Mistakes
 
@@ -583,4 +583,4 @@ CR создаёт **корень** графа, но не все объекты �
 3. **Assembly with side effects** — Assembly should only wire objects. No analytics, no logging, no network calls.
 4. **Skipping feature dependency protocols** — Passing `AppDependencies` everywhere defeats the purpose. Each Assembly should accept its minimal protocol.
 5. **Creating ModuleFactory inside Coordinator** — Factory is created once in CoordinatorFactory and passed down. Coordinator doesn't create factories.
-6. **Premature factory for trivial init** — `UserFactory.make() -> User { User() }` бессмысленна. Применяй Factory только при реальной сложности (см. чек-лист «Когда применять Factory-паттерн вне UI»).
+6. **Premature factory for trivial init** — `UserFactory.make() -> User { User() }` is pointless. Apply Factory only with real complexity (see the checklist "When to apply the Factory pattern outside UI").
