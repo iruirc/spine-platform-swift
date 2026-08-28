@@ -169,7 +169,7 @@ For project-block workflows: interruption of swift-init Q&A (Ctrl-C during s06b 
 
 ## Templates path
 
-`<toolkit-root>/templates/workspace/` — discoverable via plugin metadata. Skill body invokes zsh subshell to copy + interpolate placeholders (`{{WORKSPACE_NAME}}`, `{{PACKAGE_NAME}}`, etc.) using sed.
+`<platform-root>/templates/workspace/` — discoverable via plugin metadata. Skill body invokes zsh subshell to copy + interpolate placeholders (`{{WORKSPACE_NAME}}`, `{{PACKAGE_NAME}}`, etc.) using sed.
 
 ## Template substitution rules
 
