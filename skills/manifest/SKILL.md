@@ -48,7 +48,7 @@ tests        = XCTest, Quick+Nimble
 ## Heuristics
 
 How `stack-detect` resolves axis values from repo signals: a `path` pattern flags one or more axes
-as relevant, an `import`, `token` or `file` literal pins one specific value.
+as relevant, an `import` or `token` literal pins one specific value.
 
 import: `SwiftUI` only (no UIKit/AppKit)                                   → ui=SwiftUI
 import: `UIKit` only (no SwiftUI/AppKit)                                   → ui=UIKit
@@ -57,7 +57,6 @@ import: more than one of SwiftUI/UIKit/AppKit                              → u
 import: `Combine`                                                          → async=Combine
 import: `RxSwift`                                                          → async=RxSwift
 token:  `await `                                                           → async=async/await
-file:   `Package.swift` `platforms:` line, or app target deployment target → baseline
 import: `XCTest`                                                           → tests=XCTest
 import: `Quick`, `Nimble`                                                  → tests=Quick+Nimble
 
@@ -67,6 +66,10 @@ path: `Networking/`, `API/`, `*Client.swift`, `*Service.swift`                  
 path: `Persistence/`, `Storage/`, `*Repository.swift`, `*.xcdatamodeld`           → async, tests
 path: `*Tests/`, `*Spec.swift`, `*Tests.swift`                                    → tests (+ axis of the system under test)
 path: `Package.swift`, `project.pbxproj`                                         → baseline
+
+`baseline` has no pinning row on purpose: it is written as a version string — `Package.swift`'s
+`platforms:` line, or the app target's deployment target — and a version string is never a
+`## Axes` value, so the path row flags the axis and the config or the user supplies the value.
 
 ## Topics
 
