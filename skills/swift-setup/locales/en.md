@@ -24,8 +24,8 @@ Dependency Injection
 ## auq_q4_arch_label
 Architecture
 
-## auq_q5_platform_label
-Platform
+## auq_q5_baseline_label
+Baseline
 
 ## auq_q6_tests_label
 Test framework
