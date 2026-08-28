@@ -224,7 +224,7 @@ The **very first line** of `Review.md` MUST be exactly one of:
 [REVIEW_STATUS] = DISCUSSION
 ```
 
-This field is a hard contract with `swift-toolkit:workflow-review` and the orchestrator: `workflow-review` reads it for auto-move (APPROVED → `Tasks/DONE/`), and other workflows (`workflow-feature`, `workflow-bug`, `workflow-refactor`, `workflow-test`) treat it as the canonical verdict from a final review.
+This field is a hard contract with `spine-toolkit:workflow-review` and the orchestrator: `workflow-review` reads it for auto-move (APPROVED → `Tasks/DONE/`), and other workflows (`workflow-feature`, `workflow-bug`, `workflow-refactor`, `workflow-test`) treat it as the canonical verdict from a final review.
 
 Rules:
 - No content (preface, blank line, code fence, heading) before the status line — it must be byte-position 0 of the file.
@@ -310,11 +310,11 @@ Consult these skills when reviewing code against architectural / framework expec
 
 ## Related Agents (swift-toolkit)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-toolkit:<name>`) to avoid collisions with other installed plugins.
+When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-platform:<name>`) to avoid collisions with other installed plugins.
 
-- `swift-toolkit:swift-diagnostics` — bug hunting; the swift-reviewer may flag issues that need diagnostics follow-up
-- `swift-toolkit:swift-security` — OWASP Mobile Top-10 audit for security-specific concerns
-- `swift-toolkit:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
+- `swift-platform:swift-diagnostics` — bug hunting; the swift-reviewer may flag issues that need diagnostics follow-up
+- `swift-platform:swift-security` — OWASP Mobile Top-10 audit for security-specific concerns
+- `swift-platform:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
 
 ---
 

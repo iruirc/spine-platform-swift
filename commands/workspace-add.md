@@ -4,4 +4,4 @@ description: |
   Добавить новый пакет или включить существующий standalone-пакет в workspace.
 ---
 
-Activate `swift-toolkit:workspace-add` and follow its flow. Required flag: `--new <name>` or `--incorporate <path>`.
+Activate `swift-platform:workspace-add` and follow its flow. Required flag: `--new <name>` or `--incorporate <path>`.

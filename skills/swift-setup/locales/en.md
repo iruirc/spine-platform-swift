@@ -1,10 +1,10 @@
 # swift-setup — en
 
 ## error_not_swift_project
-Not a Swift project (no `.xcodeproj`, `.xcworkspace`, or `Package.swift` found). To create a new project use `@swift-toolkit:swift-init`.
+Not a Swift project (no `.xcodeproj`, `.xcworkspace`, or `Package.swift` found). To create a new project use `@swift-platform:swift-init`.
 
 ## error_template_not_found
-swift-toolkit CLAUDE-swift-toolkit.md template not found. Check `<toolkit-root>/templates/` or the active host's installed plugin/cache templates.
+CLAUDE-swift-toolkit.md template not found. Check `<core-root>/templates/` or the active host's installed plugin/cache templates.
 
 ## auq_create_tasks_structure
 Create `Tasks/` structure for managing tasks? [Yes / No]

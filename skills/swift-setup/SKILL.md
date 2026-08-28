@@ -4,7 +4,7 @@ description: |
   Configures swift-toolkit in an existing Swift project: creates CLAUDE-swift-toolkit.md from a template, inserts an @./ import line into CLAUDE.md, asks for the stack via structured questions, and creates the Tasks/ structure. Detects and migrates projects on the legacy single-file CLAUDE.md format.
   Use when (en): "set up swift-toolkit", "configure swift-toolkit", "install toolkit in project", "add swift-toolkit to project", "init toolkit here", "/swift-setup"
   Use when (ru): "настрой swift-toolkit", "подключи swift-toolkit", "установи toolkit в проект", "добавь swift-toolkit к проекту", "инициализируй toolkit здесь", "/swift-setup"
-  For generating a NEW Swift project from scratch use `@swift-toolkit:swift-init`.
+  For generating a NEW Swift project from scratch use `@swift-platform:swift-init`.
 ---
 
 # Swift Setup
@@ -16,7 +16,7 @@ Bootstraps swift-toolkit in an **already existing** Swift project. Two-file layo
 
 The skill does NOT create an Xcode project, does NOT modify Swift code, and does NOT start any workflow. It is a one-time setup of toolkit infrastructure inside the project.
 
-To generate a project from scratch, use the `@swift-toolkit:swift-init` agent (via the `/swift-init` slash command).
+To generate a project from scratch, use the `@swift-platform:swift-init` agent (via the `/swift-init` slash command).
 
 ## Language Resolution
 
@@ -76,11 +76,12 @@ The skill's behavior is determined by the project state, computed from three che
    a. `templates/claude-toolkit-md/en.md` — toolkit file template (English-only; the file body is always EN regardless of `<lang>`).
    b. `templates/claude-md-stub/<lang>.md` — minimal CLAUDE.md stub (localized; body comment is in the user's language).
    Lookup paths (try in order):
-     - `<toolkit-root>/templates/...` (see `conventions/agent-tooling.md`)
+     - `<core-root>/templates/...` — both templates belong to the core plugin (see its
+       `conventions/agent-tooling.md` → Plugin Roots And Templates)
      - host-installed plugin/cache template paths
      - Claude Code compatibility paths:
-       `~/.claude/plugins/cache/swift-toolkit/swift-toolkit/<latest-version>/templates/...`
-       or `~/.claude/plugins/marketplaces/swift-toolkit/templates/...`
+       `~/.claude/plugins/cache/spine-toolkit/spine-toolkit/<latest-version>/templates/...`
+       or the marketplace checkout under `~/.claude/plugins/marketplaces/spine-toolkit/`
    ↓ if neither path is available → render `error_template_not_found`. Stop.
 
 4. Branch by state:
@@ -254,7 +255,7 @@ States A / B / C use `report_success_template`. State D uses `report_migration_s
 
 ## What this skill does NOT do
 
-- Does NOT create an Xcode project, `Package.swift`, sources, `.swiftlint.yml`, or `README.md` — that is `@swift-toolkit:swift-init`.
+- Does NOT create an Xcode project, `Package.swift`, sources, `.swiftlint.yml`, or `README.md` — that is `@swift-platform:swift-init`.
 - Does NOT modify Swift code or existing project configs (Info.plist, Build Settings).
 - Does NOT start workflows or call `orchestrator`.
 - Does NOT init git or make commits.

@@ -104,11 +104,11 @@ Consult the appropriate skill based on the architecture in use:
 
 ## Related Agents (swift-toolkit)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-toolkit:<name>`) to avoid collisions with other installed plugins.
+When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-platform:<name>`) to avoid collisions with other installed plugins.
 
-- `swift-toolkit:swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
-- `swift-toolkit:swift-security` — OWASP Mobile Top-10 audit
-- `swift-toolkit:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
+- `swift-platform:swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
+- `swift-platform:swift-security` — OWASP Mobile Top-10 audit
+- `swift-platform:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
 
 ## Output Structure
 

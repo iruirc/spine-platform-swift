@@ -1,10 +1,10 @@
 # swift-setup — ru
 
 ## error_not_swift_project
-Не Swift-проект (не найден `.xcodeproj`, `.xcworkspace` или `Package.swift`). Для генерации нового используй `@swift-toolkit:swift-init`.
+Не Swift-проект (не найден `.xcodeproj`, `.xcworkspace` или `Package.swift`). Для генерации нового используй `@swift-platform:swift-init`.
 
 ## error_template_not_found
-Шаблон CLAUDE-swift-toolkit.md не найден. Проверь `<toolkit-root>/templates/` или установленные plugin/cache-шаблоны текущего хоста.
+Шаблон CLAUDE-swift-toolkit.md не найден. Проверь `<core-root>/templates/` или установленные plugin/cache-шаблоны текущего хоста.
 
 ## auq_create_tasks_structure
 Создать `Tasks/` структуру для управления задачами? [Yes / No]

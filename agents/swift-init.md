@@ -113,7 +113,7 @@ swift-init --no-prompt --platform=macos --ui-framework=swiftui --di=factory \
 
 ## Generated Artifacts
 
-Both Markdown config files are **rendered from the toolkit's templates**, located the way `swift-toolkit:swift-setup` step 3 describes and filled per its **Placeholder Replacements** table, with this agent's dialog answers standing in for q0–q7. Leave every other line as the template has it; if no lookup path resolves, stop and report it. Composing either file section by section drifts from the template the day the toolkit adds a section.
+Both Markdown config files are **rendered from the toolkit's templates**, located the way `swift-platform:swift-setup` step 3 describes and filled per its **Placeholder Replacements** table, with this agent's dialog answers standing in for q0–q7. Leave every other line as the template has it; if no lookup path resolves, stop and report it. Composing either file section by section drifts from the template the day the toolkit adds a section.
 
 For every mode:
 - Folder structure matching the chosen mode and architecture
@@ -261,15 +261,15 @@ If the user's chosen architecture is ambiguous or missing, ASK before scaffoldin
 
 ## Related Agents (swift-toolkit)
 
-After `swift-toolkit:swift-init` finishes, the project is ready for regular work via the swift-toolkit orchestrator. Subsequent tasks will use the agents below — when invoking them via the Task tool, always use the full plugin-prefixed name (`subagent_type=swift-toolkit:<name>`) to avoid collisions with similarly named agents from other installed plugins:
+After `swift-platform:swift-init` finishes, the project is ready for regular work via the spine-toolkit orchestrator. Subsequent tasks will use the agents below — when invoking them via the Task tool, always use the full plugin-prefixed name (`subagent_type=swift-platform:<name>`) to avoid collisions with similarly named agents from other installed plugins:
 
-- `swift-toolkit:swift-architect` — designs features within the generated architecture
-- `swift-toolkit:swift-developer` — implements features, follows the layout swift-init produced
-- `swift-toolkit:swift-reviewer` — reviews code against the generated structure + chosen skills
-- `swift-toolkit:swift-refactorer` — refactors without changing behavior
-- `swift-toolkit:swift-tester` — writes tests matching the chosen test framework
-- `swift-toolkit:swift-diagnostics` — hunts bugs once the project has code
-- `swift-toolkit:swift-security` — OWASP audit when the app grows to handle credentials/data
+- `swift-platform:swift-architect` — designs features within the generated architecture
+- `swift-platform:swift-developer` — implements features, follows the layout swift-init produced
+- `swift-platform:swift-reviewer` — reviews code against the generated structure + chosen skills
+- `swift-platform:swift-refactorer` — refactors without changing behavior
+- `swift-platform:swift-tester` — writes tests matching the chosen test framework
+- `swift-platform:swift-diagnostics` — hunts bugs once the project has code
+- `swift-platform:swift-security` — OWASP audit when the app grows to handle credentials/data
 
 Mention this explicitly in your final report to the user — so they know what comes next.
 
@@ -302,6 +302,6 @@ The `swift-init` agent **does not generate the workspace itself** — that's an 
 - Never commit changes
 - Always ask before generating — confirm mode, stack, platforms
 - Do not invent third-party dependencies; use only Swift + Apple SDKs
-- Do not attach labels like "(recommended)" / "(default)" next to architectural options (UI framework, async approach, DI, architecture) unless the recommendation is recorded in the project's `CLAUDE-swift-toolkit.md` or in one of the `swift-toolkit:*` skills. Ask neutrally, without hinting at the "correct" answer — the choice belongs to the user
+- Do not attach labels like "(recommended)" / "(default)" next to architectural options (UI framework, async approach, DI, architecture) unless the recommendation is recorded in the project's `CLAUDE-swift-toolkit.md` or in one of the `swift-platform:*` skills. Ask neutrally, without hinting at the "correct" answer — the choice belongs to the user
 - For app modes (1/2/3): generate `.xcodeproj` only via XcodeGen (`xcodegen generate`); never write `project.pbxproj` by hand
 - Before running `xcodegen`, verify it's installed; if not — ask the user before installing via `brew install xcodegen`

@@ -82,12 +82,12 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 
 ## Related Agents (swift-toolkit)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-toolkit:<name>`) to avoid collisions with other installed plugins.
+When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-platform:<name>`) to avoid collisions with other installed plugins.
 
-- `swift-toolkit:swift-architect` — co-reviews root cause during the Diagnose consilium
-- `swift-toolkit:swift-developer` — applies the fix after user approval
-- `swift-toolkit:swift-security` — for vulnerabilities that overlap with bugs
-- `swift-toolkit:swift-tester` — writes the regression test after the fix
+- `swift-platform:swift-architect` — co-reviews root cause during the Diagnose consilium
+- `swift-platform:swift-developer` — applies the fix after user approval
+- `swift-platform:swift-security` — for vulnerabilities that overlap with bugs
+- `swift-platform:swift-tester` — writes the regression test after the fix
 
 ## Output Structure
 
