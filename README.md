@@ -105,7 +105,9 @@ block; skill triggers are bilingual regardless. Convention: `conventions/i18n.md
 bats tests/foundation/lib tests/foundation/integration
 scripts/lint-i18n.sh
 scripts/lint-locales.sh
+scripts/lint-manifest.sh .
 ```
 
-The lint scripts are vendored copies of spine-toolkit's — the two plugins share no code. The manifest
-is checked by spine-toolkit's own `lint-manifest.sh`, pointed at this directory.
+The lint scripts are vendored copies of spine-toolkit's — the two plugins share no code, so a change
+to one is a change to both. `lint-manifest.sh` checks this plugin's manifest against the contract it
+came from; the suite runs it too, so conformance is checked here rather than from core.

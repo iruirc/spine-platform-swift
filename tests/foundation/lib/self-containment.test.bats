@@ -2,8 +2,9 @@
 # A platform plugin ships alone: the only thing it may name across the plugin
 # boundary is a namespaced skill or agent (`spine-toolkit:setup`). A bare
 # relative path resolves under THIS plugin's root, so one that belongs to core
-# finds nothing — and carries no `core/` prefix for the cross-plugin grep to
-# catch. That is the class this file guards.
+# finds nothing — and carries no prefix for the cross-plugin grep to catch. That
+# is the class this file guards, in both directions: a path that names the core
+# tree outright, and one that quietly does not resolve here.
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
@@ -13,9 +14,13 @@ setup() {
   missing=""
   for p in $(grep -rhoE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' "$ROOT" \
                --include='*.md' --include='*.sh' --include='*.js' \
+               --include='*.bats' --include='*.zsh' \
              | tr -d '`' | sort -u); do
     case "$p" in
       skills/*|agents/*|commands/*|conventions/*|templates/*|hooks/*|scripts/*|tests/*|workflows/*) ;;
+      # A monorepo-root prefix is a path this plugin does not have: it resolves
+      # nowhere once the platform is a repo of its own, and nowhere here either.
+      platform/*) ;;
       *) continue ;;
     esac
     # bash 3.2's `compgen -G` succeeds on any pattern ending in `/`, existing or not,
@@ -49,4 +54,12 @@ setup() {
   done < <(grep -rlE '^## (Stack|Mode)$' "$ROOT/templates" "$ROOT/tests/foundation/helpers")
   [ "$found" -ge 2 ] || { echo "discovery matched $found file(s); the scan went vacuous"; return 1; }
   [ -z "$missing" ] || { echo "config template(s) with no ## Platform block:$missing"; return 1; }
+}
+
+@test "no file in swift-platform names the core tree by a filesystem path" {
+  # The mirror of core's guard: `../core` has no trailing slash and slips past a
+  # `core/` grep, and every such path dangles the moment this plugin is extracted.
+  offenders="$(grep -rnE '(\.\./core([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])core/)' "$ROOT" \
+    | grep -vF 'self-containment.test.bats' || true)"
+  [ -z "$offenders" ] || { echo "swift-platform reference(s) to the core tree:"; echo "$offenders"; return 1; }
 }

@@ -10,7 +10,7 @@ description: Platform manifest for swift-platform. Data, not instructions — th
 
 This is `swift-platform`'s manifest — the contract that `spine-toolkit` documents and demonstrates
 with its own reference platform manifest, filled in for the real Swift/Apple platform.
-`platform/tests/foundation/lib/manifest.test.bats` checks it structurally.
+`tests/foundation/lib/manifest.test.bats` checks it structurally.
 
 ## Roles
 
