@@ -18,7 +18,10 @@ setup() {
       skills/*|agents/*|commands/*|conventions/*|templates/*|hooks/*|scripts/*|tests/*|workflows/*) ;;
       *) continue ;;
     esac
-    compgen -G "$ROOT/$(printf '%s' "$p" | sed 's/<[^>]*>/*/g')" >/dev/null \
+    # bash 3.2's `compgen -G` succeeds on any pattern ending in `/`, existing or not,
+    # so the trailing slash has to go before the glob is what decides.
+    q="$(printf '%s' "$p" | sed 's/<[^>]*>/*/g')"
+    compgen -G "$ROOT/${q%/}" >/dev/null \
       || missing="$missing $p"
   done
   [ -z "$missing" ] || { echo "path(s) that do not resolve under swift-platform:$missing"; return 1; }
