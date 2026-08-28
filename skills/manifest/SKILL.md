@@ -8,9 +8,9 @@ description: Platform manifest for swift-platform. Data, not instructions — th
 > This skill is **data**, not instructions. spine-toolkit reads the four tables below by
 > invoking this skill; there is no procedure here to follow.
 
-This is `swift-platform`'s manifest — the contract demonstrated by
-`core/tests/fixtures/fixture-platform/skills/manifest/SKILL.md`, filled in for the real Swift/Apple
-platform. `platform/tests/foundation/lib/manifest.test.bats` checks it structurally.
+This is `swift-platform`'s manifest — the contract that `spine-toolkit` documents and demonstrates
+with its own reference platform manifest, filled in for the real Swift/Apple platform.
+`platform/tests/foundation/lib/manifest.test.bats` checks it structurally.
 
 ## Roles
 
@@ -29,10 +29,11 @@ init        = swift-platform:swift-init
 
 ## Axes
 
-`ecosystem` is the one axis every platform must declare — it is how spine-toolkit finds which
-plugin serves a project; this platform's value is `apple`. Every other axis, and its allowed
-values, is this platform's own choice — the catalog below is the source of truth for both
-`stack-detect` and the option list the orchestrator renders in AUQ. `baseline` was `platform` before
+`ecosystem` is the one axis every platform must declare, and the one whose meaning spine-toolkit
+fixes: it names the ecosystem this platform serves — `apple` here. Declared and reserved, not yet
+consumed; a project names the plugin that serves it outright, in the `## Platform` block of its
+config. Every other axis, and its allowed values, is this platform's own choice — the catalog below
+is the source of truth for both `stack-detect` and the option list the orchestrator renders in AUQ. `baseline` was `platform` before
 this catalog moved here; it was renamed so the new `ecosystem` axis would not mean two different
 things.
 
