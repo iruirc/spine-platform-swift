@@ -75,9 +75,9 @@ path: `Package.swift`, `project.pbxproj`                                        
 
 Topic → comma-separated, backtick-quoted, bare skill names that cover it (no `plugin:` prefix — a
 manifest is read one platform at a time, so its own skills need no namespacing). Consumed by
-core's feature-landscape and feature-requirements skills.
+spine-toolkit's methodology skills, which name a topic and resolve it here.
 
-state management → `arch-mvvm`, `arch-mvi`, `arch-tca`, `arch-viper`, `arch-clean`
+state management → `arch-mvvm`, `arch-mvi`, `arch-tca`, `arch-viper`, `arch-clean`, `architecture-choice`
 navigation       → `arch-coordinator`, `arch-swiftui-navigation`
 networking       → `net-architecture`, `net-openapi`
 persistence      → `persistence-architecture`, `persistence-migrations`
