@@ -12,12 +12,12 @@ teardown() { ws_cleanup_tmpdirs; }
   [ -d "$parent/GroupedWS-meta/.git" ]
   [ -f "$parent/GroupedWS-meta/workspace.yml" ]
   [ -f "$parent/GroupedWS-meta/README.md" ]
-  run grep '^## DeliveryMode' "$parent/GroupedWS-meta/CLAUDE-swift-toolkit.md"
+  run grep '^## DeliveryMode' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
   # first non-empty line under ## DeliveryMode must be the deterministic `manual` default (the value feature-estimation reads)
-  run awk '/^## DeliveryMode/{f=1;next} f&&NF{print;exit}' "$parent/GroupedWS-meta/CLAUDE-swift-toolkit.md"
+  run awk '/^## DeliveryMode/{f=1;next} f&&NF{print;exit}' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
   [ "$output" = "manual" ]
-  run grep '^## AILeverage' "$parent/GroupedWS-meta/CLAUDE-swift-toolkit.md"
+  run grep '^## AILeverage' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
   [ -f "$parent/sharedPackages/AKit/Package.swift" ]
   [ -f "$parent/sharedPackages/AKit/CLAUDE.md" ]

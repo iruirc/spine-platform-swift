@@ -15,7 +15,7 @@ Adds a package to an existing workspace. Two sub-modes:
 
 ## Language Resolution
 
-Read `## Language` from meta-repo's `CLAUDE-swift-toolkit.md`. Fallback: `en`. All user-facing strings via `locales/<lang>.md`.
+Read `## Language` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`. All user-facing strings via `locales/<lang>.md`.
 
 ## Pre-flight
 

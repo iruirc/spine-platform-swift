@@ -75,7 +75,7 @@ wsproj::append_workspace_meta() {
     print -u2 "wsproj::append_workspace_meta: usage: <repo-dir>"
     return 4
   fi
-  local file="$repo_dir/CLAUDE-swift-toolkit.md"
+  local file="$repo_dir/CLAUDE-spine-toolkit.md"
   if [[ ! -f "$file" || ! -w "$file" ]]; then
     print -u2 "wsproj::append_workspace_meta: cannot read+write $file"
     return 4

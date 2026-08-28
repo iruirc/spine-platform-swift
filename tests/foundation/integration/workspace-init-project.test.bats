@@ -20,16 +20,16 @@ teardown() { ws_cleanup_tmpdirs; }
   [ -d "$parent/FullApp-macOS/FullApp-macOS.xcodeproj" ]
   [ -d "$parent/FullApp-iOS/.git" ]
   [ -d "$parent/FullApp-macOS/.git" ]
-  run grep '^## DeliveryMode' "$parent/FullApp-iOS/CLAUDE-swift-toolkit.md"
+  run grep '^## DeliveryMode' "$parent/FullApp-iOS/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
   # first non-empty line under ## DeliveryMode must be the deterministic `manual` default (the value feature-estimation reads)
-  run awk '/^## DeliveryMode/{f=1;next} f&&NF{print;exit}' "$parent/FullApp-iOS/CLAUDE-swift-toolkit.md"
+  run awk '/^## DeliveryMode/{f=1;next} f&&NF{print;exit}' "$parent/FullApp-iOS/CLAUDE-spine-toolkit.md"
   [ "$output" = "manual" ]
-  run grep '^## AILeverage' "$parent/FullApp-iOS/CLAUDE-swift-toolkit.md"
+  run grep '^## AILeverage' "$parent/FullApp-iOS/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
-  run grep '^## Workspace meta' "$parent/FullApp-iOS/CLAUDE-swift-toolkit.md"
+  run grep '^## Workspace meta' "$parent/FullApp-iOS/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
-  run grep '^## Workspace meta' "$parent/FullApp-macOS/CLAUDE-swift-toolkit.md"
+  run grep '^## Workspace meta' "$parent/FullApp-macOS/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
   run yq eval '.packages.CoreKit.path' "$parent/FullApp-iOS/project.yml"
   [ "$output" = "../packages/CoreKit" ]

@@ -12,7 +12,7 @@ Regenerates the content between `<!-- WORKSPACE_*_BEGIN -->` / `_END -->` marker
 
 ## Language Resolution
 
-Read `## Language` from meta-repo's `CLAUDE-swift-toolkit.md`. Fallback: `en`.
+Read `## Language` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`.
 
 ## Modes
 

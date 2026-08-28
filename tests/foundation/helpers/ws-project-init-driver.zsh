@@ -48,8 +48,12 @@ targets:
     dependencies: []
 EOF
 
-cat > "$repo_dir/CLAUDE-swift-toolkit.md" <<EOF
+cat > "$repo_dir/CLAUDE-spine-toolkit.md" <<EOF
 # Toolkit configuration — $repo_name
+
+## Platform
+
+swift-platform
 
 ## Stack
 
