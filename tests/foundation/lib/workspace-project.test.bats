@@ -82,7 +82,7 @@ EOF
 @test "wsproj::append_workspace_meta adds Workspace meta section" {
   local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
   mkdir -p "$tmpd"
-  cat > "$tmpd/CLAUDE-swift-toolkit.md" <<'EOF'
+  cat > "$tmpd/CLAUDE-spine-toolkit.md" <<'EOF'
 # Toolkit configuration — MyApp-iOS
 
 ## Stack
@@ -96,16 +96,16 @@ EOF
     wsproj::append_workspace_meta '$tmpd'
   "
   [ "$status" -eq 0 ]
-  run grep '^## Workspace meta' "$tmpd/CLAUDE-swift-toolkit.md"
+  run grep '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
-  run grep -F 'Workspace name: FullProj (../FullProj-meta)' "$tmpd/CLAUDE-swift-toolkit.md"
+  run grep -F 'Workspace name: FullProj (../FullProj-meta)' "$tmpd/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
 }
 
 @test "wsproj::append_workspace_meta is idempotent" {
   local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
   mkdir -p "$tmpd"
-  cat > "$tmpd/CLAUDE-swift-toolkit.md" <<'EOF'
+  cat > "$tmpd/CLAUDE-spine-toolkit.md" <<'EOF'
 # Toolkit configuration — MyApp-iOS
 EOF
   zsh -c "
@@ -115,7 +115,7 @@ EOF
     wsproj::append_workspace_meta '$tmpd'
   "
   local count_before
-  count_before="$(grep -c '^## Workspace meta' "$tmpd/CLAUDE-swift-toolkit.md")"
+  count_before="$(grep -c '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md")"
   zsh -c "
     source '$(ws_lib_path workspace-yml-parser.zsh)'
     source '$(ws_lib_path workspace-project.zsh)'
@@ -123,7 +123,7 @@ EOF
     wsproj::append_workspace_meta '$tmpd'
   "
   local count_after
-  count_after="$(grep -c '^## Workspace meta' "$tmpd/CLAUDE-swift-toolkit.md")"
+  count_after="$(grep -c '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md")"
   [ "$count_before" -eq 1 ]
   [ "$count_after" -eq 1 ]
 }

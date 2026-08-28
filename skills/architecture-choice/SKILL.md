@@ -116,7 +116,7 @@ Cross-cutting (always, regardless of pattern):
 
 ## How to Use This Skill
 
-1. **Find and read the active project guidance file.** Prefer `CLAUDE-swift-toolkit.md` if present, otherwise `CLAUDE.md`, otherwise the active task documentation. If its `## Stack` is filled and user isn't refactoring — this skill is done; follow the chosen stack's skill.
+1. **Find and read the active project guidance file.** Prefer `CLAUDE-spine-toolkit.md` if present, otherwise `CLAUDE.md`, otherwise the active task documentation. If its `## Stack` is filled and user isn't refactoring — this skill is done; follow the chosen stack's skill.
 2. **Try Fast Path.** If a Fast Path scenario clearly applies — skip the questionnaire and recommend.
 3. **Otherwise collect the Five Axes** from the user using the active agent's available question mechanism. If no structured question tool exists, ask concise plain-text questions. Don't infer from project name or vibes.
 4. **Pick the matching row** from the Decision Matrix. If two rows fit — apply the When-in-Doubt defaults.

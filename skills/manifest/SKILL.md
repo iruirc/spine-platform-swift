@@ -1,11 +1,11 @@
 ---
 name: manifest
-description: Platform manifest for swift-platform. Data, not instructions — the four tables spine-toolkit reads to bind roles, axes, heuristics and topics.
+description: Platform manifest for swift-platform. Data, not instructions — the five tables spine-toolkit reads to bind roles, axes, heuristics, topics and entrypoints.
 ---
 
 # Swift Platform Manifest
 
-> This skill is **data**, not instructions. spine-toolkit reads the four tables below by
+> This skill is **data**, not instructions. spine-toolkit reads the five tables below by
 > invoking this skill; there is no procedure here to follow.
 
 This is `swift-platform`'s manifest — the contract that `spine-toolkit` documents and demonstrates
@@ -86,3 +86,10 @@ concurrency      → `concurrency-architecture`
 errors           → `error-architecture`
 deep links       → `nav-deeplinks`
 packaging        → `pkg-spm-design`, `workspace-init`
+
+## Entrypoints
+
+Skills spine-toolkit invokes by name, or `—` for one this platform does not provide. `setup` is the
+platform half of installation: core writes the config, this skill fills `## Stack` and `## Modules`.
+
+setup = `swift-setup`
