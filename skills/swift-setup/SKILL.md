@@ -48,7 +48,14 @@ question tool, ask numbered options in a regular message and parse the reply. Lo
 lang        = en | ru                       # resolved by spine-toolkit:setup
 state       = A | B | C | D | E             # its State Detection branch, informational
 config_path = path to CLAUDE-spine-toolkit.md   # already written, core blocks filled
+stack       = {axis: value, …}              # answers core's caller already collected; usually empty
 ```
+
+`stack` is what `/swift-init` gives back: the scaffolding agent has just asked the user for the UI
+framework, async approach, DI and architecture, and an axis whose answer arrives here as an `## Axes`
+value is not asked about again. Core forwards it without reading it, so the values are checked
+here — against `## Axes`, like any other answer, and only for an axis the config has not already
+answered.
 
 Nothing below branches on `state`: what matters is whether the config's `## Stack` already carries
 axis lines, and the file answers that directly. Keying on the data rather than on the branch is what
@@ -65,7 +72,7 @@ keeps a state added later from silently skipping reconciliation.
 
 2. Read ## Stack from config_path.
    ↓ it holds only the template's placeholder (states A, B, C) → no axis has a value yet;
-     go to step 3 with all six unresolved.
+     go to the overlay below with all six unresolved.
    ↓ it holds `- <Label>: <value>` lines (states D and E — a config migrated from an older
      layout) → reconcile the labels against the manifest's current ## Axes before asking
      anything (see Axis Reconciliation). A surviving line is that axis's value UNLESS its
@@ -76,9 +83,20 @@ keeps a state added later from silently skipping reconciliation.
      the config and announce it as unchanged.
      Only the axes with no surviving answered line are unresolved.
 
-3. Ask q1–q6 for every axis still without a value (see Stack Questions). Options come from the
-   manifest's ## Axes for that axis — the manifest is the source of truth, this skill only
-   labels the questions.
+   Then fill the still-unresolved axes — and only those — from the input's `stack`. The config
+   wins wherever it holds an answered line: `## Input` is open to any caller, and replacing an
+   axis the user once answered with a caller's value, silently and with no report line, is the
+   same edit Axis Reconciliation exists to prevent. `/swift-init` loses nothing to that rule — it
+   arrives in state A, where every axis is unresolved. Take an input value only if this manifest's
+   ## Axes lists it for that axis; one it does not list is ignored and its axis stays unresolved,
+   because the caller spelled it in its own vocabulary — `swiftui` for `SwiftUI`, or a deployment
+   target that has to be assembled into `iOS 17+` out of two flags — and one re-asked question is
+   cheaper than a ## Stack line stack-detect will never match.
+
+3. Ask q1–q6 for every axis still without a value after step 2 (see Stack Questions). Options
+   come from the manifest's ## Axes for that axis — the manifest is the source of truth, this
+   skill only labels the questions. Every axis already answered is skipped, so a caller that
+   supplied five of six asks one question, not six.
 
 4. Write ## Stack: one `- <Axis>: <value>` line per axis, in the manifest's ## Axes order,
    replacing the template's placeholder line or the migrated block — then, beneath them and

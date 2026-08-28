@@ -113,7 +113,7 @@ swift-init --no-prompt --platform=macos --ui-framework=swiftui --di=factory \
 
 ## Generated Artifacts
 
-Both Markdown config files belong to spine-toolkit, not to this agent: after the Swift artifact is on disk, invoke `spine-toolkit:setup` and hand it the answers already collected — language, workflow mode, `swift-platform` as the platform, and the stack axes — so it renders them from its own templates without re-asking. It owns where those templates live and what each section must contain; composing the files here would drift from them the day the toolkit adds a section.
+Both Markdown config files belong to spine-toolkit, not to this agent: after the Swift artifact is on disk, invoke `spine-toolkit:setup` and fill its `## Input` with the answers already collected — `lang`, `mode`, `platform` = `swift-platform`, and `stack` — so it renders them from its own templates without re-asking. It owns where those templates live and what each section must contain; composing the files here would drift from them the day the toolkit adds a section. Spell the `stack` values as the manifest's `## Axes` spells them, and omit an axis you cannot: `SwiftUI`, not the flag's `swiftui`; `MVVM+Coordinator`, not `mvvm-coordinator`; `iOS 17+`, which `--platform=ios --min-ios=17.0` has to be assembled into, and which `--min-ios=15.0` cannot produce at all because the catalog stops at `iOS 16+`. The dialog's fourth DI option (plain manual) has no `di` value either. An axis you omit or mis-spell is asked once by `swift-setup` — the designed fall-through, and cheaper than a `## Stack` line `stack-detect` will never match.
 
 For every mode:
 - Folder structure matching the chosen mode and architecture
