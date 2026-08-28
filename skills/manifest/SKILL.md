@@ -48,7 +48,7 @@ tests        = XCTest, Quick+Nimble
 ## Heuristics
 
 How `stack-detect` resolves axis values from repo signals: a `path` pattern flags one or more axes
-as relevant, an `import` or `token` literal pins one specific value.
+as relevant, an `import`, `token` or `file` literal pins one specific value.
 
 import: `SwiftUI` only (no UIKit/AppKit)                                   → ui=SwiftUI
 import: `UIKit` only (no SwiftUI/AppKit)                                   → ui=UIKit
