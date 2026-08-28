@@ -41,7 +41,7 @@ CLAUDE-swift-toolkit.md created with stack:
   - Async: {q2}
   - DI: {q3}
   - Architecture: {q4}
-  - Platform: {q5}
+  - Baseline: {q5}
   - Tests: {q6}
   - Mode: {q7}
   - Language: {lang}

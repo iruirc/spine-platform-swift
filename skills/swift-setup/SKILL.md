@@ -213,7 +213,7 @@ Same as before. Labels from locale keys (`auq_q1_ui_label` … `auq_q7_mode_labe
 - q3 — DI: Swinject / Factory / manual
 - q4 — Architecture: MVVM+Coordinator / VIPER / Clean Architecture / MVC
   - if user says "I don't know" / "advise me" → run `architecture-choice`, bring its result back as q4 + one-line justification.
-- q5 — Platform: iOS 17+ / iOS 16+ / macOS 14+ / macOS 13+ / iOS+macOS
+- q5 — Baseline: iOS 17+ / iOS 16+ / macOS 14+ / macOS 13+ / iOS+macOS
 - q6 — Tests: XCTest / Quick+Nimble
 - q7 — Mode: manual (default) / auto
 
@@ -227,7 +227,7 @@ In `templates/claude-toolkit-md/en.md` (the toolkit file is EN-only):
 | `<async/await \| Combine \| RxSwift>` | q2 | chosen async approach |
 | `<Swinject \| Factory \| manual>` | q3 | chosen DI |
 | `<MVVM+Coordinator \| VIPER \| Clean Architecture \| MVC>` | q4 | chosen architecture |
-| `<iOS 16+ \| macOS 13+ \| iOS+macOS>` | q5 | chosen platform |
+| `<iOS 16+ \| macOS 13+ \| iOS+macOS>` | q5 | chosen baseline |
 | `<XCTest \| Quick+Nimble>` | q6 | chosen test framework |
 | first non-empty line under `## Mode` | q7 | `manual` or `auto` |
 | first non-empty line under `## DeliveryMode` | template default | `manual`; do not replace this when applying q7 |
