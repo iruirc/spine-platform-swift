@@ -64,7 +64,7 @@ path: `Views/`, `Screens/`, `*View.swift`, `*Screen.swift`                      
 path: `ViewModels/`, `*ViewModel.swift`, `*Presenter.swift`, `*Coordinator.swift` → architecture (+ ui if SwiftUI binding present)
 path: `Networking/`, `API/`, `*Client.swift`, `*Service.swift`                    → async (+ di if container-registered)
 path: `Persistence/`, `Storage/`, `*Repository.swift`, `*.xcdatamodeld`           → async, tests
-path: `*Tests/`, `*Spec.swift`, `*Tests.swift`                                    → tests (+ axis of the system under test)
+path: `*Tests/`, `*Spec.swift`, `*Tests.swift`                                    → tests
 path: `Package.swift`, `project.pbxproj`                                         → baseline
 
 `baseline` has no pinning row on purpose: it is written as a version string — `Package.swift`'s
