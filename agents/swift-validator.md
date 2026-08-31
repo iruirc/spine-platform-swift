@@ -58,7 +58,7 @@ Two independent keys, each resolved the same way — `<task_path>/Task.md` first
 
 | Key | `Task.md` | `## Validation` | Default | Governs |
 |---|---|---|---|---|
-| mobile MCP | `[DRIVE_APP]` | `drive_app` | `auto` | whether **you** drive the app |
+| drive app | `[DRIVE_APP]` | `drive_app` | `auto` | whether **you** drive the app |
 | manual checks | `[MANUAL_CHECKS]` | `manual_checks` | `auto` | whether **a human** gets a script |
 
 - `auto` — the per-profile rules below apply unchanged.
