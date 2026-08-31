@@ -20,7 +20,7 @@ need with `rg -n "^## " skills/nav-deeplinks/references/detailed-guide.md`.
 > - `arch-swiftui-navigation` — how a parsed `Route` mutates `NavigationPath` / tab selection
 > - `arch-tca` — deep link as a state-mutating action (`StackState`/`@Presents`)
 > - `feature-requirements` — design-time: is a deep-link entry needed, reset-vs-preserve policy
-> - `mobile-ops-checklist` — validation-time: entitlements/AASA/link registration verified
+> - `ops-checklist` — validation-time: entitlements/AASA/link registration verified
 > - `di-composition-root` — where `DeepLinkRouter` is wired and given the "graph ready" signal
 
 ## When To Load The Reference
