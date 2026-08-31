@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Adapted from spine-toolkit scripts/lint-manifest.sh sha256:0079380945c983069ec9a4be6c48a51572ca1ce91acb15c028239a3923dbce51
 # Vendored copy of spine-toolkit's lint. Plugins share no code; update both or neither.
 # Checks a platform plugin's manifest skill against the spine-toolkit contract.
 # Validates the five tables' presence, Roles content (vocabulary, named agents

@@ -26,8 +26,11 @@ en
 - `agents/` — nine `swift-*` Claude Code subagents, named by the manifest's `## Roles` table
 - `commands/` — `/swift-init`, `/workspace-*`
 - `conventions/i18n.md`, `templates/workspace/`, `tests/foundation/`
-- `scripts/` — four **vendored copies** of core's scripts, each saying so in its own header.
-  Plugins share no code; when core's copy changes, update both or neither, and CI diffs all four.
+- `scripts/` — four **adapted forks** of core's scripts, each recording the core version it came
+  from. Two differ from core only in comments; `lint-i18n.sh` and `test-foundation.sh` also differ
+  in logic, because this plugin has no `claude-md-stub` template and does have an `integration`
+  suite. They are not copies — do not "restore" them to match core. CI goes red when core's
+  original moves, and a human decides whether the change belongs here.
 
 ## Conventions
 
@@ -43,5 +46,5 @@ which the self-containment guard rejects.
   reference it from the skill body. Parity check must be empty.
 - Adding an agent: bilingual triggers in the `description:` field, and a `## Roles` row in
   `skills/manifest/SKILL.md` — core dispatches by role, so an agent no row names never runs.
-- Changing `skills/manifest/SKILL.md`: run `scripts/lint-manifest.sh .` — the vendored copy here is
-  kept identical to core's, and CI proves it. Do it before pushing.
+- Changing `skills/manifest/SKILL.md`: run `scripts/lint-manifest.sh .` — this fork differs from
+  core's only in comments. Do it before pushing.
