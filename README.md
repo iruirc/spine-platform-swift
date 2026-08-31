@@ -11,7 +11,7 @@ they know.
 ## Install
 
 ```
-/plugin marketplace add iruirc/swift-toolkit
+/plugin marketplace add iruirc/claude-marketplace
 /plugin install swift-platform
 ```
 
