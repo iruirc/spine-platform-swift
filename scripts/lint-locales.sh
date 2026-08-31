@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Adapted from spine-toolkit scripts/lint-locales.sh sha256:c384df903a4787fb051738b2133ae7b9284eafe93bc1b24c15b9442b384f0351
 # Vendored copy of spine-toolkit's lint. Plugins share no code; update both or neither.
 set -euo pipefail
 
