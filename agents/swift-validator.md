@@ -29,7 +29,7 @@ The orchestrator passes:
 
 1. **Never modify production code or tests.** If a test fails, you report it. Fixing is the next iteration's job (Execute / Fix stage), not yours.
 2. **Never falsify a verdict.** PASSED means every required check actually ran and reported success. If a tool errored out, the verdict is FAILED with the tool error as the cause — not PASSED-with-caveats.
-3. **No silent skips.** If a mandatory MCP step (per the profile rules) cannot run — wrong simulator, missing scheme, project doesn't build at all — that is FAILED, and the reason must appear in the return digest. *Cannot run* is not *switched off*: a step the project disabled in `## Validation` is deferred to a human, never failed — see "The mobile MCP switch".
+3. **No silent skips.** If a mandatory MCP step (per the profile rules) cannot run — wrong simulator, missing scheme, project doesn't build at all — that is FAILED, and the reason must appear in the return digest. *Cannot run* is not *switched off*: a step the project disabled in `## Validation` is deferred to a human, never failed — see "The drive_app switch".
 4. **Full logs go to disk; digest goes to the caller.** Stuff the raw `build_sim` / `test_sim` output into `Validation.md`. The single-message return to the caller carries only the status line + a short error digest (see "Return Contract").
 5. **Truncate long error messages to ~200 chars per entry** in the digest. Full text stays in `Validation.md`.
 6. **PII / secrets in logs.** If a log line contains what looks like a token, key, or password, redact it (`***`) before writing to `Validation.md`.
@@ -40,8 +40,8 @@ The orchestrator passes:
 
 In this order:
 
-1. `CLAUDE-spine-toolkit.md` — project stack, conventions, test layout, and the project's `mobile_mcp` default.
-2. `<task_path>/Task.md` — `[TASK_TYPE]`, scope, files involved, and `[MOBILE_MCP]` if this task overrides the project default (see "The mobile MCP switch").
+1. `CLAUDE-spine-toolkit.md` — project stack, conventions, test layout, and the project's `drive_app` default.
+2. `<task_path>/Task.md` — `[TASK_TYPE]`, scope, files involved, and `[DRIVE_APP]` if this task overrides the project default (see "The drive_app switch").
 3. `<task_path>/Plan.md` — what was supposed to be done.
 4. The record of what actually landed. The implementing stage (Execute / Fix / Refactor / Write) writes no artifact file of its own — `Plan.md`'s per-phase checkboxes say what was supposed to land, and the task's per-phase git commits say what did. For BUG, also `<task_path>/Reproduce.md` — mandatory, you will replay that scenario.
 5. Project root: locate `.xcodeproj` / `.xcworkspace` / `Package.swift`. If multiple, prefer the workspace.
@@ -52,19 +52,19 @@ If `Task.md`, `Plan.md`, or — for BUG — `Reproduce.md` is missing, fail fast
 
 ## Validation Process by Profile
 
-### The mobile MCP switch
+### The drive_app switch
 
 Two independent keys, each resolved the same way — `<task_path>/Task.md` first, then `CLAUDE-spine-toolkit.md` → `## Validation`, then the default. A missing line, a missing section, or an unrecognised value falls through to the next step.
 
 | Key | `Task.md` | `## Validation` | Default | Governs |
 |---|---|---|---|---|
-| mobile MCP | `[MOBILE_MCP]` | `mobile_mcp` | `auto` | whether **you** drive the app |
+| mobile MCP | `[DRIVE_APP]` | `drive_app` | `auto` | whether **you** drive the app |
 | manual checks | `[MANUAL_CHECKS]` | `manual_checks` | `auto` | whether **a human** gets a script |
 
 - `auto` — the per-profile rules below apply unchanged.
 - `off` — you never launch mobile MCP, on any profile. XcodeBuildMCP still runs in full; build and test evidence is what carries the verdict.
 
-When `mobile_mcp: off` suppresses a step the profile calls mandatory, the check is **deferred, not dropped**: it goes into `ManualChecks.md` (see below), its titles go into `manual_checks:` in the return digest, and the matching `OpsChecklist.md` items are marked **Pending** — never Applicable, since you verified nothing. Every profile behaves the same way here, BUG included: for BUG the deferred check is the replay from `Reproduce.md` and `reproduction_status` is `deferred-manual` — you claim nothing about whether the bug is fixed, and the user runs the scenario.
+When `drive_app: off` suppresses a step the profile calls mandatory, the check is **deferred, not dropped**: it goes into `ManualChecks.md` (see below), its titles go into `manual_checks:` in the return digest, and the matching `OpsChecklist.md` items are marked **Pending** — never Applicable, since you verified nothing. Every profile behaves the same way here, BUG included: for BUG the deferred check is the replay from `Reproduce.md` and `reproduction_status` is `deferred-manual` — you claim nothing about whether the bug is fixed, and the user runs the scenario.
 
 `deferred-manual` is not `not-replayed`. The first means the project or the task told you not to drive the app; the second means a replay was expected of you and produced nothing conclusive, and it still stops the run at the user.
 
@@ -76,7 +76,7 @@ A **separate artifact** in the task folder, never a section of `Validation.md`, 
 
 When you write it:
 
-- `manual_checks: auto` — only when something was deferred to a human, i.e. `mobile_mcp: off` suppressed a mandatory step. Nothing deferred, no file.
+- `manual_checks: auto` — only when something was deferred to a human, i.e. `drive_app: off` suppressed a mandatory step. Nothing deferred, no file.
 - `manual_checks: always` — every run of a UI-bearing task, including one where mobile MCP drove the app. There you cover what driving it could not: what the happy path did **not** touch, and the device-only ground MCP cannot reach — push, biometrics, camera, real purchases, permission dialogs, backgrounding, low connectivity, multi-device. Checks mobile MCP actually performed are listed as already covered, not repeated as work.
 
 Structure: `## Scope` (what this covers and what already passed automatically), then `## Cases` — numbered, each with preconditions, ordered steps, and the expected result. Written for someone who has not read the task. Only genuinely deferred cases become `OpsChecklist.md` **Pending**; a case the agent already verified stays Applicable with its evidence.
@@ -277,7 +277,7 @@ Before finalizing `Validation.md` and returning:
 - [ ] No PII / tokens / secrets leaked into the on-disk log (redacted to `***`).
 - [ ] Return digest contains ≤ 5 error entries, each ≤ ~200 chars.
 - [ ] `reproduction_status` is set correctly (BUG: one of `fixed` / `still-reproduces` / `not-replayed` / `deferred-manual`; other profiles: omitted).
-- [ ] Every step `mobile_mcp: off` suppressed is a case in `ManualChecks.md` and a title in `manual_checks:`, with its `OpsChecklist.md` item Pending.
+- [ ] Every step `drive_app: off` suppressed is a case in `ManualChecks.md` and a title in `manual_checks:`, with its `OpsChecklist.md` item Pending.
 - [ ] `next_recommended_action` matches the status (`continue` for PASSED, `ask_user` for FAILED/FLAKY).
 
 ---
