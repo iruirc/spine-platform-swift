@@ -1,0 +1,44 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install bats-core yq
+      - name: bats
+        run: bats tests/foundation/lib tests/foundation/integration
+      - name: vendored lints
+        run: |
+          scripts/lint-i18n.sh
+          scripts/lint-locales.sh
+      - name: manifest contract, checked by core's own lint
+        run: |
+          # The contract lives in core and is not copied here; a copy would drift.
+          git clone --depth 1 https://github.com/iruirc/spine-toolkit.git /tmp/core
+          /tmp/core/scripts/lint-manifest.sh .
+      - name: core's originals have not moved under the adapted forks
+        run: |
+          # These four are ADAPTED forks, not copies: two differ from core in comments
+          # only, and two differ in logic on purpose. So equality is the wrong test.
+          # Each records the sha256 of the core file it was adapted from; when core's
+          # file changes, this goes red until a human re-adapts and updates the line.
+          n=0
+          for f in scripts/*.sh; do
+            want=$(sed -n 's/^# Adapted from spine-toolkit .* sha256:\([0-9a-f]*\)$/\1/p' "$f")
+            [ -n "$want" ] || continue
+            b=$(basename "$f"); n=$((n+1))
+            have=$(shasum -a 256 "/tmp/core/scripts/$b" | cut -d' ' -f1)
+            [ "$want" = "$have" ] \
+              || { echo "core's $b moved since this fork was adapted ($want -> $have)"; exit 1; }
+          done
+          [ "$n" -eq 4 ] || { echo "expected 4 adapted forks, matched $n"; exit 1; }
+      - name: no path into a sibling plugin
+        run: |
+          offenders=$(grep -rnE '(\.\./core([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])core/)' . \
+            --exclude-dir=.git --exclude=self-containment.test.bats || true)
+          [ -z "$offenders" ] || { echo "$offenders"; exit 1; }
