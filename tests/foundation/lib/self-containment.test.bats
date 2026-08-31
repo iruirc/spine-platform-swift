@@ -59,7 +59,7 @@ setup() {
 @test "no file in swift-platform names the core tree by a filesystem path" {
   # The mirror of core's guard: `../core` has no trailing slash and slips past a
   # `core/` grep, and every such path dangles the moment this plugin is extracted.
-  offenders="$(grep -rnE '(\.\./core([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])core/)' "$ROOT" \
+  offenders="$(grep -rnE --exclude-dir=.git '(\.\./core([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])core/)' "$ROOT" \
     | grep -vF 'self-containment.test.bats' || true)"
   [ -z "$offenders" ] || { echo "swift-platform reference(s) to the core tree:"; echo "$offenders"; return 1; }
 }
