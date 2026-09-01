@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adapted from spine-toolkit scripts/lint-locales.sh sha256:6f91002d474d4ffa68ce13b7c8b153c4ca2ed6fa01eef52a02cf455d3a17ede0
-# Vendored copy of spine-toolkit's lint. Plugins share no code; update both or neither.
+# Adapted from spine-toolkit's lint. Plugins share no code; update both or neither.
 set -euo pipefail
 
 # Paths below are repo-relative: anchor the cwd so a run from elsewhere
