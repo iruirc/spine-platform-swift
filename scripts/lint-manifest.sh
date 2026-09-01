@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Adapted from spine-toolkit scripts/lint-manifest.sh sha256:0079380945c983069ec9a4be6c48a51572ca1ce91acb15c028239a3923dbce51
+# Adapted from spine-toolkit scripts/lint-manifest.sh sha256:b686c6523b7679702f7b426c12f54eccb2682423a7e8e87209999c311d2f5e7b
 # Vendored copy of spine-toolkit's lint. Plugins share no code; update both or neither.
 # Checks a platform plugin's manifest skill against the spine-toolkit contract.
 # Validates the five tables' presence, Roles content (vocabulary, named agents
@@ -17,6 +17,7 @@ set -euo pipefail
 plugin="${1:?usage: lint-manifest.sh <plugin-dir>}"
 manifest="$plugin/skills/manifest/SKILL.md"
 ROLES="architect developer tester reviewer refactorer validator security diagnostics init"
+ENTRYPOINTS="setup"
 violations=0
 
 [ -f "$manifest" ] || { echo "no manifest skill at $manifest"; exit 1; }
@@ -47,10 +48,23 @@ while read -r declared; do
     || { echo "role outside the core vocabulary: $declared"; violations=$((violations+1)); }
 done < <(grep -oE '^[a-z][a-z-]*' <<<"$assignments" | sort -u)
 
+# The namespace half of `plugin:agent` travels into subagent dispatch verbatim, so a
+# manifest may only name agents of the plugin that ships it: checking the file alone
+# accepts any prefix, and a plugin rename then dispatches a name resolving to nothing.
+own_name=""
+if [ -f "$plugin/.claude-plugin/plugin.json" ]; then
+  own_name=$(sed -n 's/^[[:space:]]*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    "$plugin/.claude-plugin/plugin.json" | head -1)
+fi
+[ -n "$own_name" ] \
+  || { echo "cannot read \"name\" from $plugin/.claude-plugin/plugin.json"; violations=$((violations+1)); }
+
 while read -r ref; do
+  [ -z "$own_name" ] || [ "${ref%%:*}" = "$own_name" ] \
+    || { echo "manifest names an agent outside this plugin's namespace (expected $own_name:): $ref"; violations=$((violations+1)); }
   [ -f "$plugin/agents/${ref#*:}.md" ] \
     || { echo "manifest names an agent with no file: $ref"; violations=$((violations+1)); }
-done < <(grep -oE '[a-z][a-z-]*:[a-z][a-z-]*' <<<"$assignments" | sort -u)
+done < <(grep -oE '[a-z][a-z0-9-]*:[a-z][a-z0-9-]*' <<<"$assignments" | sort -u)
 
 # `## Axes` shares the `name = value` grammar, so the window is bounded the same way
 # the Roles one is. Its keys are what the fan-out checks below are decided against:
@@ -84,9 +98,15 @@ while IFS= read -r line; do
     violations=$((violations+1))
     continue
   fi
-  # `|| true`: an axis with no row makes grep exit 1, and under `pipefail` that would
-  # abort the whole script here — the very case this branch exists to report.
-  allowed=$(grep -E "^$axis[[:space:]]*=" <<<"$axes" | head -1 | sed 's/^[^=]*=//' || true)
+  # Exact string compare, not `grep -E "^$axis"`: a regex metacharacter in the
+  # axis name matched a different row and reported the manifest OK.
+  allowed=""
+  while IFS= read -r arow; do
+    [ -n "$arow" ] || continue
+    [ "$(trim "${arow%%=*}")" = "$axis" ] || continue
+    allowed="${arow#*=}"
+    break
+  done <<<"$axes"
   if [ -z "$(trim "$allowed")" ]; then
     echo "fan-out on an axis '## Axes' does not declare: $lhs"
     violations=$((violations+1))
@@ -117,7 +137,10 @@ while IFS= read -r line; do
   case "$rhs" in
     "—") ;;
     *)
-      if [[ "$rhs" =~ ^[a-z][a-z-]*:[a-z][a-z-]*$ ]]; then
+      # Digits are legal in a plugin or agent name (`vue3-platform:vue3-architect`);
+      # rejecting them here also made the extraction above match the post-digit
+      # fragment, reporting an agent the manifest never named.
+      if [[ "$rhs" =~ ^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$ ]]; then
         :
       elif [ -z "$rhs" ]; then
         echo "role mapped to an empty value (write a plugin:agent reference or '—'): $role_name"
@@ -145,6 +168,11 @@ while IFS= read -r line; do
   entry_name="${BASH_REMATCH[1]}"
   rhs="${BASH_REMATCH[2]}"
   rhs="${rhs%"${rhs##*[![:space:]]}"}"  # trim trailing whitespace
+  # An unknown name is a row core will never call, which reads exactly like a
+  # correctly declared one. A MISSING `setup` row is not checked: the contract
+  # declares it, like the em dash, a supported shape.
+  grep -qw "$entry_name" <<<"$ENTRYPOINTS" \
+    || { echo "entrypoint outside the core vocabulary (core never calls it): $entry_name"; violations=$((violations+1)); }
   case "$rhs" in
     "—") ;;
     '`'*'`')

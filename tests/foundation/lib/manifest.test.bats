@@ -48,16 +48,25 @@ setup() {
 }
 
 @test "every role maps to an agent file that exists" {
-  while read -r ref; do
-    [ -f "$ROOT/agents/${ref#swift-platform:}.md" ]
-  done < <(grep -oE 'swift-platform:swift-[a-z]+' "$M" | sort -u)
+  refs="$(grep -oE 'swift-platform:swift-[a-z0-9-]+' "$M" | sort -u)"
+  # This is the only guard on the namespace half of every reference. Renaming the
+  # plugin makes the grep find nothing, and an unfloored loop then passes over
+  # zero refs while every stage dispatches an agent that resolves to nothing.
+  n="$(printf '%s\n' "$refs" | grep -c . || true)"
+  [ "$n" -ge 9 ] || { echo "found $n role reference(s), expected all nine"; return 1; }
+  for ref in $refs; do
+    [ -f "$ROOT/agents/${ref#swift-platform:}.md" ] || { echo "no agent file for $ref"; return 1; }
+  done
 }
 
 @test "every topic points at a skill that exists" {
-  while read -r skill; do
-    [ -d "$ROOT/skills/$skill" ]
   # Rows only: the prose around the table backticks skill and topic names too,
   # and a topic declares nothing outside its `→` row.
-  done < <(sed -n '/^## Topics/,/^## /p' "$M" | grep '→' \
-             | grep -oE '`[a-z][a-z-]+`' | tr -d '`' | sort -u)
+  skills="$(sed -n '/^## Topics/,/^## /p' "$M" | grep '→' \
+              | grep -oE '`[a-z][a-z-]+`' | tr -d '`' | sort -u)"
+  n="$(printf '%s\n' "$skills" | grep -c . || true)"
+  [ "$n" -ge 15 ] || { echo "found $n topic skill(s); the scan went vacuous"; return 1; }
+  for skill in $skills; do
+    [ -d "$ROOT/skills/$skill" ] || { echo "topic names a skill with no directory: $skill"; return 1; }
+  done
 }
