@@ -11,7 +11,16 @@ jobs:
       - uses: actions/checkout@v4
       - run: brew install bats-core yq xcodegen
       - name: bats
-        run: bats tests/foundation/lib tests/foundation/integration
+        run: |
+          set -o pipefail
+          bats tests/foundation/lib tests/foundation/integration | tee /tmp/bats.log
+          # A conditional skip here means a tool is missing from the runner, not
+          # a decision — and bats buries it where a green run hides it.
+          if grep -q '# skip' /tmp/bats.log; then
+            grep '# skip' /tmp/bats.log
+            echo "the above tests did not run; CI must carry the tools they need"
+            exit 1
+          fi
       - name: vendored lints
         run: |
           scripts/lint-i18n.sh
@@ -23,17 +32,19 @@ jobs:
           /tmp/upstream/scripts/lint-manifest.sh .
       - name: core's originals have not moved under the adapted forks
         run: |
-          # These four are ADAPTED forks, not copies: two differ from core in comments
-          # only, and two differ in logic on purpose. So equality is the wrong test.
-          # Each records the sha256 of the core file it was adapted from; when core's
-          # file changes, this goes red until a human re-adapts and updates the line.
+          # These five are ADAPTED forks, not copies: some differ from core in comments
+          # only, others differ in logic on purpose. So equality is the wrong test.
+          # Each records the core path it was adapted from and that file's sha256; when
+          # core's file changes, this goes red until a human re-adapts and updates it.
           n=0
-          for f in scripts/*.sh; do
-            want=$(sed -n 's/^# Adapted from spine-toolkit .* sha256:\([0-9a-f]*\)$/\1/p' "$f")
-            [ -n "$want" ] || continue
-            b=$(basename "$f"); n=$((n+1))
-            have=$(shasum -a 256 "/tmp/upstream/scripts/$b" | cut -d' ' -f1)
+          for f in scripts/*.sh conventions/*.md; do
+            line=$(sed -n 's/^[#>] Adapted from spine-toolkit \(.*\) sha256:\([0-9a-f]*\)$/\1 \2/p' "$f" | head -1)
+            [ -n "$line" ] || continue
+            rel="${line% *}"; want="${line#* }"; n=$((n+1))
+            [ -f "/tmp/upstream/$rel" ] \
+              || { echo "core no longer has $rel — this fork's original was renamed or removed"; exit 1; }
+            have=$(shasum -a 256 "/tmp/upstream/$rel" | cut -d' ' -f1)
             [ "$want" = "$have" ] \
-              || { echo "core's $b moved since this fork was adapted ($want -> $have)"; exit 1; }
+              || { echo "core's $rel moved since this fork was adapted ($want -> $have)"; exit 1; }
           done
-          [ "$n" -eq 4 ] || { echo "expected 4 adapted forks, matched $n"; exit 1; }
+          [ "$n" -eq 5 ] || { echo "expected 5 adapted forks, matched $n"; exit 1; }
