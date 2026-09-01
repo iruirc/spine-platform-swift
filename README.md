@@ -15,8 +15,14 @@ they know.
 /plugin install swift-platform
 ```
 
-`spine-toolkit` is declared as a dependency and installs with it. In your project's
-`CLAUDE-spine-toolkit.md`:
+`spine-toolkit` is declared as a dependency and installs with it. Then, in an existing project:
+
+```
+/setup
+```
+
+That is spine-toolkit's command: it writes `CLAUDE-spine-toolkit.md`, and when more than one
+platform plugin is installed it asks which serves this project. The answer lands in `## Platform`:
 
 ```
 ## Platform
@@ -25,7 +31,9 @@ swift-platform
 ```
 
 That one line is the whole selection mechanism — the orchestrator invokes `swift-platform:manifest`
-and reads the rest from there.
+and reads the rest from there. Editing it by hand is how you move an already-configured project to
+a different platform; on a project with no config yet, run `/setup` instead — hand-writing only
+this block leaves every other block the orchestrator reads missing.
 
 A project from scratch is this plugin's own command: `/swift-init` creates an iOS/macOS app or an
 SPM package, lays down `Tasks/`, and writes both `CLAUDE.md` and the toolkit config.
@@ -63,7 +71,8 @@ SPM package, lays down `Tasks/`, and writes both `CLAUDE.md` and the toolkit con
 
 `concurrency-architecture` covers where concurrency primitives sit across layers. Language-level
 questions — `Sendable`, isolation rules, Swift 6 migration, actor reentrancy — belong to the
-separately installed `swift-concurrency:swift-concurrency` skill.
+separately installed `swift-concurrency:swift-concurrency` skill
+(<https://github.com/iruirc/swift-concurrency>).
 
 **Multi-package SPM workspaces** — `workspace-init` bootstraps a workspace (interactive Q&A or batch
 from `workspace.yml`, optionally generating one git repo per platform with an xcodegen app project
@@ -108,6 +117,8 @@ scripts/lint-locales.sh
 scripts/lint-manifest.sh .
 ```
 
-The lint scripts are vendored copies of spine-toolkit's — the two plugins share no code, so a change
-to one is a change to both. `lint-manifest.sh` checks this plugin's manifest against the contract it
-came from; the suite runs it too, so conformance is checked here rather than from core.
+The four lint scripts and `conventions/i18n.md` are **adapted forks** of spine-toolkit's, not
+copies: each records the core file it came from and that file's sha256, and CI goes red when the
+original moves, so a human decides whether the change belongs here. `lint-manifest.sh` checks this
+plugin's manifest against the contract it came from; the suite runs it too, so conformance is
+checked here rather than from core.

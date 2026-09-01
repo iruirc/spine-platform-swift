@@ -22,6 +22,9 @@ teardown() { ws_cleanup_tmpdirs; }
   echo "USER_OWNED_CONTENT" > "$target/CLAUDE.md"
   run "$(ws_repo_root)/tests/foundation/helpers/ws-add-driver.zsh" "$target" engine HasCLAUDE
   [ "$status" -eq 0 ]
+  # The warning is half the test's name and was never asserted: silently keeping
+  # the file reads to the caller exactly like having written a new one.
+  [ "${output#*not overwritten}" != "$output" ]
   run cat "$target/CLAUDE.md"
   [[ "$output" == *"USER_OWNED_CONTENT"* ]]
 }
