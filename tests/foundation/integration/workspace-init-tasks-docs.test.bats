@@ -48,12 +48,14 @@ EOF
   [ ! -d "$parent/Tasks/.git" ]
   [ ! -d "$parent/Docs/.git" ]
   # Symlinks resolve to the prepared external targets.
+  # `[ ]`, not `[[ ]]`: a failing `[[ ]]` anywhere but a test's last line does not
+  # trip bats' set -e, so the first of these two asserted nothing.
   run readlink "$parent/Tasks"
   [ "$status" -eq 0 ]
-  [[ "$output" == "$parent/external-tasks" ]]
+  [ "$output" = "$parent/external-tasks" ]
   run readlink "$parent/Docs"
   [ "$status" -eq 0 ]
-  [[ "$output" == "$parent/external-docs" ]]
+  [ "$output" = "$parent/external-docs" ]
 }
 
 @test "ws-init-driver preserves a pre-existing Docs symlink (does not overwrite)" {

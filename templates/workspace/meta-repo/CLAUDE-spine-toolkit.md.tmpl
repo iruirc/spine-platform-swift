@@ -7,17 +7,108 @@
 
 en
 
+## Persona
+
+- Workspace persona — multi-package SPM workspace (meta-repo + N package repos + optional project-repo).
+- **I have the right to disagree** with the user's decisions. If a decision leads to a hack, a security hole, or technical debt — I MUST object and propose an alternative.
+- **Quality and security > speed.** Do not accept "we'll fix it later", "good enough for MVP", "this is temporary".
+- **Long-term value > quick wins.** Pick solutions that scale and remain maintainable.
+- If the user insists on a hacky solution, clearly outline the risks and record them in `Done.md → Objections`.
+
+## Rules
+
+### Comments
+
+- **Default to writing no comments.** Code with descriptive names says WHAT. Only add a comment when the WHY is non-obvious: hidden constraint, subtle invariant, workaround for a specific bug, behavior that would surprise a reader.
+- **Comments must be evergreen** — encode an invariant that will still be true in two years.
+- **NEVER reference the current task, phase, EPIC, ticket, fix, PR, or caller** in production code comments. Forbidden examples: `// EPIC 12 §2.3 Phase 4 — …`, `// Task 031 phase 2`, `// Bug123 fix`, `// Used by Y flow`, `// §1.7 follow-up will replace this`, `// Was X before refactor`. Provenance lives in `git log` / commit message / PR description / `Tasks/` — duplicating it in code rots and crowds out the WHY.
+- **WHAT-comments are forbidden** (e.g. `// increment counter` over `counter += 1`). Decorative preludes, history-only notes, and forward-promise comments are also forbidden.
+- **File headers** carry an evergreen description of the file's role only — no `// Created for EPIC X / Phase Y` lines.
+- The same rule applies to test code: no phase/EPIC refs in test comments or in assertion/failure message strings (those are read in failure output and must be self-explanatory).
+
+### Commits & provenance
+
+- Commit message + PR description carry the WHY of the change.
+- `git log` / `git blame` / `Tasks/<status>/<task_id>/` folder carry the timeline.
+- Production code carries the *current* invariants and constraints — not the journey that led to them.
+
 ## Platform
 
 swift-platform
+
+## Workspace meta
+
+- Workspace name: {{WORKSPACE_NAME}}
+- Layout: see `workspace.yml` (single source of truth).
+- Schema reference: see `README.md` "## Schema" section.
+
+## Agents
+
+(optional: per-role overrides of the platform manifest's `## Roles`, same row grammar —
+`<role> = <plugin>:<agent>`, or `<role>[<axis>=<value>] = <plugin>:<agent>` to override only one
+axis value. A role named here replaces the manifest's rows for that role entirely. This block
+normally holds no row at all: the platform's manifest is the source of truth, and an override is
+the exception. Placeholders in angle brackets are not rows — only a line that names a real role is.)
+
+## Stack
+
+- ecosystem: apple
+
+(one `- <Axis>: <value>` line per axis of `swift-platform`'s manifest `## Axes`, values taken
+verbatim from that catalog. `ecosystem` is the only one a fresh workspace knows; the orchestrator
+asks for the rest per task, once each, and writes the answers here.)
 
 ## Mode
 
 manual
 
-## Stack
+## Progress
 
-multi-package-spm-workspace
+normal
+
+(how much the orchestrator narrates a profile run: `quiet` — the final report only;
+`normal` — the stage-to-agent plan once, then a report after every stage; `live` — everything
+from `normal` plus each stage's token cost, a totals line when the run finishes, and the
+command for a live agent panel you can run in a second terminal pane.
+This setting governs reporting only — the between-stage confirmations of `manual` mode are
+unaffected by it.)
+
+## Validation
+
+drive_app: auto
+manual_checks: auto
+
+(`drive_app` — whether the Validation stage may drive the running app through this platform's own tooling: `auto` — the profile
+decides (FEATURE: when the feature has a UI layer; BUG: always, to replay the reproduction;
+REFACTOR: when UI code was touched; TEST: only for UI tests); `off` — never, because this project
+has nothing to drive or no way to drive it. A platform whose validator has no such tooling at all declares the deviation itself; this key is for the project's own choice.
+`off` does not delete the check: the validator writes the cases a human has to run into a separate
+`ManualChecks.md` in the task folder and marks the matching `OpsChecklist.md` items Pending.
+For BUG the deferred check is the reproduction replay itself.
+`manual_checks` — when the validator writes `ManualChecks.md`, the hand-run script for a human:
+`auto` — only for checks it was told not to run itself; `always` — every time, so a UI-bearing task
+ships a manual pass even when the validator drove the app and covered the happy path.
+
+A single task overrides both with `[DRIVE_APP] = [auto|off]` and `[MANUAL_CHECKS] = [auto|always]`
+in its `Task.md`.)
+
+## Reporting
+
+walkthrough: on
+
+(whether a task writes `Walkthrough.md` — the human-facing account of what actually landed:
+summary, plan-vs-outcome divergences with their trigger, a commit-by-commit log, diagrams where
+they help, follow-ups. Written at the end of the implementing stage, so it is readable before
+Validation and Review, and refreshed afterwards if later commits moved past it.
+`on` — write it; `off` — never. Not applicable to RESEARCH and REVIEW, whose deliverable is the
+artifact itself. A single task overrides with `[WALKTHROUGH] = [on|off]` in its `Task.md`.)
+
+## Modules
+
+(optional: list of modules with a per-module stack overriding `## Stack` for the paths it names, e.g.: "- Core: /Packages/Core — <axis>: <value>, <axis>: <value>")
+
+(`swift-platform:architecture-choice` writes a per-package row here as each package's architecture
+is decided.)
 
 ## EstimationDeltas
 
@@ -33,16 +124,25 @@ manual
 
 (optional: project-specific overrides for AI leverage classes used by `feature-estimation`; leave empty until the calibration log `Tasks/_calibration/estimation-log.md` shows repeatable per-class observed divisors across ≥3–5 finished AI-assisted features. Updates are proposed from that log, never written silently.)
 
-## Persona
+## Paths
 
-Workspace persona — multi-package SPM workspace (meta-repo + N package repos + optional project-repo).
+(optional: "- Sources: /Sources", "- Tests: /Tests")
 
-## Workspace meta
+## Orchestration
 
-- Workspace name: {{WORKSPACE_NAME}}
-- Layout: see `workspace.yml` (single source of truth).
-- Schema reference: see `README.md` "## Schema" section.
+Task routing, profile, and stage logic lives in skills — the list below is the whole map, and nothing outside it dispatches a stage:
 
-## Validation
+- `spine-toolkit:orchestrator` — picks the profile by `TASK_TYPE`, determines the start point, dispatches stages
+- `spine-toolkit:workflow-feature|bug|refactor|test|review|research|epic` — profile procedures
+- `spine-toolkit:task-new|task-move|task-status` — task management
+- `spine-toolkit:setup` — configures spine-toolkit in an existing project (creates `CLAUDE-spine-toolkit.md` from template, inserts the `@./CLAUDE-spine-toolkit.md` import into `CLAUDE.md`, creates `Tasks/`)
+- `spine-toolkit:lang` — switches the project's prompt language
 
-(populated by `swift-platform:architecture-choice` per package as needed)
+Each profile also has a workflow script (`workflows/profile-*.js`) running the same stages as code; the orchestrator uses it where the host has the `Workflow` tool and falls back to the skill where it does not. Two consequences worth knowing: agents inside a workflow run in `acceptEdits`, so their file edits apply without a prompt whatever permission mode the session is in, and on the Pro plan workflows stay off until enabled in `/config`.
+
+Slash commands:
+- task management: `/spine-toolkit:task-new`, `:task-run`, `:task-continue`, `:task-redo`, `:task-restart`, `:task-move`, `:task-status` (keep the prefix — four of the seven have no same-named skill, so the bare form resolves to nothing)
+- toolkit setup: `/setup` (attach the toolkit to an existing project); a project from scratch is the platform plugin's own command
+- language: `/lang <code>` (switch between `en` and `ru`)
+
+NL phrases continue to work: `create task: ...`, `run 001`, `continue 001`, `move 001 to DONE`, `status 001`, `redo plan for 001`, `set up spine-toolkit`, etc. — the matching skill activates via triggers in its `description`.

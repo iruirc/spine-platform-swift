@@ -15,6 +15,7 @@ setup() {
   for p in $(grep -rhoE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' "$ROOT" \
                --include='*.md' --include='*.sh' --include='*.js' \
                --include='*.bats' --include='*.zsh' \
+               --exclude-dir=.git \
              | tr -d '`' | sort -u); do
     case "$p" in
       skills/*|agents/*|commands/*|conventions/*|templates/*|hooks/*|scripts/*|tests/*|workflows/*) ;;
@@ -34,7 +35,7 @@ setup() {
 
 @test "no file names the pre-split project config" {
   # Migrating a pre-split config is core's job; nothing here may still read one.
-  offenders="$(grep -rl 'CLAUDE-swift-toolkit' "$ROOT" \
+  offenders="$(grep -rl --exclude-dir=.git 'CLAUDE-swift-toolkit' "$ROOT" \
     | grep -vF 'self-containment.test.bats' || true)"
   [ -z "$offenders" ] || { echo "$offenders"; return 1; }
 }
@@ -59,7 +60,28 @@ setup() {
 @test "no file in swift-platform names the core tree by a filesystem path" {
   # The mirror of core's guard: `../core` has no trailing slash and slips past a
   # `core/` grep, and every such path dangles the moment this plugin is extracted.
-  offenders="$(grep -rnE --exclude-dir=.git '(\.\./core([^A-Za-z0-9_-]|$)|(^|[^A-Za-z0-9_.-])core/)' "$ROOT" \
-    | grep -vF 'self-containment.test.bats' || true)"
+  # Both namings are wrong to write: the pre-split directory, and the published
+  # repo name that the first pattern's `[^A-Za-z0-9_.-]` class swallows. This
+  # plugin's own repo name is a monorepo-root prefix and equally wrong, but a
+  # leading slash is spared so installed-plugin cache paths stay legal.
+  pat='(\.\./(core|spine-toolkit|swift-platform)([^A-Za-z0-9_-]|$)'
+  pat="$pat"'|(^|[^A-Za-z0-9_.-])core/'
+  pat="$pat"'|(^|[^A-Za-z0-9_./-])(spine-toolkit|swift-platform)/)'
+  hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" || true)"
+  offenders="$(grep -vF 'self-containment.test.bats' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "swift-platform reference(s) to the core tree:"; echo "$offenders"; return 1; }
+  # The self-exclusion is otherwise unbounded — a violation added to this file
+  # would be invisible. Pin the count: a change here must be re-read.
+  n="$(grep -cF 'self-containment.test.bats' <<<"$hits" || true)"
+  [ "$n" -eq 3 ] || { echo "self-excluded lines in this file: $n, expected 3"; return 1; }
+}
+
+@test "the shipped workspace config template declares every block core reads" {
+  # workspace-init renders this instead of going through spine-toolkit:setup, so
+  # core's own template guard never sees it. Same block list, checked here.
+  tpl="$ROOT/templates/workspace/meta-repo/CLAUDE-spine-toolkit.md.tmpl"
+  [ -f "$tpl" ] || { echo "no workspace config template at $tpl"; return 1; }
+  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas; do
+    grep -q "^## $block\$" "$tpl" || { echo "missing block: ## $block"; return 1; }
+  done
 }

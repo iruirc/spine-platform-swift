@@ -68,7 +68,7 @@ actor (custom): Service with mutable state shared across callers
 | Mutable state, single owner, accessed from one isolation domain | Plain class/struct with that domain's isolation (often `@MainActor`) |
 | Mutable state, **multiple concurrent callers**, cross-feature | **`actor`** |
 | Mutable state, but readers can tolerate being one tick stale | **`actor` with cached snapshot** + nonisolated read of last snapshot |
-| Need re-entrant access (callback re-enters the actor mid-await) | Reconsider design — actor re-entrancy is a known footgun. See AvdLee `references/actors.md`. |
+| Need re-entrant access (callback re-enters the actor mid-await) | Reconsider design — actor re-entrancy is a known footgun. See AvdLee's `actors.md` reference. |
 
 **Concrete examples of legitimate actors:**
 
@@ -268,7 +268,7 @@ Timeouts are a form of cancellation. Two layers, two purposes:
 
 Don't add timeouts in Repository or APIClient — they don't know the business intent. Either set transport timeout once in `URLSessionConfiguration` (defaulted in `net-architecture`), or wrap the UseCase call.
 
-> `withTimeout` is not in the standard library. Typical implementation: race the work against `Task.sleep` via `withThrowingTaskGroup` and cancel the loser. See `swift-async-algorithms` and AvdLee `references/cancellation.md` for reference implementations.
+> `withTimeout` is not in the standard library. Typical implementation: race the work against `Task.sleep` via `withThrowingTaskGroup` and cancel the loser. See `swift-async-algorithms` and AvdLee's `cancellation.md` reference for reference implementations.
 
 ## Parallel Loading: Where `async let` / `TaskGroup` Lives
 
@@ -334,7 +334,7 @@ Every value crossing an isolation boundary must be `Sendable`. The architectural
 | DTOs (network/parsing layer) | **Yes** | `Codable` `struct` — implicitly `Sendable` if all stored properties are. |
 | `NSManagedObject`, `@Model`, Realm `Object` | **Never `Sendable`** | Pass `NSManagedObjectID` / `PersistentIdentifier` / freeze-and-pass — see `persistence-architecture` |
 | Closures crossing actors | Annotate `@Sendable` | Most async APIs require it |
-| Reference types | Avoid; if needed, use `@unchecked Sendable` only with documented invariant | Defer to AvdLee `references/sendable.md` |
+| Reference types | Avoid; if needed, use `@unchecked Sendable` only with documented invariant | Defer to AvdLee's `sendable.md` reference |
 | Errors | `Error` is not `Sendable` automatically — make your error enums explicitly `Sendable` | Easy: `enum FooError: Error, Sendable { ... }` |
 
 **One architectural rule:** the Repository → Domain boundary is where you guarantee `Sendable`. If your Repository returns `[Item]` and `Item` is `Sendable`, the rest of the layered code stays simple. If `Item` is a `class` with mutable state, you've poisoned every upper layer.
