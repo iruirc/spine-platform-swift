@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Adapted from spine-toolkit scripts/lint-manifest.sh sha256:b686c6523b7679702f7b426c12f54eccb2682423a7e8e87209999c311d2f5e7b
-# Vendored copy of spine-toolkit's lint. Plugins share no code; update both or neither.
+# Adapted from spine-toolkit scripts/lint-manifest.sh sha256:6740aec3de096e21ef4340b49b13b73efa251a77815ad65b414488cd7846f327
+# Adapted from spine-toolkit's lint. Plugins share no code; update both or neither.
 # Checks a platform plugin's manifest skill against the spine-toolkit contract.
 # Validates the five tables' presence, Roles content (vocabulary, named agents
 # exist, fan-out rows that core can actually match, no duplicate left-hand
@@ -51,13 +51,19 @@ done < <(grep -oE '^[a-z][a-z-]*' <<<"$assignments" | sort -u)
 # The namespace half of `plugin:agent` travels into subagent dispatch verbatim, so a
 # manifest may only name agents of the plugin that ships it: checking the file alone
 # accepts any prefix, and a plugin rename then dispatches a name resolving to nothing.
-own_name=""
-if [ -f "$plugin/.claude-plugin/plugin.json" ]; then
-  own_name=$(sed -n 's/^[[:space:]]*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-    "$plugin/.claude-plugin/plugin.json" | head -1)
-fi
+# Parsed as JSON, not read line by line: a nested `author.name` listed first wins
+# a `^"name"` grep, and a minified file defeats it entirely.
+own_name="$(python3 - "$plugin/.claude-plugin/plugin.json" <<'PY' 2>/dev/null || true
+import json, sys
+try:
+    v = json.load(open(sys.argv[1]))["name"]
+    print(v if isinstance(v, str) else "")
+except Exception:
+    pass
+PY
+)"
 [ -n "$own_name" ] \
-  || { echo "cannot read \"name\" from $plugin/.claude-plugin/plugin.json"; violations=$((violations+1)); }
+  || { echo "cannot read a top-level \"name\" from $plugin/.claude-plugin/plugin.json"; violations=$((violations+1)); }
 
 while read -r ref; do
   [ -z "$own_name" ] || [ "${ref%%:*}" = "$own_name" ] \

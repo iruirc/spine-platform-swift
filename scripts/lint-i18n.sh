@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Adapted from spine-toolkit scripts/lint-i18n.sh sha256:ecf307978ed83c9232b0d6ace36a73ad1437dc82117c026c06b9a317de2248b9
-# Vendored copy of spine-toolkit's lint. Plugins share no code; update both or neither.
+# Adapted from spine-toolkit scripts/lint-i18n.sh sha256:6d6684c9beef8a053143482291eb5ae868505381b4e6dfd7455ee468f08159fd
+# Adapted from spine-toolkit's lint. Plugins share no code; update both or neither.
 set -euo pipefail
 
 # Paths below are repo-relative: anchor the cwd so a run from elsewhere
@@ -35,23 +35,28 @@ while IFS= read -r -d '' f; do
   case "$f" in
     ./skills/*/SKILL.md|./agents/*.md|./commands/*.md)
       python3 - "$f" <<'PY' || violations=$((violations + 1))
-import sys
+import re, sys
 path = sys.argv[1]
-text = open(path, encoding='utf-8').read()
-lines = text.split('\n')
-fence_count = 0
-for i, line in enumerate(lines, 1):
-    if line.strip() == '---':
-        fence_count += 1
-        continue
-    if fence_count >= 2 and any('А' <= c <= 'я' or c in 'ёЁ' for c in line):
+lines = open(path, encoding='utf-8').read().split('\n')
+# The frontmatter is the block the file OPENS with, and it ends at the first line
+# that is neither a YAML key nor an indented continuation. Merely counting `---`
+# let a body thematic break stand in for a missing closing fence, so a file with
+# one stayed exempt from the check this exception is carved out of.
+close = None
+if lines and lines[0].strip() == '---':
+    for i, line in enumerate(lines[1:], 1):
+        if line.strip() == '---':
+            close = i
+            break
+        if line.strip() and not line[:1].isspace() and not re.match(r'[A-Za-z_][\w.-]*\s*:', line):
+            break
+if close is None:
+    print(f'{path}:1: malformed frontmatter — cyrillic here cannot be checked')
+    sys.exit(1)
+for i, line in enumerate(lines[close + 1:], close + 2):
+    if any('А' <= c <= 'я' or c in 'ёЁ' for c in line):
         print(f'{path}:{i}: cyrillic outside frontmatter: {line.rstrip()}')
         sys.exit(1)
-# Under two fences the loop above never enters its body, so a broken frontmatter
-# silently exempts the whole file from the check it is the exception to.
-if fence_count < 2:
-    print(f'{path}:1: malformed frontmatter ({fence_count} `---` fence(s)) — cyrillic here cannot be checked')
-    sys.exit(1)
 PY
       ;;
     *)

@@ -62,12 +62,15 @@ setup() {
   # `core/` grep, and every such path dangles the moment this plugin is extracted.
   # Both namings are wrong to write: the pre-split directory, and the published
   # repo name that the first pattern's `[^A-Za-z0-9_.-]` class swallows. This
-  # plugin's own repo name is a monorepo-root prefix and equally wrong, but a
-  # leading slash is spared so installed-plugin cache paths stay legal.
+  # plugin's own repo name is a monorepo-root prefix and equally wrong; the
+  # installed-plugin cache paths a skill may document are excluded by that
+  # prefix rather than by sparing a leading dot or slash — which spared every
+  # absolute and dot-relative sibling path too.
   pat='(\.\./(core|spine-toolkit|swift-platform)([^A-Za-z0-9_-]|$)'
   pat="$pat"'|(^|[^A-Za-z0-9_.-])core/'
-  pat="$pat"'|(^|[^A-Za-z0-9_./-])(spine-toolkit|swift-platform)/)'
-  hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" || true)"
+  pat="$pat"'|(^|[^A-Za-z0-9_-])(spine-toolkit|swift-platform)/)'
+  hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" \
+            | grep -vE '/\.claude/plugins/(cache|marketplaces)/' || true)"
   offenders="$(grep -vF 'self-containment.test.bats' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "swift-platform reference(s) to the core tree:"; echo "$offenders"; return 1; }
   # The self-exclusion is otherwise unbounded — a violation added to this file
