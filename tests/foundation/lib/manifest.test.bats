@@ -41,7 +41,8 @@ setup() {
   rows="$(sed -n '/^## Topics/,/^## Entrypoints/p' "$M")"
   missing=""
   for t in "state management" "navigation" "networking" "persistence" \
-           "dependency graph" "concurrency" "errors" "packaging" "deep links"; do
+           "dependency graph" "concurrency" "errors" "packaging" "deep links" \
+           "release ops"; do
     grep -qE "^${t}[[:space:]]*→" <<<"$rows" || missing="$missing '$t'"
   done
   [ -z "$missing" ] || { echo "topic spine-toolkit names with no row here:$missing"; return 1; }

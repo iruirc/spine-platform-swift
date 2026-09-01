@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Ops"
+  short_description: "Help with Release Ops tasks"
+  default_prompt: "Use $release-ops to handle Release Ops work."
