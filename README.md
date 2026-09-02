@@ -1,5 +1,9 @@
 # swift-platform
 
+[![release](https://img.shields.io/github/v/tag/iruirc/swift-platform?sort=semver&label=release&color=0969da)](https://github.com/iruirc/swift-platform)
+[![license](https://img.shields.io/github/license/iruirc/swift-platform?color=555)](LICENSE)
+[![requires spine-toolkit](https://img.shields.io/badge/requires-spine--toolkit-0969da)](https://github.com/iruirc/spine-toolkit)
+
 The Swift/Apple platform plugin for **spine-toolkit**. It carries the stack knowledge — nine
 specialized agents, architecture and infrastructure skills, and multi-package SPM workspace
 tooling — and declares all of it to the orchestrator through one manifest skill.
