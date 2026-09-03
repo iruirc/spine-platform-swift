@@ -67,16 +67,21 @@ setup() {
   # prefix rather than by sparing a leading dot or slash — which spared every
   # absolute and dot-relative sibling path too.
   pat='(\.\./(core|spine-toolkit|swift-platform)([^A-Za-z0-9_-]|$)'
-  pat="$pat"'|(^|[^A-Za-z0-9_.-])core/'
+  # `$` joins the excluded chars: a `$core/`-style dereference names no path.
+  pat="$pat"'|(^|[^A-Za-z0-9_.$-])core/'
   pat="$pat"'|(^|[^A-Za-z0-9_-])(spine-toolkit|swift-platform)/)'
   hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" \
             | grep -vE '/\.claude/plugins/(cache|marketplaces)/' || true)"
-  offenders="$(grep -vF 'self-containment.test.bats' <<<"$hits" || true)"
+  # core-refs.test.bats's sibling-checkout path is the other deliberate exception:
+  # it skips rather than dangles when the checkout is absent, so it is excluded too.
+  offenders="$(grep -vF -e 'self-containment.test.bats' -e 'core-refs.test.bats' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "swift-platform reference(s) to the core tree:"; echo "$offenders"; return 1; }
   # The self-exclusion is otherwise unbounded — a violation added to this file
   # would be invisible. Pin the count: a change here must be re-read.
   n="$(grep -cF 'self-containment.test.bats' <<<"$hits" || true)"
   [ "$n" -eq 3 ] || { echo "self-excluded lines in this file: $n, expected 3"; return 1; }
+  n2="$(grep -cF 'core-refs.test.bats' <<<"$hits" || true)"
+  [ "$n2" -eq 1 ] || { echo "excluded lines for core-refs.test.bats: $n2, expected 1"; return 1; }
 }
 
 @test "the shipped workspace config template declares every block core reads" {
