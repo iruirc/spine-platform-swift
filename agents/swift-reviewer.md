@@ -224,7 +224,7 @@ The **very first line** of `Review.md` MUST be exactly one of:
 [REVIEW_STATUS] = DISCUSSION
 ```
 
-This field is a hard contract with `spine-toolkit:workflow-review` and the orchestrator: `workflow-review` reads it for auto-move (APPROVED → `Tasks/DONE/`), and other workflows (`workflow-feature`, `workflow-bug`, `workflow-refactor`, `workflow-test`) treat it as the canonical verdict from a final review.
+This field is a hard contract with `spine-toolkit:workflow-review` and the orchestrator: `spine-toolkit:workflow-review` reads it for auto-move (APPROVED → `Tasks/DONE/`), and other workflows (`spine-toolkit:workflow-feature`, `spine-toolkit:workflow-bug`, `spine-toolkit:workflow-refactor`, `spine-toolkit:workflow-test`) treat it as the canonical verdict from a final review.
 
 Rules:
 - No content (preface, blank line, code fence, heading) before the status line — it must be byte-position 0 of the file.
@@ -234,7 +234,7 @@ Rules:
 Semantics:
 - `APPROVED` — changes are ready to merge / the task is ready to close. No required follow-ups remain.
 - `CHANGES_REQUESTED` — there are concrete changes that must be made before merge / closure. The required items are listed in the body of `Review.md` under **Findings → Critical / Major** and summarized in **Follow-up**.
-- `DISCUSSION` — there are open questions or architectural doubts that require a conversation with the user before a decision can be made. The points are listed in the body of `Review.md` and will be copied by `workflow-review` into `Questions.md`.
+- `DISCUSSION` — there are open questions or architectural doubts that require a conversation with the user before a decision can be made. The points are listed in the body of `Review.md` and will be copied by `spine-toolkit:workflow-review` into `Questions.md`.
 
 ### Reviewed-commit line (mandatory, second line whenever you have a task folder)
 
@@ -271,7 +271,7 @@ What the code does well — brief.
 One of: **Approve** / **Request changes** / **Needs discussion**.
 
 ### Follow-up
-If verdict is "Request changes", a short list of the issues worth tracking as separate tasks (for the user to create via `task-new` if desired). Otherwise write `(none)`.
+If verdict is "Request changes", a short list of the issues worth tracking as separate tasks (for the user to create via `spine-toolkit:task-new` if desired). Otherwise write `(none)`.
 
 ### Estimate retrospective
 If `Plan.md ## Estimation` exists, summarize estimated range, actual engineering days if known or inferable from task artifacts, whether the work landed in range, variance reason, and calibration action. If actual effort is unknown, write `(unknown — <missing signal>)`. This section is mandatory calibration context, not a finding.
@@ -302,11 +302,14 @@ Consult these skills when reviewing code against architectural / framework expec
 - `di-composition-root` — what belongs in CR vs not, bootstrap correctness, scope leaks
 - `di-module-assembly` — Factory pattern, protocol seams, late initialization patterns (architecture pattern, works over any DI)
 - `pkg-spm-design` — package boundary violations (DI-framework leaks, public-surface bloat, archetype mismatch)
-- `ops-checklist` — cross-check every Applicable item in `OpsChecklist.md` (produced by swift-validator) against the diff. Verification evidence must be visible: file path, test name, commit ref, or screenshot reference. Applicable items without evidence = finding (severity per `## Severity Levels`), typically `CHANGES_REQUESTED`. Pending items surface as a `## Outstanding ops items` section in Review.md for explicit user accept/defer.
-- `feature-requirements` — verify the Secondary table in Research.md was actually handled in code. Every Applicable Secondary state needs corresponding implementation in the diff: loading state, error state, empty state, offline behavior, accessibility labels, analytics events, deep link entry, etc. Missing Applicable Secondary = finding.
-- `feature-landscape` — verify the implementation matches the entity graph + layer map + integration points from Research.md `## Landscape`. Implementation drift = finding: wrong layer hosts business logic, integration-point contract violated, undocumented cross-layer coupling, work item declared done but acceptance criterion not met.
-- `feature-estimation` — sanity-check actual implementation against the range in Plan.md `## Estimation`, including confidence, estimate maturity, delivery-calendar separation, and self-check. Include or verify mandatory `## Estimate retrospective` (estimated range, actual engineering days if known, in-range verdict, variance reason, calibration action). Significant overrun (>50% above high end) without a documented reason in commits or retrospective = surface as `## Estimate retrospective` in Review.md for follow-up; not itself a finding.
-- `task-new`, `task-move` — task lifecycle management (used in Follow-up suggestions)
+
+## Skills Reference (core)
+
+- `spine-toolkit:ops-checklist` — cross-check every Applicable item in `OpsChecklist.md` (produced by swift-validator) against the diff. Verification evidence must be visible: file path, test name, commit ref, or screenshot reference. Applicable items without evidence = finding (severity per `## Severity Levels`), typically `CHANGES_REQUESTED`. Pending items surface as a `## Outstanding ops items` section in Review.md for explicit user accept/defer.
+- `spine-toolkit:feature-requirements` — verify the Secondary table in Research.md was actually handled in code. Every Applicable Secondary state needs corresponding implementation in the diff: loading state, error state, empty state, offline behavior, accessibility labels, analytics events, deep link entry, etc. Missing Applicable Secondary = finding.
+- `spine-toolkit:feature-landscape` — verify the implementation matches the entity graph + layer map + integration points from Research.md `## Landscape`. Implementation drift = finding: wrong layer hosts business logic, integration-point contract violated, undocumented cross-layer coupling, work item declared done but acceptance criterion not met.
+- `spine-toolkit:feature-estimation` — sanity-check actual implementation against the range in Plan.md `## Estimation`, including confidence, estimate maturity, delivery-calendar separation, and self-check. Include or verify mandatory `## Estimate retrospective` (estimated range, actual engineering days if known, in-range verdict, variance reason, calibration action). Significant overrun (>50% above high end) without a documented reason in commits or retrospective = surface as `## Estimate retrospective` in Review.md for follow-up; not itself a finding.
+- `spine-toolkit:task-new`, `spine-toolkit:task-move` — task lifecycle management (used in Follow-up suggestions)
 
 ## Related Agents (swift-platform)
 

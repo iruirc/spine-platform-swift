@@ -114,7 +114,10 @@ Consult the appropriate skill based on the architecture in use:
 - `di-composition-root` — where to wire new services (CR layout, bootstrap), choice between manual / Swinject / Factory
 - `di-module-assembly` — Factory pattern, Assembly, non-UI factories, late initialization (architecture pattern, works over any DI)
 - `pkg-spm-design` — when implementing inside SPM packages (per-archetype rules)
-- `task-new`, `task-move` — task lifecycle management
+
+## Skills Reference (core)
+
+- `spine-toolkit:task-new`, `spine-toolkit:task-move` — task lifecycle management
 
 ## Related Agents (swift-platform)
 

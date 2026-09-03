@@ -101,7 +101,10 @@ Consult the appropriate skill when refactoring:
 - `di-composition-root` — extracting CR concerns out of fat AppDelegate/SceneDelegate
 - `di-module-assembly` — Factory pattern, Assembly, non-UI factories (architecture pattern, works over any DI)
 - `pkg-spm-design` — extracting code into SPM packages by archetype
-- `task-new`, `task-move` — task lifecycle management
+
+## Skills Reference (core)
+
+- `spine-toolkit:task-new`, `spine-toolkit:task-move` — task lifecycle management
 
 ## Related Agents (swift-platform)
 

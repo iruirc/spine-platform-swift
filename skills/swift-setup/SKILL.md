@@ -120,7 +120,7 @@ keeps a state added later from silently skipping reconciliation.
 Any config carrying `## Stack` lines from an older layout — a legacy single-file `CLAUDE.md`, or a
 config core has just migrated off the pre-split name — was written against an older `## Axes`
 catalog. An
-axis this platform has since renamed leaves a line whose label matches nothing, and `stack-detect`
+axis this platform has since renamed leaves a line whose label matches nothing, and `spine-toolkit:stack-detect`
 would silently never resolve that axis again.
 
 Rewrite the label, keep the value:
@@ -168,5 +168,5 @@ back against `## Axes`, so a localized option label resolves nothing.
 - Does NOT write `## Language`, `## Mode`, `## Progress`, `## Platform` or `## Agents`.
 - Does NOT create an Xcode project, `Package.swift`, sources, `.swiftlint.yml`, or `README.md` — that is `@swift-platform:swift-init`.
 - Does NOT modify Swift code or existing project configs (Info.plist, Build Settings).
-- Does NOT start workflows or call `orchestrator`.
+- Does NOT start workflows or call `spine-toolkit:orchestrator`.
 - Does NOT init git, make commits, or install dependencies (SPM, CocoaPods, Carthage).

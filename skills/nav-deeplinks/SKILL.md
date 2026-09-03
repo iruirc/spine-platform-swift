@@ -19,8 +19,8 @@ need with `rg -n "^## " skills/nav-deeplinks/references/detailed-guide.md`.
 > - `arch-coordinator` — how a parsed `Route`/`DeepLink` drives UIKit Coordinator navigation
 > - `arch-swiftui-navigation` — how a parsed `Route` mutates `NavigationPath` / tab selection
 > - `arch-tca` — deep link as a state-mutating action (`StackState`/`@Presents`)
-> - `feature-requirements` — design-time: is a deep-link entry needed, reset-vs-preserve policy
-> - `ops-checklist` — validation-time: entitlements/AASA/link registration verified
+> - `spine-toolkit:feature-requirements` — design-time: is a deep-link entry needed, reset-vs-preserve policy
+> - `spine-toolkit:ops-checklist` — validation-time: entitlements/AASA/link registration verified
 > - `di-composition-root` — where `DeepLinkRouter` is wired and given the "graph ready" signal
 
 ## When To Load The Reference
@@ -125,7 +125,7 @@ crashes from cold start because navigation graph / auth isn't ready.
   completes) → replay `pending` once, then clear it.
 - Decide per route: **reset vs preserve** existing nav stack on arrival
   (mid-flow deep link). This is a product decision — capture it in
-  `feature-requirements`.
+  `spine-toolkit:feature-requirements`.
 
 ## Testing
 
