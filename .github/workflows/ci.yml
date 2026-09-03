@@ -10,7 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: brew install bats-core yq xcodegen
+      - name: clone core for the vendored lints
+        run: git clone --depth 1 https://github.com/iruirc/spine-toolkit.git /tmp/upstream
       - name: bats
+        env:
+          SPINE_TOOLKIT_CORE: /tmp/upstream
         run: |
           set -o pipefail
           bats tests/foundation/lib tests/foundation/integration | tee /tmp/bats.log
@@ -28,11 +32,10 @@ jobs:
       - name: manifest contract, checked by core's own lint
         run: |
           # The contract lives in core and is not copied here; a copy would drift.
-          git clone --depth 1 https://github.com/iruirc/spine-toolkit.git /tmp/upstream
           /tmp/upstream/scripts/lint-manifest.sh .
       - name: core's originals have not moved under the adapted forks
         run: |
-          # These five are ADAPTED forks, not copies: some differ from core in comments
+          # These six are ADAPTED forks, not copies: some differ from core in comments
           # only, others differ in logic on purpose. So equality is the wrong test.
           # Each records the core path it was adapted from and that file's sha256; when
           # core's file changes, this goes red until a human re-adapts and updates it.
@@ -47,4 +50,4 @@ jobs:
             [ "$want" = "$have" ] \
               || { echo "core's $rel moved since this fork was adapted ($want -> $have)"; exit 1; }
           done
-          [ "$n" -eq 5 ] || { echo "expected 5 adapted forks, matched $n"; exit 1; }
+          [ "$n" -eq 6 ] || { echo "expected 6 adapted forks, matched $n"; exit 1; }
