@@ -33,7 +33,7 @@ init        = swift-platform:swift-init
 fixes: it names the ecosystem this platform serves — `apple` here. Declared and reserved, not yet
 consumed; a project names the plugin that serves it outright, in the `## Platform` block of its
 config. Every other axis, and its allowed values, is this platform's own choice — the catalog below
-is the source of truth for both `stack-detect` and the option list the orchestrator renders in AUQ. `baseline` was `platform` before
+is the source of truth for both `spine-toolkit:stack-detect` and the option list the orchestrator renders in AUQ. `baseline` was `platform` before
 this catalog moved here; it was renamed so the new `ecosystem` axis would not mean two different
 things.
 
@@ -47,7 +47,7 @@ tests        = XCTest, Quick+Nimble
 
 ## Heuristics
 
-How `stack-detect` resolves axis values from repo signals: a `path` pattern flags one or more axes
+How `spine-toolkit:stack-detect` resolves axis values from repo signals: a `path` pattern flags one or more axes
 as relevant, an `import` or `token` literal pins one specific value.
 
 import: `SwiftUI` only (no UIKit/AppKit)                                   → ui=SwiftUI

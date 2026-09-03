@@ -79,7 +79,7 @@ When you write it:
 - `manual_checks: auto` — only when something was deferred to a human, i.e. `drive_app: off` suppressed a mandatory step. Nothing deferred, no file.
 - `manual_checks: always` — every run of a UI-bearing task, including one where mobile MCP drove the app. There you cover what driving it could not: what the happy path did **not** touch, and the device-only ground MCP cannot reach — push, biometrics, camera, real purchases, permission dialogs, backgrounding, low connectivity, multi-device. Checks mobile MCP actually performed are listed as already covered, not repeated as work.
 
-Structure, the required fields of a case, and the two rules that make a case executable are core's: apply the `manual-checks` skill and follow it. Its input is `Plan.md ## Manual acceptance`. What is yours here is the measuring — when a case's verdict comes from an instrument, the file carries that instrument's exact invocation (the scheme, the environment variable, the log path, the parser call) and the field of its output that decides, in the place the skill puts it. Only genuinely deferred cases become `OpsChecklist.md` **Pending**; a case you already verified stays Applicable with its evidence.
+Structure, the required fields of a case, and the two rules that make a case executable are core's: apply the `spine-toolkit:manual-checks` skill and follow it. Its input is `Plan.md ## Manual acceptance`. What is yours here is the measuring — when a case's verdict comes from an instrument, the file carries that instrument's exact invocation (the scheme, the environment variable, the log path, the parser call) and the field of its output that decides, in the place the skill puts it. Only genuinely deferred cases become `OpsChecklist.md` **Pending**; a case you already verified stays Applicable with its evidence.
 
 ### FEATURE
 
@@ -254,10 +254,13 @@ The caller (orchestrator) treats your return as authoritative — never embellis
 - `error-architecture` — to recognize the difference between a domain error surfacing correctly (PASSED with expected error path) and an unexpected error leaking (FAILED).
 - `persistence-migrations` — when a test failure looks migration-related (Core Data / SwiftData / GRDB schema mismatch), note that in the failure entry.
 - `net-architecture` — when a test failure points at networking layer behavior (timeouts, retry, decoding).
-- `ops-checklist` — the cross-cutting checklist you produce as `OpsChecklist.md` in the task folder. Mark each item Applicable (with concrete evidence: file path, test name, commit ref), N/A (with reason), or Pending. **Pending is NOT itself a FAILED verdict** — Pending items are surfaced to the Review stage for explicit user accept/defer.
-- `manual-checks` — the hand-run script you produce as `ManualChecks.md`. It holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case is executable; it also says what `Plan.md ## Manual acceptance` feeds into it.
-- `feature-landscape` — for the REFACTOR profile, the `## Landscape (current)` vs `## Landscape (target)` sections in Research.md tell you what behavior MUST stay identical and what is allowed to change structurally. A regression against the current landscape is a finding — note it in `Failures`.
-- `feature-requirements` — for the BUG profile, the Secondary table in Reproduce.md / Research.md scopes which `ops-checklist` categories you re-verify. BUG validation does not require full-checklist coverage — only the categories the bug touched.
+
+## Skills Reference (core)
+
+- `spine-toolkit:ops-checklist` — the cross-cutting checklist you produce as `OpsChecklist.md` in the task folder. Mark each item Applicable (with concrete evidence: file path, test name, commit ref), N/A (with reason), or Pending. **Pending is NOT itself a FAILED verdict** — Pending items are surfaced to the Review stage for explicit user accept/defer.
+- `spine-toolkit:manual-checks` — the hand-run script you produce as `ManualChecks.md`. It holds the artifact's structure, the required fields of a case, and the two rules that decide whether a case is executable; it also says what `Plan.md ## Manual acceptance` feeds into it.
+- `spine-toolkit:feature-landscape` — for the REFACTOR profile, the `## Landscape (current)` vs `## Landscape (target)` sections in Research.md tell you what behavior MUST stay identical and what is allowed to change structurally. A regression against the current landscape is a finding — note it in `Failures`.
+- `spine-toolkit:feature-requirements` — for the BUG profile, the Secondary table in Reproduce.md / Research.md scopes which `spine-toolkit:ops-checklist` categories you re-verify. BUG validation does not require full-checklist coverage — only the categories the bug touched.
 
 These are for **classification of observed failures only** — never to propose fixes.
 

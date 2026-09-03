@@ -236,8 +236,8 @@ Sequence for a link from a *killed* app:
 
 Reset-vs-preserve: per route decide whether arrival resets the nav stack
 (e.g. promo → fresh) or pushes onto the current stack (e.g. item from a list).
-Record the decision in `feature-requirements` and verify in
-`ops-checklist`.
+Record the decision in `spine-toolkit:feature-requirements` and verify in
+`spine-toolkit:ops-checklist`.
 
 ## Deferred Deep Links
 
