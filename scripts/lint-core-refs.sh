@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Adapted from spine-toolkit scripts/lint-core-refs.sh sha256:f0fc185f285329a5c304365e359be6fba060ad5430236872bc0790ab38a9a97f
+# Adapted from spine-toolkit scripts/lint-core-refs.sh sha256:5d36a2ec78516c22bf741604c77a7afc1db2a936df72ac1f060412e4d68358ff
 # Adapted from spine-toolkit's lint. Plugins share no code; update both or neither.
 # Checks a platform plugin's references to core skills against the version floor
 # the platform itself declares. Two rules: a namespaced reference must resolve to
@@ -11,11 +11,11 @@ set -euo pipefail
 
 CORE="spine-toolkit"
 
-plugin=""; core=""; ref=""
+plugin=""; core=""; ref=""; ref_given=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --core) core="${2:-}"; [ -n "$core" ] || { echo "--core needs a path" >&2; exit 2; }; shift 2 ;;
-    --ref)  ref="${2:-}";  [ -n "$ref" ]  || { echo "--ref needs a git ref" >&2; exit 2; }; shift 2 ;;
+    --ref)  ref="${2:-}";  [ -n "$ref" ]  || { echo "--ref needs a git ref" >&2; exit 2; }; ref_given=1; shift 2 ;;
     -*)     echo "unknown option: $1" >&2; exit 2 ;;
     *)      [ -z "$plugin" ] || { echo "unexpected argument: $1" >&2; exit 2; }; plugin="$1"; shift ;;
   esac
@@ -54,10 +54,13 @@ fi
 
 [ -n "$ref" ] || ref="$floor"
 
-if [ -n "$ref" ] && git -C "$core" rev-parse -q --verify "refs/tags/$ref" >/dev/null 2>&1; then
-  core_skills="$(git -C "$core" ls-tree --name-only "refs/tags/$ref" skills/ | sed 's|^skills/||')"
+if [ -n "$ref" ] && git -C "$core" rev-parse -q --verify "$ref^{commit}" >/dev/null 2>&1; then
+  core_skills="$(git -C "$core" ls-tree --name-only "$ref" skills/ | sed 's|^skills/||')"
   checked_against="$CORE $ref"
 else
+  # An explicit --ref asks for an exact check, so a ref that resolves to nothing is
+  # a wrong invocation; only the floor-derived one is allowed to degrade (D-5).
+  [ "$ref_given" -eq 0 ] || { echo "--ref $ref does not resolve in $core" >&2; exit 2; }
   core_skills="$(ls "$core/skills" 2>/dev/null || true)"
   have="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' \
           "$core/.claude-plugin/plugin.json" 2>/dev/null || echo "unknown version")"
