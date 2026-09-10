@@ -48,3 +48,30 @@ setup() {
   [ "$status" -eq 1 ] || { echo "expected exit 1, got $status: $output"; return 1; }
   grep -q "surface outside core's vocabulary: iphone" <<<"$output" || { echo "$output"; return 1; }
 }
+
+@test "the validator glosses all four driver states" {
+  V="$ROOT/agents/swift-validator.md"
+  bad=""
+  for s in ok none unavailable incompatible; do
+    grep -qF "\`$s\`" "$V" || bad="$bad $s"
+  done
+  [ -z "$bad" ] || { echo "states not glossed:$bad"; return 1; }
+}
+
+@test "the return contract carries driver_status with core's four values" {
+  # core's profile scripts declare driver_status with exactly this enum under
+  # additionalProperties:false, so a fifth value is a field the orchestrator drops.
+  grep -qF 'driver_status: ok | none | unavailable | incompatible' \
+    "$ROOT/agents/swift-validator.md"
+}
+
+@test "the validator names capabilities from core's vocabulary and no call names" {
+  # The contract this replaces was a table of six call names, every one of which
+  # had stopped existing at a server release with nothing noticing.
+  V="$ROOT/agents/swift-validator.md"
+  bad=""
+  for c in launch stop ui_tree find assert screenshot tap type swipe reset_state; do
+    grep -qF "\`$c\`" "$V" || bad="$bad $c"
+  done
+  [ -z "$bad" ] || { echo "capabilities not named:$bad"; return 1; }
+}
