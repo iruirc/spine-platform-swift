@@ -75,3 +75,15 @@ setup() {
   done
   [ -z "$bad" ] || { echo "capabilities not named:$bad"; return 1; }
 }
+
+@test "no retired call name survives in the validator" {
+  # This contract replaced a table of six call names, every one of which had
+  # stopped existing at a server release with nothing noticing.
+  V="$ROOT/agents/swift-validator.md"
+  grep -qF 'driver_status' "$V" || { echo "not the validator, or it lost driver_status"; return 1; }
+  bad=""
+  for c in app_launch app_stop input_tap input_text input_swipe ui_assert_visible ui_assert_gone screen_capture; do
+    grep -qF "$c" "$V" && bad="$bad $c"
+  done
+  [ -z "$bad" ] || { echo "retired call names present:$bad"; return 1; }
+}
