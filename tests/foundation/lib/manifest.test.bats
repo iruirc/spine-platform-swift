@@ -12,10 +12,13 @@ setup() {
   M="$ROOT/skills/manifest/SKILL.md"
 }
 
-@test "manifest declares all five tables" {
+@test "manifest declares all five tables, and the optional sixth" {
   for s in Roles Axes Heuristics Topics Entrypoints; do
     grep -q "^## $s\$" "$M"
   done
+  # Optional in the contract, mandatory here: this platform drives an app, and a
+  # manifest without the block resolves every project to no driver at all.
+  grep -q '^## Driver$' "$M"
 }
 
 @test "the setup entrypoint names a skill that exists" {
