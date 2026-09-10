@@ -87,3 +87,16 @@ setup() {
   done
   [ -z "$bad" ] || { echo "retired call names present:$bad"; return 1; }
 }
+
+@test "no file in this plugin decides which MCP server drives the app" {
+  # Which server drives is the project's choice from core 1.7.1 on. A name written
+  # here is that choice made for them, wrong for every project that made another.
+  # tests/ is excluded because this guard carries the very strings it forbids.
+  scanned="$(grep -rl --include='*.md' --include='*.sh' --include='*.json' \
+               --exclude-dir=.git --exclude-dir=tests -e . "$ROOT" | wc -l | tr -d ' ')"
+  [ "$scanned" -ge 30 ] || { echo "scan went vacuous: $scanned file(s)"; return 1; }
+  offenders="$(grep -rlE 'mcp__mobile|mobile MCP|mobile-mcp' "$ROOT" \
+                 --include='*.md' --include='*.sh' --include='*.json' \
+                 --exclude-dir=.git --exclude-dir=tests || true)"
+  [ -z "$offenders" ] || { echo "$offenders"; return 1; }
+}
