@@ -278,7 +278,7 @@ If `Plan.md ## Estimation` exists, summarize estimated range, actual engineering
 
 ---
 
-## Skills Reference (swift-platform)
+## Skills Reference (spine-platform-swift)
 
 Consult these skills when reviewing code against architectural / framework expectations. The skill body is the source of truth for "what correct looks like" in this project:
 
@@ -311,13 +311,13 @@ Consult these skills when reviewing code against architectural / framework expec
 - `spine-toolkit:feature-estimation` — sanity-check actual implementation against the range in Plan.md `## Estimation`, including confidence, estimate maturity, delivery-calendar separation, and self-check. Include or verify mandatory `## Estimate retrospective` (estimated range, actual engineering days if known, in-range verdict, variance reason, calibration action). Significant overrun (>50% above high end) without a documented reason in commits or retrospective = surface as `## Estimate retrospective` in Review.md for follow-up; not itself a finding.
 - `spine-toolkit:task-new`, `spine-toolkit:task-move` — task lifecycle management (used in Follow-up suggestions)
 
-## Related Agents (swift-platform)
+## Related Agents (spine-platform-swift)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-platform:<name>`) to avoid collisions with other installed plugins.
+When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=spine-platform-swift:<name>`) to avoid collisions with other installed plugins.
 
-- `swift-platform:swift-diagnostics` — bug hunting; the swift-reviewer may flag issues that need diagnostics follow-up
-- `swift-platform:swift-security` — OWASP Mobile Top-10 audit for security-specific concerns
-- `swift-platform:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
+- `spine-platform-swift:swift-diagnostics` — bug hunting; the swift-reviewer may flag issues that need diagnostics follow-up
+- `spine-platform-swift:swift-security` — OWASP Mobile Top-10 audit for security-specific concerns
+- `spine-platform-swift:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
 
 ---
 

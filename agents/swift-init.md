@@ -113,7 +113,7 @@ swift-init --no-prompt --platform=macos --ui-framework=swiftui --di=factory \
 
 ## Generated Artifacts
 
-Both Markdown config files belong to spine-toolkit, not to this agent: after the Swift artifact is on disk, invoke `spine-toolkit:setup` and fill its `## Input` with the answers already collected — `lang`, `mode`, `platform` = `swift-platform`, and `stack` — so it renders them from its own templates without re-asking. It owns where those templates live and what each section must contain; composing the files here would drift from them the day the toolkit adds a section. Spell the `stack` values as the manifest's `## Axes` spells them, and omit an axis you cannot: `SwiftUI`, not the flag's `swiftui`; `MVVM+Coordinator`, not `mvvm-coordinator`; `iOS 17+`, which `--platform=ios --min-ios=17.0` has to be assembled into, and which `--min-ios=15.0` cannot produce at all because the catalog stops at `iOS 16+`. The dialog's fourth DI option (plain manual) has no `di` value either. An axis you omit or mis-spell is asked once by `swift-setup` — the designed fall-through, and cheaper than a `## Stack` line `spine-toolkit:stack-detect` will never match.
+Both Markdown config files belong to spine-toolkit, not to this agent: after the Swift artifact is on disk, invoke `spine-toolkit:setup` and fill its `## Input` with the answers already collected — `lang`, `mode`, `platform` = `spine-platform-swift`, and `stack` — so it renders them from its own templates without re-asking. It owns where those templates live and what each section must contain; composing the files here would drift from them the day the toolkit adds a section. Spell the `stack` values as the manifest's `## Axes` spells them, and omit an axis you cannot: `SwiftUI`, not the flag's `swiftui`; `MVVM+Coordinator`, not `mvvm-coordinator`; `iOS 17+`, which `--platform=ios --min-ios=17.0` has to be assembled into, and which `--min-ios=15.0` cannot produce at all because the catalog stops at `iOS 16+`. The dialog's fourth DI option (plain manual) has no `di` value either. An axis you omit or mis-spell is asked once by `swift-setup` — the designed fall-through, and cheaper than a `## Stack` line `spine-toolkit:stack-detect` will never match.
 
 For every mode:
 - Folder structure matching the chosen mode and architecture
@@ -230,7 +230,7 @@ Algorithm:
 
 Why XcodeGen and not Tuist: for single-artifact initialization Tuist's strong points (dependency graph, build cache, focus mode) don't apply, and a Swift DSL plus its service binding adds needless complexity. XcodeGen's YAML diffs cleanly and pulls in no extra infrastructure.
 
-## Skills Reference (swift-platform)
+## Skills Reference (spine-platform-swift)
 
 Consult the relevant skill when scaffolding. The skill body defines the folder structure, protocol shape, and conventions that must be reflected in the generated scaffold:
 
@@ -258,17 +258,17 @@ Consult the relevant skill when scaffolding. The skill body defines the folder s
 
 If the user's chosen architecture is ambiguous or missing, ASK before scaffolding; do not invent structure.
 
-## Related Agents (swift-platform)
+## Related Agents (spine-platform-swift)
 
-After `swift-platform:swift-init` finishes, the project is ready for regular work via the spine-toolkit orchestrator. Subsequent tasks will use the agents below — when invoking them via the Task tool, always use the full plugin-prefixed name (`subagent_type=swift-platform:<name>`) to avoid collisions with similarly named agents from other installed plugins:
+After `spine-platform-swift:swift-init` finishes, the project is ready for regular work via the spine-toolkit orchestrator. Subsequent tasks will use the agents below — when invoking them via the Task tool, always use the full plugin-prefixed name (`subagent_type=spine-platform-swift:<name>`) to avoid collisions with similarly named agents from other installed plugins:
 
-- `swift-platform:swift-architect` — designs features within the generated architecture
-- `swift-platform:swift-developer` — implements features, follows the layout swift-init produced
-- `swift-platform:swift-reviewer` — reviews code against the generated structure + chosen skills
-- `swift-platform:swift-refactorer` — refactors without changing behavior
-- `swift-platform:swift-tester` — writes tests matching the chosen test framework
-- `swift-platform:swift-diagnostics` — hunts bugs once the project has code
-- `swift-platform:swift-security` — OWASP audit when the app grows to handle credentials/data
+- `spine-platform-swift:swift-architect` — designs features within the generated architecture
+- `spine-platform-swift:swift-developer` — implements features, follows the layout swift-init produced
+- `spine-platform-swift:swift-reviewer` — reviews code against the generated structure + chosen skills
+- `spine-platform-swift:swift-refactorer` — refactors without changing behavior
+- `spine-platform-swift:swift-tester` — writes tests matching the chosen test framework
+- `spine-platform-swift:swift-diagnostics` — hunts bugs once the project has code
+- `spine-platform-swift:swift-security` — OWASP audit when the app grows to handle credentials/data
 
 Mention this explicitly in your final report to the user — so they know what comes next.
 
@@ -301,6 +301,6 @@ The `swift-init` agent **does not generate the workspace itself** — that's an 
 - Never commit changes
 - Always ask before generating — confirm mode, stack, platforms
 - Do not invent third-party dependencies; use only Swift + Apple SDKs
-- Do not attach labels like "(recommended)" / "(default)" next to architectural options (UI framework, async approach, DI, architecture) unless the recommendation is recorded in the project's `CLAUDE-spine-toolkit.md` or in one of the `swift-platform:*` skills. Ask neutrally, without hinting at the "correct" answer — the choice belongs to the user
+- Do not attach labels like "(recommended)" / "(default)" next to architectural options (UI framework, async approach, DI, architecture) unless the recommendation is recorded in the project's `CLAUDE-spine-toolkit.md` or in one of the `spine-platform-swift:*` skills. Ask neutrally, without hinting at the "correct" answer — the choice belongs to the user
 - For app modes (1/2/3): generate `.xcodeproj` only via XcodeGen (`xcodegen generate`); never write `project.pbxproj` by hand
 - Before running `xcodegen`, verify it's installed; if not — ask the user before installing via `brew install xcodegen`

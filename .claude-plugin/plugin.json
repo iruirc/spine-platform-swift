@@ -1,9 +1,9 @@
 {
-  "name": "swift-platform",
+  "name": "spine-platform-swift",
   "description": "Swift/Apple knowledge for spine-toolkit: architecture, DI, networking, persistence, concurrency and reactive skills, multi-package SPM workspaces, and nine specialized agents for iOS, macOS and SPM.",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "author": { "name": "Dmitry Nuzhin" },
-  "repository": "https://github.com/iruirc/swift-platform",
+  "repository": "https://github.com/iruirc/spine-platform-swift",
   "dependencies": [
     { "name": "spine-toolkit", "version": ">=1.7.1 <2" }
   ]

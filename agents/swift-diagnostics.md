@@ -35,7 +35,7 @@ Read the files involved in the bug report. Look for:
 
 Execute as needed without asking:
 - `xcodebuild` via XcodeBuildMCP (`build_sim`, `test_sim`) — confirm reproducer builds
-- Device logs and the UI state at the moment of failure, through whichever driver the project resolved — the capabilities to look for are `logs` and `ui_tree`. You resolve it yourself, by the chain `swift-platform:swift-validator` documents and in that order: you are called before any Validation stage has run, so unlike `swift-platform:swift-tester` there is no validator result for you to take one from
+- Device logs and the UI state at the moment of failure, through whichever driver the project resolved — the capabilities to look for are `logs` and `ui_tree`. You resolve it yourself, by the chain `spine-platform-swift:swift-validator` documents and in that order: you are called before any Validation stage has run, so unlike `spine-platform-swift:swift-tester` there is no validator result for you to take one from
 - Crash symbolication — match stack frames to source
 - `git log -p <file>` — recent history of the file (when a regression is suspected)
 
@@ -64,7 +64,7 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 - **XcodeBuildMCP**: `build_sim`, `test_sim`, `show_build_settings`, log streaming.
 - **The project's driver**, when one resolves and its server is connected: the capabilities worth reaching for here are `logs`, `screenshot`, `ui_tree` and `tap`. What those are called belongs to the server's own tool schemas, which are already in your context. A driver naming none of them leaves you the build, the test run and the crash log — a smaller set, and an honest one.
 
-## Skills Reference (swift-platform)
+## Skills Reference (spine-platform-swift)
 
 - `reactive-rxswift`, `reactive-combine` — framework-specific leak/threading patterns
 - `concurrency-architecture` — diagnosing concurrency placement bugs: work continues after screen dies (missing `Task` storage / cancellation in `deinit` / `viewWillDisappear`); data race from background `Task` writing to `@Observable` ViewModel that lacks explicit `@MainActor`; deadlock from synchronous wait on main-actor work from main thread (Combine `.sink` calling `await MainActor.run` while already on main); retain cycle in long-running `Task` closure missing `[weak self]`; cancellation lost via `Task.detached` somewhere in the chain (HTTP request continues after cancel); `URLSession` task that should have been cancelled but wasn't (transport timeout fires instead); `actor` reentrancy bug — value read pre-suspension differs from value used post-suspension (delegate to AvdLee's `actors.md` reference for re-entrancy mechanics); `MainActor.assertIsolated()` failures in `swift-debug-checked` builds. Defer Swift 6 strict-concurrency diagnostics to `swift-concurrency:swift-concurrency` (AvdLee skill)
@@ -79,14 +79,14 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 - `arch-mvvm`, `arch-viper`, `arch-clean`, `arch-coordinator`, `arch-swiftui-navigation` — layer-violation detection (Coordinator for UIKit, `arch-swiftui-navigation` for SwiftUI Router/Path bugs)
 - `arch-tca` — TCA-specific diagnostics: stale state from missing `cancellable(id:)` (newer effect overwritten by older one finishing late); test flakes from real `Date()` / `Task.sleep` in reducers (replace with `@Dependency(\.date)` / `\.continuousClock` + `TestClock`); view not updating despite state change (missing `@ObservableState` or reading state through stale `WithViewStore` instead of `@Bindable var store`); navigation stuck/duplicated when sheet is modeled with raw `@State Bool` instead of `@Presents`; effects leaking past presentation dismissal (effect tied to long-lived parent instead of `@Presents` child); `unimplemented(...)` failures in tests pointing at missing `withDependencies` overrides
 
-## Related Agents (swift-platform)
+## Related Agents (spine-platform-swift)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-platform:<name>`) to avoid collisions with other installed plugins.
+When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=spine-platform-swift:<name>`) to avoid collisions with other installed plugins.
 
-- `swift-platform:swift-architect` — co-reviews root cause during the Diagnose consilium
-- `swift-platform:swift-developer` — applies the fix after user approval
-- `swift-platform:swift-security` — for vulnerabilities that overlap with bugs
-- `swift-platform:swift-tester` — writes the regression test after the fix
+- `spine-platform-swift:swift-architect` — co-reviews root cause during the Diagnose consilium
+- `spine-platform-swift:swift-developer` — applies the fix after user approval
+- `spine-platform-swift:swift-security` — for vulnerabilities that overlap with bugs
+- `spine-platform-swift:swift-tester` — writes the regression test after the fix
 
 ## Output Structure
 

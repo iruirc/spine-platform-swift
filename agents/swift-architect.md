@@ -71,7 +71,7 @@ When proposing architecture, always provide:
 - Integration points with existing modules
 - Tradeoffs and alternatives considered
 
-## Skills Reference (swift-platform)
+## Skills Reference (spine-platform-swift)
 
 Consult the appropriate skill based on the architecture in use:
 - `architecture-choice` — meta-skill: pick the stack at day-one or major refactor (5 axes → reference stack); use only when the choice is open, otherwise follow the chosen pattern's skill
@@ -105,13 +105,13 @@ Consult the appropriate skill based on the architecture in use:
 - `spine-toolkit:ops-checklist` — produced by swift-validator as a separate `OpsChecklist.md` artifact; the architect should be aware of which checklist items will need to be Applicable for the proposed design so feature flag, analytics, deep link, offline behavior, etc. are explicit in `## Proposed Design`, not afterthoughts at Validation
 - `spine-toolkit:task-new`, `spine-toolkit:task-move` — task lifecycle management
 
-## Related Agents (swift-platform)
+## Related Agents (spine-platform-swift)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-platform:<name>`) to avoid collisions with other installed plugins.
+When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=spine-platform-swift:<name>`) to avoid collisions with other installed plugins.
 
-- `swift-platform:swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
-- `swift-platform:swift-security` — OWASP Mobile Top-10 audit
-- `swift-platform:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
+- `spine-platform-swift:swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
+- `spine-platform-swift:swift-security` — OWASP Mobile Top-10 audit
+- `spine-platform-swift:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
 
 ## Output Structure
 
