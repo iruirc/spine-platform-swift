@@ -20,9 +20,9 @@ ROLES="architect developer tester reviewer refactorer validator security diagnos
 ENTRYPOINTS="setup"
 violations=0
 
-# The eight drivable surfaces — third copy of a list core owns; the other two are in
-# conventions/driver-contract.md and scripts/lint-driver-manifest.sh, and
-# tests/foundation/lib/driver-contract.test.bats binds all three.
+# The eight drivable surfaces — third copy of a list core owns; the other two live
+# in core: its driver convention and its driver-manifest lint. A test there binds
+# all three.
 SURFACES="
 ios-simulator ios-device
 android-emulator android-device
