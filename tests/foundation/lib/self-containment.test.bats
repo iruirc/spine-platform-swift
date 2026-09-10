@@ -15,7 +15,7 @@ setup() {
   for p in $(grep -rhoE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' "$ROOT" \
                --include='*.md' --include='*.sh' --include='*.js' \
                --include='*.bats' --include='*.zsh' \
-               --exclude-dir=.git \
+               --exclude-dir=.git --exclude-dir=.superpowers \
              | tr -d '`' | sort -u); do
     case "$p" in
       skills/*|agents/*|commands/*|conventions/*|templates/*|hooks/*|scripts/*|tests/*|workflows/*) ;;
@@ -35,7 +35,7 @@ setup() {
 
 @test "no file names the pre-split project config" {
   # Migrating a pre-split config is core's job; nothing here may still read one.
-  offenders="$(grep -rl --exclude-dir=.git 'CLAUDE-swift-toolkit' "$ROOT" \
+  offenders="$(grep -rl --exclude-dir=.git --exclude-dir=.superpowers 'CLAUDE-swift-toolkit' "$ROOT" \
     | grep -vF 'self-containment.test.bats' || true)"
   [ -z "$offenders" ] || { echo "$offenders"; return 1; }
 }
@@ -70,7 +70,10 @@ setup() {
   # `$` joins the excluded chars: a `$core/`-style dereference names no path.
   pat="$pat"'|(^|[^A-Za-z0-9_.$-])core/'
   pat="$pat"'|(^|[^A-Za-z0-9_-])(spine-toolkit|swift-platform)/)'
-  hits="$(grep -rnE --exclude-dir=.git "$pat" "$ROOT" \
+  # .superpowers/ is gitignored scratch that never ships, and a review diff there
+  # quotes the very files this scan excludes by name. Core excludes it from its
+  # own i18n lint for the same reason.
+  hits="$(grep -rnE --exclude-dir=.git --exclude-dir=.superpowers "$pat" "$ROOT" \
             | grep -vE '/\.claude/plugins/(cache|marketplaces)/' || true)"
   # The two suites that look for a sibling checkout of core are the other deliberate
   # exceptions: each skips rather than dangles when the checkout is absent.
