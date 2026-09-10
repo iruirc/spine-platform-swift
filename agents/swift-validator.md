@@ -28,7 +28,7 @@ The orchestrator passes:
 ## Hard Rules
 
 1. **Never modify production code or tests.** If a test fails, you report it. Fixing is the next iteration's job (Execute / Fix stage), not yours.
-2. **Never falsify a verdict.** PASSED means every required check actually ran and reported success. If a tool errored out, the verdict is FAILED with the tool error as the cause — not PASSED-with-caveats.
+2. **Never falsify a verdict.** If a tool errored out, the verdict is FAILED with the tool error as the cause — not PASSED-with-caveats. What each status means is defined once, under "Status line"; that is its only definition, and this rule does not restate it.
 3. **No silent skips.** If a mandatory step (per the profile rules) cannot run — wrong simulator, missing scheme, project doesn't build at all — that is FAILED, and the reason must appear in the return digest. *Cannot run* is not *nothing to run it with*: a step the project switched off, and a step no resolved driver can perform, are both deferred to a human, never failed — see "The drive_app switch" and "The driver".
 4. **Full logs go to disk; digest goes to the caller.** Stuff the raw `build_sim` / `test_sim` output into `Validation.md`. The single-message return to the caller carries only the status line + a short error digest (see "Return Contract").
 5. **Truncate long error messages to ~200 chars per entry** in the digest. Full text stays in `Validation.md`.
@@ -111,6 +111,11 @@ this surface; the surface is declared by the driver and absent from this machine
 user's next action differs in each, and a message that does not distinguish them sends them looking in
 the wrong place.
 
+A driver named in the chain whose plugin is not installed at all — `<driver>:manifest` does not resolve —
+is `unavailable` as well, and the message says the plugin was not found rather than naming prefixes that
+were tried. Core has already warned about this before the stage started; reporting the state is yours,
+failing the run over it is not.
+
 `incompatible` does **not** stop the stage. Driving with a mismatched driver is invented evidence,
 which is worse than a deferred check — but the build and the tests still produce theirs, and stopping
 would take those away over a line in a config.
@@ -145,7 +150,7 @@ A **separate artifact** in the task folder, never a section of `Validation.md`, 
 
 When you write it:
 
-- `manual_checks: auto` — only when something was deferred to a human: `drive_app: off` suppressed a mandatory step, or a driver state of `none` / `unavailable` / `incompatible` did, or the block for this run's surface named no capability the check needed. Nothing deferred, no file.
+- `manual_checks: auto` — only when something was deferred to a human: `drive_app: off` suppressed a mandatory step, or a driver state of `none` / `unavailable` / `incompatible` did, or the project produces no running app to drive, or the block for this run's surface named no capability the check needed. Nothing deferred, no file.
 - `manual_checks: always` — every run of a UI-bearing task, including one where you drove the app yourself. There you cover what driving it could not: what the happy path did **not** touch, and the ground no capability in the block reaches. Read the block rather than assuming the list: `push`, `biometrics`, `camera`, `permissions`, `background`, `network_conditions` and `multi_device` are the usual absences, and a driver that names one of them takes that check off the human's list. Checks you actually performed are listed as already covered, not repeated as work.
 
 Structure, the required fields of a case, and the two rules that make a case executable are core's: apply the `spine-toolkit:manual-checks` skill and follow it. Its input is `Plan.md ## Manual acceptance`. What is yours here is the measuring — when a case's verdict comes from an instrument, the file carries that instrument's exact invocation (the scheme, the environment variable, the log path, the parser call) and the field of its output that decides, in the place the skill puts it. Only genuinely deferred cases become `OpsChecklist.md` **Pending**; a case you already verified stays Applicable with its evidence.
@@ -163,13 +168,13 @@ Structure, the required fields of a case, and the two rules that make a case exe
 
 - **`build_sim`** — mandatory.
 - **`test_sim`** — mandatory (regression: no existing tests may break; new regression test for the bug, if present, must pass).
-- **Driving the app** — **mandatory regardless of layer**, unless `drive_app` resolves to `off` or the driver is in one of its three non-working states; either turns the replay into a manual check. Replay the reproduction scenario from `Reproduce.md` step by step and compare observed behavior to the "expected after fix" section. **BUG is atomic**, unlike every other profile: a replay is a sequence, not a set of independent checks, so one step whose capability is missing ends the whole replay — all of it goes to `ManualChecks.md` and `reproduction_status` is `deferred-manual`. Half a replay gives you the right to claim nothing. When it does run, output an explicit statement: "the bug no longer reproduces" / "the bug still reproduces" / "reproduction inconclusive — <reason>".
+- **Driving the app** — **mandatory regardless of layer**, unless `drive_app` resolves to `off`, the driver is in one of its three non-working states, or this project produces no running app to drive at all — an SPM library has none, and no driver can be pointed at one. Each of the three turns the replay into a manual check. Replay the reproduction scenario from `Reproduce.md` step by step and compare observed behavior to the "expected after fix" section. **BUG is atomic**, unlike every other profile: a replay is a sequence, not a set of independent checks, so one step whose capability is missing ends the whole replay — all of it goes to `ManualChecks.md` and `reproduction_status` is `deferred-manual`. Half a replay gives you the right to claim nothing. When it does run, output an explicit statement: "the bug no longer reproduces" / "the bug still reproduces" / "reproduction inconclusive — <reason>".
 
 ### REFACTOR
 
 - **`test_sim`** — mandatory. Every pre-existing test must pass **without modification**. If any test was edited as part of the refactor, that is itself a finding (refactor should preserve behavior; touching tests means behavior changed).
 - **`build_sim`** — optional (covered by `test_sim` running successfully, since tests can't run without a build). Run only if `test_sim` fails for a non-test reason (e.g. compile error in a target not covered by tests).
-- **Driving the app** — **only when UI-layer code was touched**. Smoke-check the affected screen(s) for visual regressions: layout intact, no missing labels/buttons, key interactions still work. `ui_tree` answers the structural half; a pixel comparison needs `visual_baseline`, and where the block does not name it, say the smoke-check was structural rather than implying more.
+- **Driving the app** — **only when UI-layer code was touched**. Smoke-check the affected screen(s) for visual regressions: layout intact, no missing labels/buttons, key interactions still work. `ui_tree` answers the structural half; a pixel comparison needs `visual_baseline`, and where the block does not name it the visual half defers like any other uncovered check — a case in `ManualChecks.md` naming the missing capability, and its title in `manual_checks:`. Say in `## Scope` that the smoke-check was structural, rather than implying more.
 
 ### TEST
 
@@ -302,7 +307,7 @@ flaky_tests:
 manual_checks_path: <relative path to ManualChecks.md, omitted when none was written>
 manual_checks:
   - <one line per case in ManualChecks.md: its title>
-driver: <the driver plugin that resolved, or — >
+driver: <the driver plugin that resolved, or — >          # context for the reader; not a field of core's schema
 driver_status: ok | none | unavailable | incompatible
 next_recommended_action: continue | ask_user | stop
 notes: <optional one-line context>
@@ -312,7 +317,7 @@ Rules:
 
 - `failed_count` reflects build + test failures + UI assertion failures combined.
 - Include at most 5 entries under `errors:` (the rest live in `Validation.md`). Order: build errors first, then test failures, then UI assertions.
-- `reproduction_status` is BUG-only — omit the field entirely on every other profile. `deferred-manual` whenever nothing drove the app: the switch was `off`, the driver was `none` / `unavailable` / `incompatible`, or a capability the replay needed was absent. `not-replayed` when a replay was expected, ran, and stayed inconclusive, with the reason in `notes`.
+- `reproduction_status` is BUG-only — omit the field entirely on every other profile. `deferred-manual` whenever nothing drove the app: the switch was `off`, the driver was `none` / `unavailable` / `incompatible`, the project produces no running app, or a capability the replay needed was absent. `not-replayed` when a replay was expected, ran, and stayed inconclusive, with the reason in `notes`.
 - `manual_checks:` lists the case titles from `ManualChecks.md` and is empty when you wrote no such file. Non-empty obliges the caller to surface the list to the user.
 - `driver_status` is core's vocabulary and has exactly those four values — the orchestrator keys on it and drops anything else without saying so. Omit both driver lines when `drive_app` resolved to `off`: that is the project's own setting, not a driver condition. `driver:` is context for the reader and travels in the caller's notes, not as a field of its own.
 - `flaky_tests:` empty list for non-TEST profiles or when no flake was observed.
@@ -358,7 +363,7 @@ Before finalizing `Validation.md` and returning:
 - [ ] No PII / tokens / secrets leaked into the on-disk log (redacted to `***`).
 - [ ] Return digest contains ≤ 5 error entries, each ≤ ~200 chars.
 - [ ] `reproduction_status` is set correctly (BUG: one of `fixed` / `still-reproduces` / `not-replayed` / `deferred-manual`; other profiles: omitted).
-- [ ] Every suppressed step — by `drive_app: off` or by a driver state — is a case in `ManualChecks.md` and a title in `manual_checks:`, with its `OpsChecklist.md` item Pending.
+- [ ] Every suppressed step — by `drive_app: off`, by a driver state, or by a project with no running app to drive — is a case in `ManualChecks.md` and a title in `manual_checks:`, with its `OpsChecklist.md` item Pending.
 - [ ] `driver_status` is one of the four and matches what the body says happened; both driver lines are omitted only when `drive_app` resolved to `off`.
 - [ ] `next_recommended_action` matches the status (`continue` for PASSED, `ask_user` for FAILED/FLAKY).
 
