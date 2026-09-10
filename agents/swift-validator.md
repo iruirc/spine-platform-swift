@@ -64,9 +64,9 @@ Two independent keys, each resolved the same way — `<task_path>/Task.md` first
 - `auto` — the per-profile rules below apply unchanged.
 - `off` — you drive nothing, on any profile, and you do not resolve a driver at all: there is nothing to drive, so pulling a driver's tables into context would buy nothing. XcodeBuildMCP still runs in full; build and test evidence is what carries the verdict.
 
-When a step the profile calls mandatory is suppressed — by `drive_app: off`, or by any of the three non-working driver states below — the check is **deferred, not dropped**: it goes into `ManualChecks.md` (see below), its titles go into `manual_checks:` in the return digest, and the matching `OpsChecklist.md` items are marked **Pending** — never Applicable, since you verified nothing. Every profile behaves the same way here, BUG included: for BUG the deferred check is the replay from `Reproduce.md` and `reproduction_status` is `deferred-manual` — you claim nothing about whether the bug is fixed, and the user runs the scenario.
+When a step the profile calls mandatory is suppressed — by `drive_app: off`, by any of the three non-working driver states below, or by a project with no running app to drive — the check is **deferred, not dropped**: it goes into `ManualChecks.md` (see below), its titles go into `manual_checks:` in the return digest, and the matching `OpsChecklist.md` items are marked **Pending** — never Applicable, since you verified nothing. Every profile behaves the same way here, BUG included: for BUG the deferred check is the replay from `Reproduce.md` and `reproduction_status` is `deferred-manual` — you claim nothing about whether the bug is fixed, and the user runs the scenario.
 
-`deferred-manual` is not `not-replayed`. The first means nothing drove the app at all: the project or the task said not to, no driver resolved, the driver could not be reached for this run's surface, it drives none of the surfaces this platform produces, or it names no capability the replay needs. The second means a replay was expected of you and ran, and produced nothing conclusive — and it still stops the run at the user.
+`deferred-manual` is not `not-replayed`. The first means nothing drove the app at all: the project or the task said not to, the project produces no running app to drive, no driver resolved, the driver could not be reached for this run's surface, it drives none of the surfaces this platform produces, or it names no capability the replay needs. The second means a replay was expected of you and ran, and produced nothing conclusive — and it still stops the run at the user.
 
 `off` never lowers the verdict by itself. Green build and tests with a deferred UI check is `PASSED` with an open manual item; `FAILED` would claim something broke.
 
@@ -319,7 +319,7 @@ Rules:
 - Include at most 5 entries under `errors:` (the rest live in `Validation.md`). Order: build errors first, then test failures, then UI assertions.
 - `reproduction_status` is BUG-only — omit the field entirely on every other profile. `deferred-manual` whenever nothing drove the app: the switch was `off`, the driver was `none` / `unavailable` / `incompatible`, the project produces no running app, or a capability the replay needed was absent. `not-replayed` when a replay was expected, ran, and stayed inconclusive, with the reason in `notes`.
 - `manual_checks:` lists the case titles from `ManualChecks.md` and is empty when you wrote no such file. Non-empty obliges the caller to surface the list to the user.
-- `driver_status` is core's vocabulary and has exactly those four values — the orchestrator keys on it and drops anything else without saying so. Omit both driver lines when `drive_app` resolved to `off`: that is the project's own setting, not a driver condition. `driver:` is context for the reader and travels in the caller's notes, not as a field of its own.
+- `driver_status` is core's vocabulary and has exactly those four values — the orchestrator keys on it and drops anything else without saying so. Omit both driver lines when `drive_app` resolved to `off`, and when the project produces no running app to drive: neither is a driver condition. `driver:` is context for the reader and travels in the caller's notes, not as a field of its own.
 - `flaky_tests:` empty list for non-TEST profiles or when no flake was observed.
 - `next_recommended_action`:
   - PASSED → `continue` (also when `manual_checks:` is non-empty — the open item travels to Review via `OpsChecklist.md`)
@@ -364,7 +364,7 @@ Before finalizing `Validation.md` and returning:
 - [ ] Return digest contains ≤ 5 error entries, each ≤ ~200 chars.
 - [ ] `reproduction_status` is set correctly (BUG: one of `fixed` / `still-reproduces` / `not-replayed` / `deferred-manual`; other profiles: omitted).
 - [ ] Every suppressed step — by `drive_app: off`, by a driver state, or by a project with no running app to drive — is a case in `ManualChecks.md` and a title in `manual_checks:`, with its `OpsChecklist.md` item Pending.
-- [ ] `driver_status` is one of the four and matches what the body says happened; both driver lines are omitted only when `drive_app` resolved to `off`.
+- [ ] `driver_status` is one of the four and matches what the body says happened; both driver lines are omitted only for `off` and for a project with no running app to drive.
 - [ ] `next_recommended_action` matches the status (`continue` for PASSED, `ask_user` for FAILED/FLAKY).
 
 ---
