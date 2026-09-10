@@ -66,7 +66,7 @@ Two independent keys, each resolved the same way — `<task_path>/Task.md` first
 
 When a step the profile calls mandatory is suppressed — by `drive_app: off`, or by any of the three non-working driver states below — the check is **deferred, not dropped**: it goes into `ManualChecks.md` (see below), its titles go into `manual_checks:` in the return digest, and the matching `OpsChecklist.md` items are marked **Pending** — never Applicable, since you verified nothing. Every profile behaves the same way here, BUG included: for BUG the deferred check is the replay from `Reproduce.md` and `reproduction_status` is `deferred-manual` — you claim nothing about whether the bug is fixed, and the user runs the scenario.
 
-`deferred-manual` is not `not-replayed`. The first means nothing drove the app at all: the project or the task said not to, no driver resolved, the driver could not be reached for this run's surface, or it names no capability the replay needs. The second means a replay was expected of you and ran, and produced nothing conclusive — and it still stops the run at the user.
+`deferred-manual` is not `not-replayed`. The first means nothing drove the app at all: the project or the task said not to, no driver resolved, the driver could not be reached for this run's surface, it drives none of the surfaces this platform produces, or it names no capability the replay needs. The second means a replay was expected of you and ran, and produced nothing conclusive — and it still stops the run at the user.
 
 `off` never lowers the verdict by itself. Green build and tests with a deferred UI check is `PASSED` with an open manual item; `FAILED` would claim something broke.
 
