@@ -53,7 +53,7 @@ cat > "$repo_dir/CLAUDE-spine-toolkit.md" <<EOF
 
 ## Platform
 
-swift-platform
+spine-platform-swift
 
 ## Stack
 

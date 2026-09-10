@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# swift-platform's manifest is the five-table contract spine-toolkit documents and
+# spine-platform-swift's manifest is the five-table contract spine-toolkit documents and
 # demonstrates with its own reference platform: these tests check the real manifest
 # against that same contract. They live here rather than in core because core's
 # suite must reach no tree but core's — reaching this one leaves core's tests
@@ -52,14 +52,14 @@ setup() {
 }
 
 @test "every role maps to an agent file that exists" {
-  refs="$(grep -oE 'swift-platform:swift-[a-z0-9-]+' "$M" | sort -u)"
+  refs="$(grep -oE 'spine-platform-swift:swift-[a-z0-9-]+' "$M" | sort -u)"
   # This is the only guard on the namespace half of every reference. Renaming the
   # plugin makes the grep find nothing, and an unfloored loop then passes over
   # zero refs while every stage dispatches an agent that resolves to nothing.
   n="$(printf '%s\n' "$refs" | grep -c . || true)"
   [ "$n" -ge 9 ] || { echo "found $n role reference(s), expected all nine"; return 1; }
   for ref in $refs; do
-    [ -f "$ROOT/agents/${ref#swift-platform:}.md" ] || { echo "no agent file for $ref"; return 1; }
+    [ -f "$ROOT/agents/${ref#spine-platform-swift:}.md" ] || { echo "no agent file for $ref"; return 1; }
   done
 }
 

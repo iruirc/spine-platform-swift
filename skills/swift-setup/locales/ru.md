@@ -1,7 +1,7 @@
 # swift-setup — ru
 
 ## error_not_swift_project
-Не Swift-проект (не найден `.xcodeproj`, `.xcworkspace` или `Package.swift`), поэтому `## Stack` остался незаполненным. Для генерации нового используй `@swift-platform:swift-init`.
+Не Swift-проект (не найден `.xcodeproj`, `.xcworkspace` или `Package.swift`), поэтому `## Stack` остался незаполненным. Для генерации нового используй `@spine-platform-swift:swift-init`.
 
 ## auq_q1_ui_label
 UI-фреймворк

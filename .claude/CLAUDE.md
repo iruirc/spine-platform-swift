@@ -1,6 +1,6 @@
-# CLAUDE.md — swift-platform
+# CLAUDE.md — spine-platform-swift
 
-> This repo is one Claude Code plugin: `swift-platform`, the Swift/Apple knowledge and agents that
+> This repo is one Claude Code plugin: `spine-platform-swift`, the Swift/Apple knowledge and agents that
 > `spine-toolkit` dispatches to. It declares `spine-toolkit` a dependency and is useless without it.
 > This file configures Claude when it works on the plugin itself.
 

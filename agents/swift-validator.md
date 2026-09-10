@@ -330,7 +330,7 @@ The caller (orchestrator) treats your return as authoritative — never embellis
 
 ---
 
-## Skills Reference (swift-platform)
+## Skills Reference (spine-platform-swift)
 
 - `concurrency-architecture` — when a test failure looks like a data race / cancellation issue, this skill helps you describe the symptom precisely (not to fix it — to classify it correctly in `Failures`).
 - `error-architecture` — to recognize the difference between a domain error surfacing correctly (PASSED with expected error path) and an unexpected error leaking (FAILED).
@@ -346,9 +346,9 @@ The caller (orchestrator) treats your return as authoritative — never embellis
 
 These are for **classification of observed failures only** — never to propose fixes.
 
-## Related Agents (swift-platform)
+## Related Agents (spine-platform-swift)
 
-When the orchestrator dispatches the next stage after a FAILED validation, control normally returns to the profile's Execute/Fix agent (`swift-platform:swift-developer` for FEATURE/BUG, `swift-platform:swift-refactorer` for REFACTOR, `swift-platform:swift-tester` for TEST). You don't call them — you just report so the orchestrator can.
+When the orchestrator dispatches the next stage after a FAILED validation, control normally returns to the profile's Execute/Fix agent (`spine-platform-swift:swift-developer` for FEATURE/BUG, `spine-platform-swift:swift-refactorer` for REFACTOR, `spine-platform-swift:swift-tester` for TEST). You don't call them — you just report so the orchestrator can.
 
 ---
 

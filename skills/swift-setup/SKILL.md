@@ -1,7 +1,7 @@
 ---
 name: swift-setup
 description: |
-  Platform half of project setup for Swift/Apple projects. Asks the stack questions of swift-platform's manifest axes and writes the ## Stack and ## Modules blocks of an existing CLAUDE-spine-toolkit.md. Invoked by spine-toolkit:setup, which owns the config file and every other block; not invoked by the user directly.
+  Platform half of project setup for Swift/Apple projects. Asks the stack questions of spine-platform-swift's manifest axes and writes the ## Stack and ## Modules blocks of an existing CLAUDE-spine-toolkit.md. Invoked by spine-toolkit:setup, which owns the config file and every other block; not invoked by the user directly.
   Use when (en): spine-toolkit:setup hands the platform its own config blocks
   Use when (ru): spine-toolkit:setup передаёт платформе её блоки конфига
 ---
@@ -14,11 +14,11 @@ The platform half of `/setup`. `spine-toolkit:setup` owns the config file — it
 **`## Stack` and `## Modules`**. This skill touches nothing else in the file and creates no file
 of its own.
 
-It is reached through the `setup` row of swift-platform's manifest `## Entrypoints`. That row is the
+It is reached through the `setup` row of spine-platform-swift's manifest `## Entrypoints`. That row is the
 whole binding; core never hardcodes this skill's name.
 
 The skill does NOT create an Xcode project, does NOT modify Swift code, and does NOT start any
-workflow. To generate a project from scratch, use the `@swift-platform:swift-init` agent (via the
+workflow. To generate a project from scratch, use the `@spine-platform-swift:swift-init` agent (via the
 `/swift-init` slash command).
 
 ## Language Resolution
@@ -166,7 +166,7 @@ back against `## Axes`, so a localized option label resolves nothing.
 
 - Does NOT create or rename `CLAUDE-spine-toolkit.md`, `CLAUDE.md`, `Tasks/` or `Docs/` — that is `spine-toolkit:setup`.
 - Does NOT write `## Language`, `## Mode`, `## Progress`, `## Platform` or `## Agents`.
-- Does NOT create an Xcode project, `Package.swift`, sources, `.swiftlint.yml`, or `README.md` — that is `@swift-platform:swift-init`.
+- Does NOT create an Xcode project, `Package.swift`, sources, `.swiftlint.yml`, or `README.md` — that is `@spine-platform-swift:swift-init`.
 - Does NOT modify Swift code or existing project configs (Info.plist, Build Settings).
 - Does NOT start workflows or call `spine-toolkit:orchestrator`.
 - Does NOT init git, make commits, or install dependencies (SPM, CocoaPods, Carthage).
