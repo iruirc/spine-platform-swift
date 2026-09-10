@@ -89,15 +89,15 @@ Your response MUST be structured with these top-level sections:
 - `## File Structure` — where test files go
 - `## Test Code` — complete test code, ready to compile and run
 - `## Fixtures` — test data or helpers (or `(none)`)
-- `## Validation Report` — results of running the tests (XcodeBuildMCP + mobile MCP output if applicable)
+- `## Validation Report` — results of running the tests (XcodeBuildMCP output, plus what driving the app produced if applicable)
 - `## Notes` — rationale for structure/mocking choices; anything the reviewer should know
 
 ## Validation Tooling
 
 - **XcodeBuildMCP** — primary tool for running tests (`test_sim`), building (`build_sim`), and inspecting build settings. Use it when the orchestrator asks for a Validation step.
-- **mobile MCP** — used for E2E-style verification on the simulator (UI tree, screenshots, input taps, device logs). Use in FEATURE/BUG/TEST profiles when validation must confirm runtime behavior, not just that tests compile and pass.
+- **The project's driver** — E2E-style verification on the simulator, for FEATURE/BUG/TEST profiles where validation must confirm runtime behavior and not just that tests compile and pass. Which driver it is, and what it can do on this run's surface, is `swift-platform:swift-validator`'s to resolve; that agent owns the drive. What you need back from it is the result, not the tooling.
 
-When `NEED_TEST = false` in the task, do not generate tests — validate behavior using XcodeBuildMCP and mobile MCP only.
+When `NEED_TEST = false` in the task, do not generate tests — validate behavior with XcodeBuildMCP, and where the app itself has to be driven, through the validator.
 
 ## Skills Reference (swift-platform)
 

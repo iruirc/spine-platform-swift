@@ -35,8 +35,7 @@ Read the files involved in the bug report. Look for:
 
 Execute as needed without asking:
 - `xcodebuild` via XcodeBuildMCP (`build_sim`, `test_sim`) — confirm reproducer builds
-- Device logs via mobile MCP (`system(action:'logs', level:'error')`)
-- `ui(action:'tree')` — inspect current UI state during reproduction
+- Device logs and the UI state at the moment of failure, through whichever driver the project resolved — the capabilities to look for are `logs` and `ui_tree`, and the chain that resolves them is the one `swift-platform:swift-validator` documents
 - Crash symbolication — match stack frames to source
 - `git log -p <file>` — recent history of the file (when a regression is suspected)
 
@@ -63,7 +62,7 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 ## Validation Tooling
 
 - **XcodeBuildMCP**: `build_sim`, `test_sim`, `show_build_settings`, log streaming.
-- **mobile MCP**: `system(action:'logs')`, `screen(action:'capture')`, `ui(action:'tree')`, `input(action:'tap')`.
+- **The project's driver**, when one resolves and its server is connected: the capabilities worth reaching for here are `logs`, `screenshot`, `ui_tree` and `tap`. What those are called belongs to the server's own tool schemas, which are already in your context. A driver naming none of them leaves you the build, the test run and the crash log — a smaller set, and an honest one.
 
 ## Skills Reference (swift-platform)
 

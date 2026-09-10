@@ -53,7 +53,7 @@ SPM package, lays down `Tasks/`, and writes both `CLAUDE.md` and the toolkit con
 | `swift-tester` | tester — unit / integration test generation |
 | `swift-reviewer` | reviewer — code review |
 | `swift-refactorer` | refactorer — refactoring without behavior change |
-| `swift-validator` | validator — post-change validation, including mobile MCP runs |
+| `swift-validator` | validator — post-change validation, including driving the app through the project's driver |
 | `swift-security` | security — OWASP Mobile Top-10 audit |
 | `swift-diagnostics` | diagnostics — bug hunting, reproduction, instrumentation |
 | `swift-init` | init — project bootstrap |
