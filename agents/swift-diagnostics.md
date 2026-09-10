@@ -35,7 +35,7 @@ Read the files involved in the bug report. Look for:
 
 Execute as needed without asking:
 - `xcodebuild` via XcodeBuildMCP (`build_sim`, `test_sim`) — confirm reproducer builds
-- Device logs and the UI state at the moment of failure, through whichever driver the project resolved — the capabilities to look for are `logs` and `ui_tree`, and the chain that resolves them is the one `swift-platform:swift-validator` documents
+- Device logs and the UI state at the moment of failure, through whichever driver the project resolved — the capabilities to look for are `logs` and `ui_tree`. You resolve it yourself, by the chain `swift-platform:swift-validator` documents and in that order: you are called before any Validation stage has run, so unlike `swift-platform:swift-tester` there is no validator result for you to take one from
 - Crash symbolication — match stack frames to source
 - `git log -p <file>` — recent history of the file (when a regression is suspected)
 
