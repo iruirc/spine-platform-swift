@@ -66,7 +66,7 @@ Two independent keys, each resolved the same way — `<task_path>/Task.md` first
 
 When a step the profile calls mandatory is suppressed — by `drive_app: off`, or by any of the three non-working driver states below — the check is **deferred, not dropped**: it goes into `ManualChecks.md` (see below), its titles go into `manual_checks:` in the return digest, and the matching `OpsChecklist.md` items are marked **Pending** — never Applicable, since you verified nothing. Every profile behaves the same way here, BUG included: for BUG the deferred check is the replay from `Reproduce.md` and `reproduction_status` is `deferred-manual` — you claim nothing about whether the bug is fixed, and the user runs the scenario.
 
-`deferred-manual` is not `not-replayed`. The first means the project or the task told you not to drive the app; the second means a replay was expected of you and produced nothing conclusive, and it still stops the run at the user.
+`deferred-manual` is not `not-replayed`. The first means nothing drove the app at all: the project or the task said not to, no driver resolved, the driver could not be reached for this run's surface, or it names no capability the replay needs. The second means a replay was expected of you and ran, and produced nothing conclusive — and it still stops the run at the user.
 
 `off` never lowers the verdict by itself. Green build and tests with a deferred UI check is `PASSED` with an open manual item; `FAILED` would claim something broke.
 
@@ -145,7 +145,7 @@ A **separate artifact** in the task folder, never a section of `Validation.md`, 
 
 When you write it:
 
-- `manual_checks: auto` — only when something was deferred to a human, i.e. `drive_app: off` suppressed a mandatory step. Nothing deferred, no file.
+- `manual_checks: auto` — only when something was deferred to a human: `drive_app: off` suppressed a mandatory step, or a driver state of `none` / `unavailable` / `incompatible` did, or the block for this run's surface named no capability the check needed. Nothing deferred, no file.
 - `manual_checks: always` — every run of a UI-bearing task, including one where you drove the app yourself. There you cover what driving it could not: what the happy path did **not** touch, and the ground no capability in the block reaches. Read the block rather than assuming the list: `push`, `biometrics`, `camera`, `permissions`, `background`, `network_conditions` and `multi_device` are the usual absences, and a driver that names one of them takes that check off the human's list. Checks you actually performed are listed as already covered, not repeated as work.
 
 Structure, the required fields of a case, and the two rules that make a case executable are core's: apply the `spine-toolkit:manual-checks` skill and follow it. Its input is `Plan.md ## Manual acceptance`. What is yours here is the measuring — when a case's verdict comes from an instrument, the file carries that instrument's exact invocation (the scheme, the environment variable, the log path, the parser call) and the field of its output that decides, in the place the skill puts it. Only genuinely deferred cases become `OpsChecklist.md` **Pending**; a case you already verified stays Applicable with its evidence.
@@ -312,7 +312,7 @@ Rules:
 
 - `failed_count` reflects build + test failures + UI assertion failures combined.
 - Include at most 5 entries under `errors:` (the rest live in `Validation.md`). Order: build errors first, then test failures, then UI assertions.
-- `reproduction_status` is BUG-only — omit the field entirely on every other profile. `deferred-manual` when the switch is `off`; `not-replayed` when a replay was expected and stayed inconclusive, with the reason in `notes`.
+- `reproduction_status` is BUG-only — omit the field entirely on every other profile. `deferred-manual` whenever nothing drove the app: the switch was `off`, the driver was `none` / `unavailable` / `incompatible`, or a capability the replay needed was absent. `not-replayed` when a replay was expected, ran, and stayed inconclusive, with the reason in `notes`.
 - `manual_checks:` lists the case titles from `ManualChecks.md` and is empty when you wrote no such file. Non-empty obliges the caller to surface the list to the user.
 - `driver_status` is core's vocabulary and has exactly those four values — the orchestrator keys on it and drops anything else without saying so. Omit both driver lines when `drive_app` resolved to `off`: that is the project's own setting, not a driver condition. `driver:` is context for the reader and travels in the caller's notes, not as a field of its own.
 - `flaky_tests:` empty list for non-TEST profiles or when no flake was observed.
