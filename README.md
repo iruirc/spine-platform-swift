@@ -1,7 +1,7 @@
-# swift-platform
+# spine-platform-swift
 
-[![release](https://img.shields.io/github/v/tag/iruirc/swift-platform?sort=semver&label=release&color=0969da)](https://github.com/iruirc/swift-platform)
-[![license](https://img.shields.io/github/license/iruirc/swift-platform?color=555)](LICENSE)
+[![release](https://img.shields.io/github/v/tag/iruirc/spine-platform-swift?sort=semver&label=release&color=0969da)](https://github.com/iruirc/spine-platform-swift)
+[![license](https://img.shields.io/github/license/iruirc/spine-platform-swift?color=555)](LICENSE)
 [![requires spine-toolkit](https://img.shields.io/badge/requires-spine--toolkit-0969da)](https://github.com/iruirc/spine-toolkit)
 
 The Swift/Apple platform plugin for **spine-toolkit**. It carries the stack knowledge — nine
@@ -16,7 +16,7 @@ they know.
 
 ```
 /plugin marketplace add iruirc/claude-marketplace
-/plugin install swift-platform
+/plugin install spine-platform-swift
 ```
 
 `spine-toolkit` is declared as a dependency and installs with it. Then, in an existing project:
@@ -31,10 +31,10 @@ platform plugin is installed it asks which serves this project. The answer lands
 ```
 ## Platform
 
-swift-platform
+spine-platform-swift
 ```
 
-That one line is the whole selection mechanism — the orchestrator invokes `swift-platform:manifest`
+That one line is the whole selection mechanism — the orchestrator invokes `spine-platform-swift:manifest`
 and reads the rest from there. Editing it by hand is how you move an already-configured project to
 a different platform; on a project with no config yet, run `/setup` instead — hand-writing only
 this block leaves every other block the orchestrator reads missing.
@@ -90,7 +90,7 @@ wired to local-path package dependencies), `workspace-add` adds or incorporates 
 
 | Table | Declares |
 |---|---|
-| `## Roles` | role → `swift-platform:<agent>`, all nine, none absent |
+| `## Roles` | role → `spine-platform-swift:<agent>`, all nine, none absent |
 | `## Axes` | `ecosystem = apple` plus `ui`, `async`, `di`, `architecture`, `baseline`, `tests` and their allowed values |
 | `## Heuristics` | which repo signals (imports, tokens, paths) pin which axis value |
 | `## Topics` | topic → the skills that cover it, for the orchestrator's methodology skills |

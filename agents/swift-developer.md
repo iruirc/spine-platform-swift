@@ -90,7 +90,7 @@ This step is not optional and not satisfied by "I followed the project style" in
   - `// Cancel-order race fix: cancel + nil-assignment MUST happen BEFORE resetSession — otherwise the dangling Task observes a torn state.`
   - `// SwiftLint workaround: false-positive on `Optional.map` in @Sendable closure.`
 
-## Skills Reference (swift-platform)
+## Skills Reference (spine-platform-swift)
 
 Consult the appropriate skill based on the architecture in use:
 - `arch-mvvm` — MVVM pattern implementation
@@ -119,13 +119,13 @@ Consult the appropriate skill based on the architecture in use:
 
 - `spine-toolkit:task-new`, `spine-toolkit:task-move` — task lifecycle management
 
-## Related Agents (swift-platform)
+## Related Agents (spine-platform-swift)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=swift-platform:<name>`) to avoid collisions with other installed plugins.
+When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=spine-platform-swift:<name>`) to avoid collisions with other installed plugins.
 
-- `swift-platform:swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
-- `swift-platform:swift-security` — OWASP Mobile Top-10 audit
-- `swift-platform:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
+- `spine-platform-swift:swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
+- `spine-platform-swift:swift-security` — OWASP Mobile Top-10 audit
+- `spine-platform-swift:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
 
 ## Output Structure
 
@@ -137,7 +137,7 @@ Your response MUST be structured with these top-level sections so the orchestrat
 - `## Code` — per-file full code blocks (no fragments)
 - `## DI & Wiring` — what was registered, in which Assembly/Factory
 - `## Localization & Resources` — strings/images added (or `(none)`)
-- `## Tests Written` — names of new tests (or `(delegated to swift-platform:swift-tester)` / `(none)` if NEED_TEST=false)
+- `## Tests Written` — names of new tests (or `(delegated to spine-platform-swift:swift-tester)` / `(none)` if NEED_TEST=false)
 - `## Open Issues` — anything the orchestrator/reviewer should know
 
 ## Self-Check Before Completing

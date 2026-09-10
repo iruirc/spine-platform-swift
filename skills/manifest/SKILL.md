@@ -1,6 +1,6 @@
 ---
 name: manifest
-description: Platform manifest for swift-platform. Data, not instructions — the five tables spine-toolkit reads to bind roles, axes, heuristics, topics and entrypoints.
+description: Platform manifest for spine-platform-swift. Data, not instructions — the five tables spine-toolkit reads to bind roles, axes, heuristics, topics and entrypoints.
 ---
 
 # Swift Platform Manifest
@@ -8,24 +8,24 @@ description: Platform manifest for swift-platform. Data, not instructions — th
 > This skill is **data**, not instructions. spine-toolkit reads the five tables below by
 > invoking this skill; there is no procedure here to follow.
 
-This is `swift-platform`'s manifest — the contract that `spine-toolkit` documents and demonstrates
+This is `spine-platform-swift`'s manifest — the contract that `spine-toolkit` documents and demonstrates
 with its own reference platform manifest, filled in for the real Swift/Apple platform.
 `tests/foundation/lib/manifest.test.bats` checks it structurally.
 
 ## Roles
 
-Canonical core role → `plugin:agent`. `swift-platform` carries an agent for all nine core roles —
+Canonical core role → `plugin:agent`. `spine-platform-swift` carries an agent for all nine core roles —
 no role is fanned out across an axis and none is declared absent.
 
-architect   = swift-platform:swift-architect
-developer   = swift-platform:swift-developer
-tester      = swift-platform:swift-tester
-reviewer    = swift-platform:swift-reviewer
-refactorer  = swift-platform:swift-refactorer
-validator   = swift-platform:swift-validator
-security    = swift-platform:swift-security
-diagnostics = swift-platform:swift-diagnostics
-init        = swift-platform:swift-init
+architect   = spine-platform-swift:swift-architect
+developer   = spine-platform-swift:swift-developer
+tester      = spine-platform-swift:swift-tester
+reviewer    = spine-platform-swift:swift-reviewer
+refactorer  = spine-platform-swift:swift-refactorer
+validator   = spine-platform-swift:swift-validator
+security    = spine-platform-swift:swift-security
+diagnostics = spine-platform-swift:swift-diagnostics
+init        = spine-platform-swift:swift-init
 
 ## Axes
 
@@ -102,5 +102,5 @@ whoever validates: the driver named here is what a project gets when it never ch
 installed project keeps driving its app exactly as it did. The surfaces are half of the compatibility
 test — a driver fits when its own targets intersect this list.
 
-default  = mobile-driver
+default  = spine-driver-mobile
 surfaces = ios-simulator, ios-device, macos

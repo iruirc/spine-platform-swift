@@ -1,7 +1,7 @@
 # swift-setup — en
 
 ## error_not_swift_project
-Not a Swift project (no `.xcodeproj`, `.xcworkspace`, or `Package.swift` found), so I left `## Stack` unset. To create a new project use `@swift-platform:swift-init`.
+Not a Swift project (no `.xcodeproj`, `.xcworkspace`, or `Package.swift` found), so I left `## Stack` unset. To create a new project use `@spine-platform-swift:swift-init`.
 
 ## auq_q1_ui_label
 UI framework

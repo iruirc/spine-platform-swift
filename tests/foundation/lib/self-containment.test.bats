@@ -10,7 +10,7 @@ setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
 }
 
-@test "every bare relative path swift-platform names resolves under its own root" {
+@test "every bare relative path spine-platform-swift names resolves under its own root" {
   missing=""
   for p in $(grep -rhoE '`[A-Za-z_][A-Za-z0-9_.-]*/[^` ]*`' "$ROOT" \
                --include='*.md' --include='*.sh' --include='*.js' \
@@ -30,7 +30,7 @@ setup() {
     compgen -G "$ROOT/${q%/}" >/dev/null \
       || missing="$missing $p"
   done
-  [ -z "$missing" ] || { echo "path(s) that do not resolve under swift-platform:$missing"; return 1; }
+  [ -z "$missing" ] || { echo "path(s) that do not resolve under spine-platform-swift:$missing"; return 1; }
 }
 
 @test "no file names the pre-split project config" {
@@ -57,7 +57,7 @@ setup() {
   [ -z "$missing" ] || { echo "config template(s) with no ## Platform block:$missing"; return 1; }
 }
 
-@test "no file in swift-platform names the core tree by a filesystem path" {
+@test "no file in spine-platform-swift names the core tree by a filesystem path" {
   # The mirror of core's guard: `../core` has no trailing slash and slips past a
   # `core/` grep, and every such path dangles the moment this plugin is extracted.
   # Both namings are wrong to write: the pre-split directory, and the published
@@ -66,10 +66,10 @@ setup() {
   # installed-plugin cache paths a skill may document are excluded by that
   # prefix rather than by sparing a leading dot or slash — which spared every
   # absolute and dot-relative sibling path too.
-  pat='(\.\./(core|spine-toolkit|swift-platform)([^A-Za-z0-9_-]|$)'
+  pat='(\.\./(core|spine-toolkit|spine-platform-swift)([^A-Za-z0-9_-]|$)'
   # `$` joins the excluded chars: a `$core/`-style dereference names no path.
   pat="$pat"'|(^|[^A-Za-z0-9_.$-])core/'
-  pat="$pat"'|(^|[^A-Za-z0-9_-])(spine-toolkit|swift-platform)/)'
+  pat="$pat"'|(^|[^A-Za-z0-9_-])(spine-toolkit|spine-platform-swift)/)'
   # .superpowers/ is gitignored scratch that never ships, and a review diff there
   # quotes the very files this scan excludes by name. Core excludes it from its
   # own i18n lint for the same reason.
@@ -78,7 +78,7 @@ setup() {
   # The two suites that look for a sibling checkout of core are the other deliberate
   # exceptions: each skips rather than dangles when the checkout is absent.
   offenders="$(grep -vF -e 'self-containment.test.bats' -e 'core-refs.test.bats' -e 'forks.test.bats' <<<"$hits" || true)"
-  [ -z "$offenders" ] || { echo "swift-platform reference(s) to the core tree:"; echo "$offenders"; return 1; }
+  [ -z "$offenders" ] || { echo "spine-platform-swift reference(s) to the core tree:"; echo "$offenders"; return 1; }
   # The self-exclusion is otherwise unbounded — a violation added to this file
   # would be invisible. Pin the count: a change here must be re-read.
   n="$(grep -cF 'self-containment.test.bats' <<<"$hits" || true)"

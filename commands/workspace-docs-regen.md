@@ -4,4 +4,4 @@ description: |
   Перегенерация marker-секций в доках workspace.
 ---
 
-Activate `swift-platform:workspace-docs-regen` and follow its flow. Optional flags: `--check`, `--repair`, `--pkg <name>`, `--adopt --pkg <name>`.
+Activate `spine-platform-swift:workspace-docs-regen` and follow its flow. Optional flags: `--check`, `--repair`, `--pkg <name>`, `--adopt --pkg <name>`.
