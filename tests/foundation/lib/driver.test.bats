@@ -97,7 +97,9 @@ setup() {
   scanned="$(grep -rl --exclude-dir=.git --exclude-dir=tests --exclude-dir=.superpowers \
                -e . "$ROOT" | wc -l | tr -d ' ')"
   [ "$scanned" -ge 80 ] || { echo "scan went vacuous: $scanned file(s)"; return 1; }
-  offenders="$(grep -rlE 'mcp__mobile|mobile MCP|mobile-mcp' "$ROOT" \
+  # Case-insensitive: the first version of this guard matched only `mobile MCP` with a
+  # space and let a `mobile-MCP` through, reporting clean.
+  offenders="$(grep -rliE 'mcp__mobile|mobile[ -]mcp' "$ROOT" \
                  --exclude-dir=.git --exclude-dir=tests --exclude-dir=.superpowers || true)"
   [ -z "$offenders" ] || { echo "$offenders"; return 1; }
 }
