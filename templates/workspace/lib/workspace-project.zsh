@@ -70,9 +70,13 @@ wsproj::inject_deps() {
 }
 
 wsproj::append_workspace_meta() {
-  local repo_dir="$1"
+  local repo_dir="$1" role="${2:-project}"
   if [[ -z "$repo_dir" ]]; then
-    print -u2 "wsproj::append_workspace_meta: usage: <repo-dir>"
+    print -u2 "wsproj::append_workspace_meta: usage: <repo-dir> [project|meta]"
+    return 4
+  fi
+  if [[ "$role" != project && "$role" != meta ]]; then
+    print -u2 "wsproj::append_workspace_meta: role must be project|meta; got '$role'"
     return 4
   fi
   local file="$repo_dir/CLAUDE-spine-toolkit.md"
@@ -90,6 +94,17 @@ wsproj::append_workspace_meta() {
   local ws_name
   ws_name="$(wsyml::get '.workspace.name')"
   local meta_dir="${ws_name}-meta"
+  if [[ "$role" == meta ]]; then
+    cat >> "$file" <<EOF
+
+## Workspace meta
+
+- Workspace name: ${ws_name}
+- This repository is the meta-repo of a multi-package SPM workspace: meta-repo + N package repos + optional project repos
+- Layout: \`workspace.yml\` (single source of truth); schema — \`README.md\` → \`## Schema\`
+EOF
+    return 0
+  fi
   cat >> "$file" <<EOF
 
 ## Workspace meta

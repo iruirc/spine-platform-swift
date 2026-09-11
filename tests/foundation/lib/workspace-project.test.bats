@@ -127,3 +127,50 @@ EOF
   [ "$count_before" -eq 1 ]
   [ "$count_after" -eq 1 ]
 }
+
+@test "wsproj::append_workspace_meta meta describes the meta-repo" {
+  local tmpd="$(ws_mktemp_dir)/GroupedWS-meta"
+  mkdir -p "$tmpd"
+  printf '# CLAUDE-spine-toolkit.md — Toolkit Configuration\n' > "$tmpd/CLAUDE-spine-toolkit.md"
+  run zsh -c "
+    source '$(ws_lib_path workspace-yml-parser.zsh)'
+    source '$(ws_lib_path workspace-project.zsh)'
+    wsyml::load '$(ws_fixture_path workspace-yml/grouped.yml)'
+    wsproj::append_workspace_meta '$tmpd' meta
+  "
+  [ "$status" -eq 0 ]
+  local f="$tmpd/CLAUDE-spine-toolkit.md"
+  grep -Fxq -- '- Workspace name: GroupedWS' "$f"
+  grep -Fxq -- '- This repository is the meta-repo of a multi-package SPM workspace: meta-repo + N package repos + optional project repos' "$f"
+  grep -Fq -- '- Layout: `workspace.yml` (single source of truth)' "$f"
+  ! grep -Fq 'Available packages:' "$f"
+}
+
+@test "wsproj::append_workspace_meta meta is idempotent" {
+  local tmpd="$(ws_mktemp_dir)/GroupedWS-meta"
+  mkdir -p "$tmpd"
+  printf '# CLAUDE-spine-toolkit.md — Toolkit Configuration\n' > "$tmpd/CLAUDE-spine-toolkit.md"
+  for _ in 1 2; do
+    zsh -c "
+      source '$(ws_lib_path workspace-yml-parser.zsh)'
+      source '$(ws_lib_path workspace-project.zsh)'
+      wsyml::load '$(ws_fixture_path workspace-yml/grouped.yml)'
+      wsproj::append_workspace_meta '$tmpd' meta
+    "
+  done
+  [ "$(grep -c '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md")" -eq 1 ]
+}
+
+@test "wsproj::append_workspace_meta rejects a role it does not know" {
+  local tmpd="$(ws_mktemp_dir)/GroupedWS-meta"
+  mkdir -p "$tmpd"
+  printf '# CLAUDE-spine-toolkit.md — Toolkit Configuration\n' > "$tmpd/CLAUDE-spine-toolkit.md"
+  run zsh -c "
+    source '$(ws_lib_path workspace-yml-parser.zsh)'
+    source '$(ws_lib_path workspace-project.zsh)'
+    wsyml::load '$(ws_fixture_path workspace-yml/grouped.yml)'
+    wsproj::append_workspace_meta '$tmpd' package
+  "
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"role must be project|meta; got 'package'"* ]]
+}
