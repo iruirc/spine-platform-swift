@@ -30,3 +30,33 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
     grep -qF "\`$key\`" "$WS" || { echo "SKILL.md never asks $key"; return 1; }
   done
 }
+
+@test "swift-init offers all five setup answers as flags" {
+  for flag in '--lang=en|ru' '--mode=manual|auto' '--progress=quiet|normal|live' \
+              '--tasks=create|skip' '--docs-map=create|skip'; do
+    grep -qF -- "[$flag]" "$INIT" || { echo "flag list lacks [$flag]"; return 1; }
+  done
+}
+
+@test "under --no-prompt an absent answer takes its default, not a question" {
+  grep -qF '`en`, `manual`, `normal`, `skip`, `skip`' "$INIT"
+}
+
+@test "workspace-init keeps Tasks/ out of the project repo in both modes" {
+  row="$(step_row 's06b_project_<app>')"
+  [ -n "$row" ] || { echo "no s06b row"; return 1; }
+  [ "$(grep -oF -- '--tasks=skip' <<<"$row" | wc -l | tr -d ' ')" -eq 2 ] \
+    || { echo "--tasks=skip is not in both invocations"; return 1; }
+}
+
+@test "no file names the flag that --tasks replaced" {
+  all="$(grep -rlF --exclude-dir=.git --exclude-dir=.superpowers -- '--with-tasks' "$ROOT" || true)"
+  grep -qF 'setup-handoff.test.bats' <<<"$all" || { echo "the scan did not reach this file"; return 1; }
+  hits="$(grep -vF 'setup-handoff.test.bats' <<<"$all" || true)"
+  [ -z "$hits" ] || { echo "$hits"; return 1; }
+}
+
+@test "swift-init leaves Tasks/ to setup" {
+  grep -qF -- '- A `Tasks/` folder' "$INIT" || { echo "What NOT to Generate does not name Tasks/"; return 1; }
+  ! grep -qF 'subfolders `TODO/`, `ACTIVE/`, `DONE/`' "$INIT"
+}

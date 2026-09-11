@@ -40,7 +40,8 @@ a different platform; on a project with no config yet, run `/setup` instead — 
 this block leaves every other block the orchestrator reads missing.
 
 A project from scratch is this plugin's own command: `/swift-init` creates an iOS/macOS app or an
-SPM package, lays down `Tasks/`, and writes both `CLAUDE.md` and the toolkit config.
+SPM package and hands the answers it collected to spine-toolkit's setup, which writes both
+`CLAUDE.md` and the toolkit config and offers `Tasks/`.
 
 ## What it provides
 
