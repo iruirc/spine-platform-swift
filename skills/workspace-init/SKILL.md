@@ -30,7 +30,7 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 
 ## Interactive flow
 
-0. Ask `qa_toolkit_lang` (`en` / `ru`, default `en`), rendered from both locale files at once because no language is known yet. Record `toolkit.lang`: it is the language of every later prompt and of the toolkit config.
+0. Ask `qa_toolkit_lang` (`en` / `ru`), rendered from both locale files at once. Its default is the language `## Language Resolution` resolves before `toolkit.lang` exists — a config in the cwd, else `en` — so a directory already set to `ru` keeps a Russian dialog by accepting it. Record `toolkit.lang`: it is the language of every later prompt and of the toolkit config.
 1. Ask `qa_workspace_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*` regex; reprompt on mismatch.
 2. Ask `qa_project_block` (Y/N). If Y:
    1. Ask `qa_project_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*`; reprompt on mismatch.
@@ -85,7 +85,7 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 |------|--------|-------------------|
 | s01_meta_dir | mkdir `<workspace-parent>/<workspace-name>-meta/` | dir exists |
 | s02_meta_files | render meta-repo templates from `templates/workspace/meta-repo/`, recursively (preserves subdir layout). Substitutes `{{WORKSPACE_NAME}}`. Excludes `xcworkspace-contents.xml.tmpl` and `code-workspace.json.tmpl` — those are handled by s07 / s08 (NOT rendered by s02). | per-file `[[ -f ]]` |
-| s02b_meta_config | The config comes from core, never from a template here. (1) Only if `<meta>/CLAUDE-spine-toolkit.md` is absent: invoke `spine-toolkit:setup` in the meta-repo, filling its `## Input` with `lang`, `mode` and `progress` from `wsyml::toolkit`, `platform = spine-platform-swift`, `stack = —` (a meta-repo has no stack to ask about), `tasks = skip` and `docs_map = skip` (Tasks/ and Docs/ are workspace siblings, provisioned by s09 / s09b). `CLAUDE.md` from s02 already imports the config, and setup leaves it as it is. The condition is for `--resume`: setup finding a config asks whether to overwrite it, and batch has nobody to answer. (2) `wsproj::append_workspace_meta <meta> meta`. | `grep -q '^## Workspace meta' <meta>/CLAUDE-spine-toolkit.md` |
+| s02b_meta_config | The config comes from core, never from a template here. (1) Only if `<meta>/CLAUDE-spine-toolkit.md` is absent: invoke `spine-toolkit:setup` with `<meta>` as the working directory, filling its `## Input` with `lang`, `mode` and `progress` from `wsyml::toolkit`, `platform = spine-platform-swift`, `stack = —` (a meta-repo has no stack to ask about), `tasks = skip` and `docs_map = skip` (Tasks/ and Docs/ are workspace siblings, provisioned by s09 / s09b). `CLAUDE.md` from s02 already imports the config, and setup leaves it as it is. The condition is for `--resume`: setup finding a config asks whether to overwrite it, and batch has nobody to answer. (2) `wsproj::append_workspace_meta <meta> meta`. | `grep -q '^## Workspace meta' <meta>/CLAUDE-spine-toolkit.md` |
 | s03_meta_git | `git init -b <default-branch>` in meta-repo | `[[ -d .git ]]` |
 | s04_meta_yml | copy `workspace.yml` into meta-repo | `[[ -f workspace.yml ]]` |
 | s05_groups | mkdir each `package_groups[].dir` (or `packages/` if no groups) under workspace-parent | dir exists |

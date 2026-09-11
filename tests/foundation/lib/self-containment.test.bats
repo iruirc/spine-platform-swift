@@ -91,4 +91,7 @@ setup() {
   [ "$(find "$ROOT/templates" -type f | wc -l)" -gt 10 ] || { echo "templates/ scan went vacuous"; return 1; }
   offenders="$(grep -rlE '^## (Platform|Validation|Scale)$' "$ROOT/templates" || true)"
   [ -z "$offenders" ] || { echo "core config block(s) in: $offenders"; return 1; }
+  # The driver stubs legitimately carry ## Platform; no file in the plugin carries these two.
+  offenders="$(grep -rlE --exclude-dir=.git --exclude-dir=.superpowers '^## (Validation|Scale)$' "$ROOT" || true)"
+  [ -z "$offenders" ] || { echo "core config block(s) in: $offenders"; return 1; }
 }

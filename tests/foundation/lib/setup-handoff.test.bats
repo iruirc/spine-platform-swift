@@ -60,3 +60,11 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
   grep -qF -- '- A `Tasks/` folder' "$INIT" || { echo "What NOT to Generate does not name Tasks/"; return 1; }
   ! grep -qF 'subfolders `TODO/`, `ACTIVE/`, `DONE/`' "$INIT"
 }
+
+@test "the meta-repo config step names the directory setup runs in" {
+  step_row s02b_meta_config | grep -qF 'with `<meta>` as the working directory'
+}
+
+@test "swift-init names the directory setup runs in" {
+  grep -qF 'as the working directory, and fill its `## Input`' "$INIT"
+}
