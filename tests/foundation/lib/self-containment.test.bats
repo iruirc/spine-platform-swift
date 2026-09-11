@@ -41,10 +41,9 @@ setup() {
 }
 
 @test "every project config this plugin writes names its platform" {
-  # spine-toolkit:setup writes every real config; the drivers stub it, and a stub
-  # without ## Platform lets a test pass on a config the orchestrator cannot route.
-  # Discovery keys on ## Stack / ## Mode, not ## Language: the project-init driver's
-  # stub omits ## Language, and anchoring on it skipped the very file this exists for.
+  # spine-toolkit:setup writes every real config; a driver stub without ## Platform
+  # lets a test pass on a config the orchestrator cannot route. Discovery keys on
+  # ## Stack / ## Mode: the project-init stub omits ## Language.
   found=0; missing=""
   while IFS= read -r f; do
     found=$((found + 1))
