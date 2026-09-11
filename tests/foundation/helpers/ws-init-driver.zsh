@@ -7,6 +7,7 @@ source "${0:A:h}/../../../templates/workspace/lib/workspace-yml-parser.zsh"
 source "${0:A:h}/../../../templates/workspace/lib/workspace-graph.zsh"
 source "${0:A:h}/../../../templates/workspace/lib/workspace-doc-markers.zsh"
 source "${0:A:h}/../../../templates/workspace/lib/workspace-archetypes.zsh"
+source "${0:A:h}/../../../templates/workspace/lib/workspace-project.zsh"
 
 ws_yml="${1:?usage: ws-init-driver.zsh <workspace.yml> <workspace-parent-dir>}"
 ws_parent="${2:?}"
@@ -33,6 +34,32 @@ while IFS= read -r src; do
   mkdir -p "${dst:h}"
   sed "s|{{WORKSPACE_NAME}}|$ws_name|g" "$src" > "$dst"
 done < <(find "$templates_root/meta-repo" -type f -name '*.tmpl')
+
+# s02b: the skill has spine-toolkit:setup write this; the stub carries only what the
+# suite reads, so it cannot grow back into a copy of core's template.
+config="$meta_dir/CLAUDE-spine-toolkit.md"
+if [[ ! -f "$config" ]]; then
+  cat > "$config" <<EOF
+# CLAUDE-spine-toolkit.md — Toolkit Configuration
+
+## Language
+
+$(wsyml::toolkit lang)
+
+## Platform
+
+spine-platform-swift
+
+## Mode
+
+$(wsyml::toolkit mode)
+
+## Progress
+
+$(wsyml::toolkit progress)
+EOF
+fi
+wsproj::append_workspace_meta "$meta_dir" meta
 
 cp "$ws_yml" "$meta_dir/workspace.yml"
 ( cd "$meta_dir" && git init -q -b main && touch .gitkeep )

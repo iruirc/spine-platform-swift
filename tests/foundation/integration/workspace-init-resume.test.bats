@@ -16,3 +16,20 @@ teardown() { ws_cleanup_tmpdirs; }
   local after_hash="$(find "$parent" -type f -not -path '*/.git/*' -exec md5 -q {} + | md5 -q)"
   [ "$before_hash" = "$after_hash" ]
 }
+
+@test "a rerun after the config was written but before Workspace meta only appends the block" {
+  # Stands in for an interrupted s02b: setup wrote the config, the append never ran.
+  local parent="$(ws_mktemp_dir)"
+  local driver="$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh"
+  local yml="$(ws_fixture_path workspace-yml/grouped.yml)"
+  run "$driver" "$yml" "$parent"
+  [ "$status" -eq 0 ]
+  local config="$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
+  cp "$config" "$BATS_TEST_TMPDIR/full.md"
+  sed '/^## Workspace meta$/,$d' "$BATS_TEST_TMPDIR/full.md" | sed '$d' > "$config"
+  run grep -c '^## Workspace meta$' "$config"
+  [ "$output" = "0" ]
+  run "$driver" "$yml" "$parent"
+  [ "$status" -eq 0 ]
+  cmp "$BATS_TEST_TMPDIR/full.md" "$config"
+}

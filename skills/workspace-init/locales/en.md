@@ -22,6 +22,9 @@ workspace-init pre-flight:
 ## preflight_optional_xcodegen_missing
 - optional: xcodegen  ✗ (install for example_app: true)
 
+## qa_toolkit_lang
+Language of the toolkit config and of the rest of this dialog: [en | ru]
+
 ## qa_workspace_name
 Workspace name (must match [A-Za-z][A-Za-z0-9-]*):
 
@@ -72,6 +75,12 @@ Docs/ directory path (relative to workspace-parent, default ./Docs):
 
 ## qa_docs_symlink_target
 Symlink target for Docs/ (relative path with .. or absolute, e.g. ../../Docs):
+
+## qa_toolkit_mode
+Toolkit mode — `manual` stops for your confirmation during a task run, `auto` runs straight through: [manual (default) | auto]
+
+## qa_toolkit_progress
+How much a task run narrates: [quiet | normal (default) | live]
 
 ## qa_bootstrap_use_gh
 Create GitHub repos via gh?
