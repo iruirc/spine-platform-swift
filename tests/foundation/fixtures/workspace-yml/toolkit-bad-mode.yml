@@ -1,0 +1,7 @@
+workspace:
+  name: bad-toolkit-mode
+toolkit:
+  mode: semi
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }

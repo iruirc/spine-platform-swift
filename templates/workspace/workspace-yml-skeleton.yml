@@ -15,6 +15,11 @@ workspace:
     path: ./Docs           # used by sibling / path modes
     symlink_target: null   # required by symlink mode (e.g. ../../Docs)
 
+toolkit:
+  lang: en                 # en | ru — the toolkit config's language, and the dialog's
+  mode: manual             # manual | auto
+  progress: normal         # quiet | normal | live
+
 remotes:
   - origin
 
