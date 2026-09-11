@@ -12,13 +12,10 @@ teardown() { ws_cleanup_tmpdirs; }
   [ -d "$parent/GroupedWS-meta/.git" ]
   [ -f "$parent/GroupedWS-meta/workspace.yml" ]
   [ -f "$parent/GroupedWS-meta/README.md" ]
-  run grep '^## DeliveryMode' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
-  [ "$status" -eq 0 ]
-  # first non-empty line under ## DeliveryMode must be the deterministic `manual` default (the value feature-estimation reads)
-  run awk '/^## DeliveryMode/{f=1;next} f&&NF{print;exit}' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
-  [ "$output" = "manual" ]
-  run grep '^## AILeverage' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
-  [ "$status" -eq 0 ]
+  # The config's content is spine-toolkit:setup's and the driver stubs it; the
+  # workspace's own block is what this plugin still writes.
+  grep -Fxq -- '- Workspace name: GroupedWS' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
+  grep -Fxq -- '- This repository is the meta-repo of a multi-package SPM workspace: meta-repo + N package repos + optional project repos' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
   [ -f "$parent/commonPackages/AKit/Package.swift" ]
   [ -f "$parent/commonPackages/AKit/CLAUDE.md" ]
   # NEW: verify nested source/test stubs are rendered
@@ -29,6 +26,15 @@ teardown() { ws_cleanup_tmpdirs; }
   [ "$status" -eq 1 ]
   [ -f "$parent/domainPackages/CFeature/Package.swift" ]
   [ -d "$parent/commonPackages/AKit/.git" ]
+}
+
+@test "the meta config takes its toolkit answers from workspace.yml" {
+  local parent="$(ws_mktemp_dir)"
+  run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+    "$(ws_fixture_path workspace-yml/toolkit-ru.yml)" "$parent"
+  [ "$status" -eq 0 ]
+  run awk '/^## (Language|Mode|Progress)$/{f=1;next} f&&NF{print;f=0}' "$parent/ToolkitRu-meta/CLAUDE-spine-toolkit.md"
+  [ "$output" = $'ru\nmanual\nnormal' ] || { echo "got: $output"; return 1; }
 }
 
 @test "generated package builds with swift build (sanity)" {
