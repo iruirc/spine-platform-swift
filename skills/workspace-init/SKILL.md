@@ -12,7 +12,7 @@ Bootstraps a new multi-package SPM workspace from an interactive Q&A or a suppli
 
 ## Language Resolution
 
-Read `## Language` from `<workspace-parent>/<meta-repo>/CLAUDE-spine-toolkit.md` if it exists. Fallback: `CLAUDE-spine-toolkit.md` in the cwd. Fallback: `en`. Use the resolved language for all user-facing strings via `locales/<lang>.md`.
+`toolkit.lang` comes first: the answer to `qa_toolkit_lang` once the dialog has it, `wsyml::toolkit lang` in batch and `--resume`. Otherwise read `## Language` from `<workspace-parent>/<meta-repo>/CLAUDE-spine-toolkit.md` if it exists. Fallback: `CLAUDE-spine-toolkit.md` in the cwd. Fallback: `en`. Use the resolved language for all user-facing strings via `locales/<lang>.md`.
 
 ## Modes
 
@@ -30,6 +30,7 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 
 ## Interactive flow
 
+0. Ask `qa_toolkit_lang` (`en` / `ru`, default `en`), rendered from both locale files at once because no language is known yet. Record `toolkit.lang`: it is the language of every later prompt and of the toolkit config.
 1. Ask `qa_workspace_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*` regex; reprompt on mismatch.
 2. Ask `qa_project_block` (Y/N). If Y:
    1. Ask `qa_project_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*`; reprompt on mismatch.
@@ -61,8 +62,10 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
    - `path` → ask `qa_docs_path` (text, default `./Docs`). Validate path: must NOT be absolute (no leading `/`), must NOT contain `..` segments. Reprompt on validation failure. Record `workspace.docs.mode = path`, `workspace.docs.path = <answer>`.
    - `symlink` → ask `qa_docs_symlink_target` (text, required, non-empty). The value may be relative (allowed to contain `..` segments) or absolute. Record `workspace.docs.mode = symlink`, `workspace.docs.symlink_target = <answer>`, `workspace.docs.path = ./Docs` (used as the link name in workspace-parent).
    - If the top-level answer was N, set `docs.enabled: false` and skip the mode prompt (s09b will skip at execution).
+
+7c. Ask `qa_toolkit_mode` (`manual` / `auto`, default `manual`), then `qa_toolkit_progress` (`quiet` / `normal` / `live`, default `normal`). Record `toolkit.mode` and `toolkit.progress`. With `toolkit.lang` these are the answers `s02b_meta_config` hands to `spine-toolkit:setup`, so execution never asks them.
 8. Ask bootstrap (`qa_bootstrap_use_gh`, `qa_bootstrap_push_after_init`, `qa_bootstrap_commit_after_init`). Optional: `initial_commit_message` (default "Initial commit"), `git_author` (text, optional).
-9. Render `workspace.yml` to chat (use yq from collected values). Print `confirm_summary_header` + summary table (meta-repo dir, package count, remote count, tasks-repo path-and-mode or `disabled`, docs-repo path-and-mode or `disabled`, will-commit Y/N, will-push Y/N). For `mode: symlink` show the target value next to the path, e.g. `Tasks (symlink → ../../Tasks)`.
+9. Render `workspace.yml` to chat (use yq from collected values). Print `confirm_summary_header` + summary table (meta-repo dir, package count, remote count, tasks-repo path-and-mode or `disabled`, docs-repo path-and-mode or `disabled`, `Toolkit: <lang> · <mode> · <progress>`, will-commit Y/N, will-push Y/N). For `mode: symlink` show the target value next to the path, e.g. `Tasks (symlink → ../../Tasks)`.
 
    When `project:` block is present, the summary additionally shows:
    - `{N} project repos: {ios=<repo>, macos=<repo>}`
@@ -82,6 +85,7 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 |------|--------|-------------------|
 | s01_meta_dir | mkdir `<workspace-parent>/<workspace-name>-meta/` | dir exists |
 | s02_meta_files | render meta-repo templates from `templates/workspace/meta-repo/`, recursively (preserves subdir layout). Substitutes `{{WORKSPACE_NAME}}`. Excludes `xcworkspace-contents.xml.tmpl` and `code-workspace.json.tmpl` — those are handled by s07 / s08 (NOT rendered by s02). | per-file `[[ -f ]]` |
+| s02b_meta_config | The config comes from core, never from a template here. (1) Only if `<meta>/CLAUDE-spine-toolkit.md` is absent: invoke `spine-toolkit:setup` in the meta-repo, filling its `## Input` with `lang`, `mode` and `progress` from `wsyml::toolkit`, `platform = spine-platform-swift`, `stack = —` (a meta-repo has no stack to ask about), `tasks = skip` and `docs_map = skip` (Tasks/ and Docs/ are workspace siblings, provisioned by s09 / s09b). `CLAUDE.md` from s02 already imports the config, and setup leaves it as it is. The condition is for `--resume`: setup finding a config asks whether to overwrite it, and batch has nobody to answer. (2) `wsproj::append_workspace_meta <meta> meta`. | `grep -q '^## Workspace meta' <meta>/CLAUDE-spine-toolkit.md` |
 | s03_meta_git | `git init -b <default-branch>` in meta-repo | `[[ -d .git ]]` |
 | s04_meta_yml | copy `workspace.yml` into meta-repo | `[[ -f workspace.yml ]]` |
 | s05_groups | mkdir each `package_groups[].dir` (or `packages/` if no groups) under workspace-parent | dir exists |

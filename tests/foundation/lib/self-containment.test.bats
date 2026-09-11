@@ -41,13 +41,10 @@ setup() {
 }
 
 @test "every project config this plugin writes names its platform" {
-  # workspace-init renders a config of its own, so it bypasses spine-toolkit:setup
-  # and every guard core puts on the template. Without ## Platform the file still
-  # passes the orchestrator's Routing check 4 — the config exists — and dies at
-  # step 5.7 with nothing to resolve roles through.
-  # Discovery keys on ## Stack / ## Mode, not ## Language: a config written by code
-  # (the workspace project-init driver) omits ## Language because core sets it, so
-  # anchoring on that heading silently skipped the very file this guard exists for.
+  # spine-toolkit:setup writes every real config; the drivers stub it, and a stub
+  # without ## Platform lets a test pass on a config the orchestrator cannot route.
+  # Discovery keys on ## Stack / ## Mode, not ## Language: the project-init driver's
+  # stub omits ## Language, and anchoring on it skipped the very file this exists for.
   found=0; missing=""
   while IFS= read -r f; do
     found=$((found + 1))
@@ -89,37 +86,10 @@ setup() {
   [ "$n3" -eq 1 ] || { echo "excluded lines for forks.test.bats: $n3, expected 1"; return 1; }
 }
 
-@test "the shipped workspace config template declares every block core reads" {
-  # workspace-init renders this instead of going through spine-toolkit:setup, so
-  # core's own template guard never sees it. Same block list, checked here.
-  tpl="$ROOT/templates/workspace/meta-repo/CLAUDE-spine-toolkit.md.tmpl"
-  [ -f "$tpl" ] || { echo "no workspace config template at $tpl"; return 1; }
-  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas Scale Docs; do
-    grep -q "^## $block\$" "$tpl" || { echo "missing block: ## $block"; return 1; }
-  done
-}
-
-# A block of the workspace config template, heading excluded, up to the next H2.
-tpl_block() {
-  awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/templates/workspace/meta-repo/CLAUDE-spine-toolkit.md.tmpl"
-}
-
-@test "the workspace template writes a walkthrough depth, not the pre-depth on" {
-  # Core reads brief | deep | off from 1.8; `on` still resolves, but to a value the
-  # template's own explanation then contradicts.
-  tpl_block Reporting | grep -qE '^walkthrough: (brief|deep|off)$' \
-    || { echo "## Reporting: $(tpl_block Reporting | grep '^walkthrough:')"; return 1; }
-}
-
-@test "the workspace template declares every Validation key core reads" {
-  for key in drive_app manual_checks driver phase_verification; do
-    tpl_block Validation | grep -q "^$key: " || { echo "## Validation has no $key:"; return 1; }
-  done
-}
-
-@test "a new workspace starts at the scale a project attached through core does" {
-  # Without the block the axis defaults to full, so a workspace would quietly run
-  # heavier than the same project attached with /setup.
-  [ "$(tpl_block Scale | grep -m1 -vE '^[[:space:]]*$')" = "lite" ] \
-    || { echo "## Scale: $(tpl_block Scale | head -3)"; return 1; }
+@test "no template ships a copy of core's config" {
+  # spine-toolkit:setup writes the config; a copy here drifts from core's template
+  # unseen. Three blocks only that config has are enough to spot one.
+  [ "$(find "$ROOT/templates" -type f | wc -l)" -gt 10 ] || { echo "templates/ scan went vacuous"; return 1; }
+  offenders="$(grep -rlE '^## (Platform|Validation|Scale)$' "$ROOT/templates" || true)"
+  [ -z "$offenders" ] || { echo "core config block(s) in: $offenders"; return 1; }
 }

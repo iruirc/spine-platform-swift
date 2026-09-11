@@ -22,6 +22,9 @@ workspace-init pre-flight:
 ## preflight_optional_xcodegen_missing
 - optional: xcodegen  ✗ (нужен для example_app: true)
 
+## qa_toolkit_lang
+Язык конфига тулкита и остального диалога: [en | ru]
+
 ## qa_workspace_name
 Имя workspace (формат [A-Za-z][A-Za-z0-9-]*):
 
@@ -72,6 +75,12 @@ Workspace-зависимости (мультивыбор):
 
 ## qa_docs_symlink_target
 Цель symlink для Docs/ (относительный путь с .. или абсолютный, например ../../Docs):
+
+## qa_toolkit_mode
+Режим тулкита — `manual` ждёт подтверждения по ходу прогона задачи, `auto` идёт без остановок: [manual (по умолчанию) | auto]
+
+## qa_toolkit_progress
+Сколько рассказывает прогон задачи: [quiet | normal (по умолчанию) | live]
 
 ## qa_bootstrap_use_gh
 Создавать GitHub-репо через gh?
