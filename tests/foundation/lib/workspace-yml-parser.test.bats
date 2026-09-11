@@ -265,3 +265,44 @@ EOF
   run zsh -c "source '$(ws_lib_path workspace-archetypes.zsh)'; wsarch::boundary_text widget"
   [ "$status" -eq 4 ]
 }
+
+@test "validate rejects toolkit.lang that is not en|ru" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/toolkit-bad-lang.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"toolkit.lang must be one of en|ru; got 'de'"* ]]
+}
+
+@test "validate rejects toolkit.mode that is not manual|auto" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/toolkit-bad-mode.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"toolkit.mode must be one of manual|auto; got 'semi'"* ]]
+}
+
+@test "validate rejects toolkit.progress that is not quiet|normal|live" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/toolkit-bad-progress.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"toolkit.progress must be one of quiet|normal|live; got 'verbose'"* ]]
+}
+
+@test "validate accepts a toolkit block that sets only some keys" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/toolkit-ru.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "wsyml::toolkit prints the defaults when the block is absent" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/minimal.yml)' && print -r -- \$(wsyml::toolkit lang) \$(wsyml::toolkit mode) \$(wsyml::toolkit progress)"
+  [ "$status" -eq 0 ]
+  [ "$output" = "en manual normal" ]
+}
+
+@test "wsyml::toolkit prints what the yml sets and defaults the rest" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/toolkit-ru.yml)' && print -r -- \$(wsyml::toolkit lang) \$(wsyml::toolkit mode) \$(wsyml::toolkit progress)"
+  [ "$status" -eq 0 ]
+  [ "$output" = "ru manual normal" ]
+}
+
+@test "wsyml::toolkit rejects a key it does not know" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/minimal.yml)' && wsyml::toolkit colour"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"unknown key 'colour'"* ]]
+}
