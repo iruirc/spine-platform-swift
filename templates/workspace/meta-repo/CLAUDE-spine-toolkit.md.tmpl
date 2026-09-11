@@ -77,6 +77,8 @@ unaffected by it.)
 
 drive_app: auto
 manual_checks: auto
+driver: auto
+phase_verification: proportional
 
 (`drive_app` — whether the Validation stage may drive the running app through this platform's own tooling: `auto` — the profile
 decides (FEATURE: when the feature has a UI layer; BUG: always, to replay the reproduction;
@@ -88,20 +90,82 @@ For BUG the deferred check is the reproduction replay itself.
 `manual_checks` — when the validator writes `ManualChecks.md`, the hand-run script for a human:
 `auto` — only for checks it was told not to run itself; `always` — every time, so a UI-bearing task
 ships a manual pass even when the validator drove the app and covered the happy path.
+What goes inside that file is fixed by the `manual-checks` skill, not by this key.
+`driver` — which driver plugin drives the running app: `auto` — the driver this platform recommends,
+which is what keeps a project that never touched this key behaving as it always did; a plugin name —
+that one instead of the recommendation; `—` — none at all. `—` is a deliberate choice, not a failure:
+the checks that needed driving are handed to a human exactly as `drive_app: off` hands them over, and
+the verdict is not lowered. What a driver can and cannot do is its own declaration, and what it
+cannot do becomes a manual check automatically.
+`phase_verification` — how much each phase checks before it commits: `proportional` — only what
+the phase can break, at the rung its `**Verification:**` line in `Plan.md` names, with the full
+regression left to Validation; `full` — the full regression in every phase, for a project whose
+whole suite is cheap enough that repeating it costs nothing. There is no `off`. The rungs and how
+a planner picks one are fixed by the `phase-verification` skill, not by this key.
 
-A single task overrides both with `[DRIVE_APP] = [auto|off]` and `[MANUAL_CHECKS] = [auto|always]`
-in its `Task.md`.)
+A single task overrides all four with `[DRIVE_APP] = [auto|off]`, `[MANUAL_CHECKS] = [auto|always]`, `[DRIVER] = [<driver-plugin>|auto|—]`, and `[PHASE_VERIFICATION] = [proportional|full]` in its `Task.md`.)
 
 ## Reporting
 
-walkthrough: on
+walkthrough: deep
 
-(whether a task writes `Walkthrough.md` — the human-facing account of what actually landed:
-summary, plan-vs-outcome divergences with their trigger, a commit-by-commit log, diagrams where
-they help, follow-ups. Written at the end of the implementing stage, so it is readable before
-Validation and Review, and refreshed afterwards if later commits moved past it.
-`on` — write it; `off` — never. Not applicable to RESEARCH and REVIEW, whose deliverable is the
-artifact itself. A single task overrides with `[WALKTHROUGH] = [on|off]` in its `Task.md`.)
+(whether a task writes `Walkthrough.md`, and at what depth. The artifact is the human-facing
+account of what actually landed, written for an engineer who did not write the code and was not on
+the task. Written at the end of the implementing stage, so it is readable before Validation and
+Review, and refreshed afterwards if later commits moved past it.
+`deep` and `brief` both carry diagrams where they help and follow-ups; the difference is below.
+`deep` — a glossary of the terms it uses, the commit order and why, then a section per commit: what
+appeared, the failure it is written against, how that is closed, which alternative was rejected.
+This is the value that makes the file worth opening a year later, and it is the default.
+`brief` — summary, divergences and a one-bullet-per-commit log, for a reader who already knows the
+area.
+`off` — never written.
+`on` is the pre-depth value and is read as `deep` — more than it used to write; a project that
+wants the old shape says `brief`.
+Not applicable to RESEARCH and REVIEW, whose deliverable is the artifact itself. A `lite` task
+writes nothing unless it says otherwise. A single task overrides with
+`[WALKTHROUGH] = [brief|deep|off]` in its `Task.md`.)
+
+## Docs
+
+enabled: on
+map: DocsMap.md
+strictness: advisory
+freshness: on
+
+(the documentation components this project declares, and how hard the run holds them.
+`enabled` — whether the mechanism runs at all. `off` suspends it project-wide: the four commands a
+run invokes do nothing and say nothing, while `registry` still reads the file, so a suspended
+project can still inspect what it suspended. A task that names `[DOCS]` explicitly overrides this
+in either direction.
+`map` — path to the registry, relative to the project root. The file is optional: without it
+the mechanism is off and the run says nothing about documentation.
+`strictness` — the default for a component that declares none: `blocking` — a phase does not
+close while the question a touched component raises is unanswered; `advisory` — the run names
+it and moves on; `off` — the component is routed and reported but never asked about.
+`freshness` — whether a component's files carry the Status / Synced / Owner / Source of truth
+header. `on` / `off`.
+
+What goes inside the registry is fixed by the `docs-route` skill and
+`conventions/docs-components.md`, not by this block — the same division `## Validation` has with
+`ManualChecks.md`. A single task overrides with `[DOCS] = [on|off]` in its `Task.md`, and names
+the components it creates in `[DOCS_NEW]`.)
+
+## Scale
+
+lite
+
+(how deep a task's pipeline goes. `lite` — investigation folds into the artifact that consumes it,
+each artifact carries a line ceiling, and no estimation section or ops checklist is produced;
+`full` — every stage gets its own agent and its own artifact. The floor is identical at both
+values: one commit per green phase, a reproduction before a bug fix, a Validation stage with its
+own agent, and a Review stage with an independent one. `lite` is cheaper, not looser.
+A `lite` run can be raised to `full` once — by the stage that first measures the perimeter, or by
+the planner — and is never lowered; the raise is written back into the task's `Task.md`.
+A single task overrides with `[SCALE] = [lite|full]` in its `Task.md`, and `[SCALE] = [full]`
+there also switches the raise off, the author having already decided.
+A project without this block runs `full`, which is what every project did before the block
+existed.)
 
 ## Modules
 
@@ -126,7 +190,13 @@ manual
 
 ## Paths
 
-(optional: "- Sources: /Sources", "- Tests: /Tests")
+(optional: "- Sources: /Sources", "- Tests: /Tests", "- External packages: /Packages/*"
+
+`External packages` may repeat and its value is a glob resolved from the project root. Every
+directory it resolves to is a checkout the project builds against; a checkout carrying its own
+`DocsMap.md` contributes its components to this project's registry, declared once at the
+package and read by every project that holds it. Paths inside a package's registry are written
+relative to that package's root.)
 
 ## Orchestration
 
@@ -135,7 +205,7 @@ Task routing, profile, and stage logic lives in skills — the list below is the
 - `spine-toolkit:orchestrator` — picks the profile by `TASK_TYPE`, determines the start point, dispatches stages
 - `spine-toolkit:workflow-feature|bug|refactor|test|review|research|epic` — profile procedures
 - `spine-toolkit:task-new|task-move|task-status` — task management
-- `spine-toolkit:setup` — configures spine-toolkit in an existing project (creates `CLAUDE-spine-toolkit.md` from template, inserts the `@./CLAUDE-spine-toolkit.md` import into `CLAUDE.md`, creates `Tasks/`)
+- `spine-toolkit:setup` — configures spine-toolkit in an existing project (creates `CLAUDE-spine-toolkit.md` from template, inserts the `@./CLAUDE-spine-toolkit.md` import into `CLAUDE.md`, offers to create `Tasks/` and the `DocsMap.md` registry)
 - `spine-toolkit:lang` — switches the project's prompt language
 
 Each profile also has a workflow script (`workflows/profile-*.js`) running the same stages as code; the orchestrator uses it where the host has the `Workflow` tool and falls back to the skill where it does not. Two consequences worth knowing: agents inside a workflow run in `acceptEdits`, so their file edits apply without a prompt whatever permission mode the session is in, and on the Pro plan workflows stay off until enabled in `/config`.

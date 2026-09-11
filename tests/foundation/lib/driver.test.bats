@@ -22,12 +22,12 @@ setup() {
   [ "$got" = "ios-simulator,ios-device,macos" ] || { echo "surfaces: $got"; return 1; }
 }
 
-@test "the declared core floor is the one that reads a Driver block" {
-  # `surfaces` is read by core from 1.7.1. A floor below it loads and is then
-  # misread: core looks for a row this manifest means and never finds it.
+@test "the declared core floor reads everything this plugin writes" {
+  # Core reads `surfaces` from 1.7.1, and the workspace template's walkthrough depth
+  # and phase_verification from 1.8.0. Below the floor either loads and is misread.
   run python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))["dependencies"]; print([x["version"] for x in d if x["name"]=="spine-toolkit"][0])' "$ROOT/.claude-plugin/plugin.json"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  [ "$output" = ">=1.7.1 <2" ] || { echo "floor: $output"; return 1; }
+  [ "$output" = ">=1.8.0 <2" ] || { echo "floor: $output"; return 1; }
 }
 
 @test "the vendored manifest lint is the copy that knows the Driver block" {
