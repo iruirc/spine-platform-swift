@@ -94,7 +94,32 @@ setup() {
   # core's own template guard never sees it. Same block list, checked here.
   tpl="$ROOT/templates/workspace/meta-repo/CLAUDE-spine-toolkit.md.tmpl"
   [ -f "$tpl" ] || { echo "no workspace config template at $tpl"; return 1; }
-  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas; do
+  for block in Language Platform Agents Stack Mode Progress Modules EstimationDeltas Scale Docs; do
     grep -q "^## $block\$" "$tpl" || { echo "missing block: ## $block"; return 1; }
   done
+}
+
+# A block of the workspace config template, heading excluded, up to the next H2.
+tpl_block() {
+  awk -v h="## $1" '$0==h{f=1;next} f&&/^## /{exit} f' "$ROOT/templates/workspace/meta-repo/CLAUDE-spine-toolkit.md.tmpl"
+}
+
+@test "the workspace template writes a walkthrough depth, not the pre-depth on" {
+  # Core reads brief | deep | off from 1.8; `on` still resolves, but to a value the
+  # template's own explanation then contradicts.
+  tpl_block Reporting | grep -qE '^walkthrough: (brief|deep|off)$' \
+    || { echo "## Reporting: $(tpl_block Reporting | grep '^walkthrough:')"; return 1; }
+}
+
+@test "the workspace template declares every Validation key core reads" {
+  for key in drive_app manual_checks driver phase_verification; do
+    tpl_block Validation | grep -q "^$key: " || { echo "## Validation has no $key:"; return 1; }
+  done
+}
+
+@test "a new workspace starts at the scale a project attached through core does" {
+  # Without the block the axis defaults to full, so a workspace would quietly run
+  # heavier than the same project attached with /setup.
+  [ "$(tpl_block Scale | grep -m1 -vE '^[[:space:]]*$')" = "lite" ] \
+    || { echo "## Scale: $(tpl_block Scale | head -3)"; return 1; }
 }
