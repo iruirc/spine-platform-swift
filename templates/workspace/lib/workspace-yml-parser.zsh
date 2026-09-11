@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # workspace-yml-parser.zsh — load + query + validate workspace.yml.
-# Public API: wsyml::load, wsyml::get, wsyml::validate, wsyml::packages, wsyml::package_field, wsyml::groups, wsyml::remotes
+# Public API: wsyml::load, wsyml::get, wsyml::validate, wsyml::packages, wsyml::package_field, wsyml::groups, wsyml::remotes, wsyml::toolkit
 
 typeset -gA _WSYML_STATE
 
@@ -67,6 +67,26 @@ wsyml::package_field() {
   wsyml::get ".packages[] | select(.name == \"$name\") | .$key"
 }
 
+# The toolkit answers spine-toolkit:setup receives; an absent key is its default.
+wsyml::toolkit() {
+  local key="$1" def val
+  case "$key" in
+    lang)     def=en ;;
+    mode)     def=manual ;;
+    progress) def=normal ;;
+    *)
+      print -u2 "wsyml::toolkit: unknown key '$key' (lang|mode|progress)"
+      return 4
+      ;;
+  esac
+  if [[ -z "${_WSYML_STATE[json]:-}" ]]; then
+    print -u2 "wsyml::toolkit: no document loaded; call wsyml::load first"
+    return 4
+  fi
+  val="$(wsyml::get ".toolkit.$key" 2>/dev/null)" || val="$def"
+  print -r -- "$val"
+}
+
 wsyml::validate() {
   if [[ -z "${_WSYML_STATE[json]:-}" ]]; then
     print -u2 "wsyml::validate: no document loaded"
@@ -82,6 +102,7 @@ wsyml::validate() {
   local p g d r k pg deps git_keys arch ver allowed a
   local example_app example_platform tasks_path tasks_enabled tasks_mode tasks_symlink_target author
   local docs_path docs_enabled docs_mode docs_symlink_target
+  local toolkit_lang toolkit_mode toolkit_progress
   local has_project proj_name app_keys ak app_repo
   local v mp_keys mpk mpv
   local -A seen group_set remote_set allowed_set seen_repos
@@ -267,6 +288,32 @@ wsyml::validate() {
     print -u2 "$_path: docs.mode=symlink requires non-empty docs.symlink_target"
     ((errs++))
   fi
+
+  # Rule 11c: toolkit answers. Every key is optional; wsyml::toolkit supplies the default.
+  toolkit_lang="$(wsyml::toolkit lang)"
+  toolkit_mode="$(wsyml::toolkit mode)"
+  toolkit_progress="$(wsyml::toolkit progress)"
+  case "$toolkit_lang" in
+    en|ru) ;;
+    *)
+      print -u2 "$_path: toolkit.lang must be one of en|ru; got '$toolkit_lang'"
+      ((errs++))
+      ;;
+  esac
+  case "$toolkit_mode" in
+    manual|auto) ;;
+    *)
+      print -u2 "$_path: toolkit.mode must be one of manual|auto; got '$toolkit_mode'"
+      ((errs++))
+      ;;
+  esac
+  case "$toolkit_progress" in
+    quiet|normal|live) ;;
+    *)
+      print -u2 "$_path: toolkit.progress must be one of quiet|normal|live; got '$toolkit_progress'"
+      ((errs++))
+      ;;
+  esac
 
   # Rule 14: bootstrap.git_author format (when supplied)
   author="$(wsyml::get '.bootstrap.git_author' 2>/dev/null || true)"
