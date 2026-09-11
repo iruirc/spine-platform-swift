@@ -64,7 +64,11 @@ swift-init [--no-prompt]
            [--min-ios=<semver>]
            [--min-macos=<semver>]
            [--main-target-name=<name>]
-           [--with-tasks]
+           [--lang=en|ru]
+           [--mode=manual|auto]
+           [--progress=quiet|normal|live]
+           [--tasks=create|skip]
+           [--docs-map=create|skip]
            [<output-dir>]
 ```
 
@@ -73,7 +77,7 @@ swift-init [--no-prompt]
 - **No flags** → existing interactive Q&A unchanged.
 - **`--no-prompt` without all decision-flags** → apply per-platform defaults (selected via `--platform=` value) and proceed without Q&A. **`--platform=` is required when `--no-prompt` is set**; if absent, exit 2 with error "platform is required when --no-prompt is set".
 - **Flags present without `--no-prompt`** → flags act as Q&A defaults but Q&A still runs for missing decisions (legacy compat).
-- **`--with-tasks`** → opt-in for per-project `Tasks/` scaffold (subfolders `TODO/`, `ACTIVE/`, `DONE/`). **Default is OFF.** When invoked by `workspace-init`, the caller deliberately omits this flag — a single shared `Tasks/` repo is created at the workspace-parent level instead. Standalone users who want a project-local `Tasks/` must pass this flag explicitly.
+- **`--lang`, `--mode`, `--progress`, `--tasks`, `--docs-map`** → never asked by this agent: each goes unread into the same-named field of `spine-toolkit:setup`'s `## Input` (`--docs-map` into `docs_map`). Absent in an interactive run → the field is left out and setup asks, as it would anyway. Absent under `--no-prompt` → `en`, `manual`, `normal`, `skip`, `skip`, by the same rule that gives `--no-prompt` its stack defaults. `workspace-init` passes `--tasks=skip`: a workspace keeps one shared `Tasks/` beside its repos.
 - **`--main-target-name=<name>`** → overrides the auto-derived project / main-target / `.xcodeproj` name. When present: `project.yml` `name:` field, the single app target name, the scheme name, and the resulting `<name>.xcodeproj` all use `<name>` verbatim. When absent: fall back to the basename of `<output-dir>` (or the basename of `cwd` if no output-dir is supplied) for both target name and `.xcodeproj`. `workspace-init` passes this flag set to `apps.<platform>.repo` so multiple platform-specific app repos within one workspace do not collide on the same `.xcodeproj` filename when opened side-by-side in Xcode.
 - **Output dir** defaults to `cwd` per existing behavior.
 
@@ -101,6 +105,7 @@ Batch from workspace-init for an iOS app with full stack from yml:
 ```
 swift-init --no-prompt --platform=ios --ui-framework=swiftui --di=factory \
            --architecture=mvvm-coordinator --async=async-await --min-ios=17.0 \
+           --lang=en --mode=manual --progress=normal --tasks=skip \
            ../FullApp-iOS
 ```
 
@@ -108,19 +113,19 @@ Batch from workspace-init for a macOS app with empty yml stack (all defaults):
 ```
 swift-init --no-prompt --platform=macos --ui-framework=swiftui --di=factory \
            --architecture=mvvm --async=async-await --min-macos=14.0 \
+           --lang=en --mode=manual --progress=normal --tasks=skip \
            ../FullApp-macOS
 ```
 
 ## Generated Artifacts
 
-Both Markdown config files belong to spine-toolkit, not to this agent: after the Swift artifact is on disk, invoke `spine-toolkit:setup` and fill its `## Input` with the answers already collected — `lang`, `mode`, `platform` = `spine-platform-swift`, and `stack` — so it renders them from its own templates without re-asking. It owns where those templates live and what each section must contain; composing the files here would drift from them the day the toolkit adds a section. Spell the `stack` values as the manifest's `## Axes` spells them, and omit an axis you cannot: `SwiftUI`, not the flag's `swiftui`; `MVVM+Coordinator`, not `mvvm-coordinator`; `iOS 17+`, which `--platform=ios --min-ios=17.0` has to be assembled into, and which `--min-ios=15.0` cannot produce at all because the catalog stops at `iOS 16+`. The dialog's fourth DI option (plain manual) has no `di` value either. An axis you omit or mis-spell is asked once by `swift-setup` — the designed fall-through, and cheaper than a `## Stack` line `spine-toolkit:stack-detect` will never match.
+Both Markdown config files belong to spine-toolkit, not to this agent: after the Swift artifact is on disk, invoke `spine-toolkit:setup` and fill its `## Input` with the answers already collected — `platform` = `spine-platform-swift`, `stack`, and whatever `--lang`, `--mode`, `--progress`, `--tasks` and `--docs-map` supplied (see **Non-Interactive Flags**) — so it renders them from its own templates without re-asking. It owns where those templates live and what each section must contain; composing the files here would drift from them the day the toolkit adds a section. Spell the `stack` values as the manifest's `## Axes` spells them, and omit an axis you cannot: `SwiftUI`, not the flag's `swiftui`; `MVVM+Coordinator`, not `mvvm-coordinator`; `iOS 17+`, which `--platform=ios --min-ios=17.0` has to be assembled into, and which `--min-ios=15.0` cannot produce at all because the catalog stops at `iOS 16+`. The dialog's fourth DI option (plain manual) has no `di` value either. An axis you omit or mis-spell is asked once by `swift-setup` — the designed fall-through, and cheaper than a `## Stack` line `spine-toolkit:stack-detect` will never match.
 
 For every mode:
 - Folder structure matching the chosen mode and architecture
-- `CLAUDE-spine-toolkit.md` and a minimal user-owned `CLAUDE.md`, both written by `spine-toolkit:setup` as described above. Pass it the pre-generation dialog's answers, plus `## Modules` for multi-target SPM packages only (for apps the section stays empty — modules are added once the user attaches local packages, see **Multi-module projects**) and `## Paths` only where paths deviate from defaults
+- `CLAUDE-spine-toolkit.md` and a minimal user-owned `CLAUDE.md`, both written by `spine-toolkit:setup` as described above
 - `.swiftlint.yml` with sensible defaults
 - `README.md` with brief project description + how to build
-- `Tasks/` folder with subfolders `TODO/`, `ACTIVE/`, `DONE/` — **only when `--with-tasks` is passed**. Default is OFF: workspace-init relies on a single shared `Tasks/` repo at the workspace-parent; standalone users who want a project-local one must opt in.
 
 For apps additionally:
 - `project.yml` — XcodeGen spec, source of truth (commit it; `.xcodeproj` is regenerated on demand)
@@ -208,6 +213,7 @@ If any grep matches outside `DI/AppDependencyContainer.swift` or `DI/Registratio
 - Fastlane
 - Third-party dependencies (Alamofire, Kingfisher, SnapKit, etc.)
 - Git repo initialization (do not run `git init`) — assume the user handles VCS
+- A `Tasks/` folder — `spine-toolkit:setup` creates it when the user says yes, or when `--tasks=create` answers for them
 
 ## Library Versions
 
@@ -282,7 +288,7 @@ After generating, produce a short report to the user:
 - `## Next Steps` — exact commands to build and run the project. **For app modes always include**:
   - the project regeneration command: `xcodegen generate` (run it after editing `project.yml`);
   - a note about local packages: "If you need local SPM packages, run `/swift-init` separately in any folder on disk, then in Xcode use `File → New → Workspace`, drag the app's `.xcodeproj` and the package folders into the workspace. From then on, open the **`.xcworkspace`**, not the `.xcodeproj` — otherwise Xcode won't see the local packages."
-- `## CLAUDE-spine-toolkit.md Highlights` — what was auto-filled in `## Stack`, `## Mode`, `## DeliveryMode`, `## Modules`, `## AILeverage`, `## Paths`
+- `## CLAUDE-spine-toolkit.md Highlights` — what `## Stack` and `## Modules` received
 
 ## Multi-module projects
 
@@ -299,6 +305,7 @@ The `swift-init` agent **does not generate the workspace itself** — that's an 
 
 - Never overwrite existing files — refuse and ask the user to run in an empty directory (or a dedicated subdirectory)
 - Never commit changes
+- Never write `CLAUDE-spine-toolkit.md` or `CLAUDE.md` yourself — both come from `spine-toolkit:setup`, which renders core's own template
 - Always ask before generating — confirm mode, stack, platforms
 - Do not invent third-party dependencies; use only Swift + Apple SDKs
 - Do not attach labels like "(recommended)" / "(default)" next to architectural options (UI framework, async approach, DI, architecture) unless the recommendation is recorded in the project's `CLAUDE-spine-toolkit.md` or in one of the `spine-platform-swift:*` skills. Ask neutrally, without hinting at the "correct" answer — the choice belongs to the user
