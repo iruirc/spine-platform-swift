@@ -83,3 +83,24 @@ ticks() { tr -d '`'; }
 @test "swift-init writes no retired architecture value" {
   ! grep -qF 'MVVM+Coordinator' "$INIT"
 }
+
+@test "every line architecture-choice writes into ## Stack is a catalog value" {
+  n=0
+  while IFS= read -r row; do
+    arch="$(cell 2 <<<"$row" | ticks)"; ui="$(cell 3 <<<"$row")"
+    in_axis architecture "$arch" || { echo "$(cell 1 <<<"$row") writes Architecture: $arch"; return 1; }
+    [ "$ui" = "from the answer" ] || in_axis ui "$(ticks <<<"$ui")" || { echo "$(cell 1 <<<"$row") writes UI: $ui"; return 1; }
+    n=$((n + 1))
+  done < <(table_rows '| Stack | `- Architecture:` | `- UI:` |' "$CHOICE")
+  [ "$n" -ge 8 ] || { echo "checked $n stacks; the table went missing"; return 1; }
+}
+
+@test "architecture-choice writes no comment, objection or core artifact into the config" {
+  for gone in '<!-- Chosen' '`Objection:' 'Done.md'; do
+    ! grep -qF -- "$gone" "$CHOICE" || { echo "still there: $gone"; return 1; }
+  done
+}
+
+@test "architecture-choice asks @Observable of iOS 17, not 16" {
+  grep -qF 'SwiftUI iOS 17+ | **MVVM + Router**' "$CHOICE"
+}

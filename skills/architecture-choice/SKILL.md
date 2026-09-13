@@ -1,6 +1,6 @@
 ---
 name: architecture-choice
-description: "Use at project bootstrap or major refactor to pick the iOS/macOS architecture stack. Compass-style: 5 input axes (team size, lifetime, domain complexity, UI framework, testing rigor) → one of seven reference stacks (MVC / MVVM+Coordinator / MVVM+Router SwiftUI / Hybrid UIKit+SwiftUI / Clean Architecture / VIPER / MVI). Points to detailed skills, doesn't replace them."
+description: "Use at project bootstrap or major refactor to pick the iOS/macOS architecture stack. Compass-style: 5 input axes (team size, lifetime, domain complexity, UI framework, testing rigor) → one reference stack (MVC, MVVM with a Coordinator or a Router, Hybrid UIKit+SwiftUI, Clean Architecture, VIPER, MVI, TCA). Points to detailed skills, doesn't replace them."
 ---
 
 # Architecture Choice — Decision Compass
@@ -61,7 +61,7 @@ Find the row that best matches reality. Thresholds are heuristics, not boundarie
 |---|---|---|---|
 | Solo, weeks–months, simple CRUD, ≤5 screens | **MVC** | VC `push` / `present` | One file per screen; tests target Models only — see `arch-mvc` "When Appropriate" |
 | Solo/pair, months–years, modest logic, UIKit | **MVVM + Coordinator** | Coordinator | ViewModel testable in isolation; Coordinator removes `pushViewController` from VCs |
-| Solo/pair, months–years, modest logic, SwiftUI iOS 16+ | **MVVM + Router** | NavigationStack + Path | `@Observable` ViewModel + state-driven navigation; no Coordinator boilerplate |
+| Solo/pair, months–years, modest logic, SwiftUI iOS 17+ | **MVVM + Router** | NavigationStack + Path | `@Observable` ViewModel + state-driven navigation; no Coordinator boilerplate |
 | Existing UIKit app + new SwiftUI features | **Hybrid: MVVM + Coordinator + Router** | Coordinator outer, Router per SwiftUI island | Old code stays UIKit; new code uses native SwiftUI navigation. See `arch-swiftui-navigation` "Hybrid" |
 | 2–3 devs, years, rich domain, must unit-test business rules | **Clean Architecture** | Coordinator / Router | Use Cases are pure Swift — testable without UIKit; Repository hides data sources from Domain |
 | 4+ devs, parallel feature work, strict module ownership | **Clean Architecture + SPM modules** | Coordinator / Router | Cross-team dependencies become compile errors, not merge conflicts. See `pkg-spm-design` |
@@ -85,6 +85,19 @@ Each stack is the set of skills you should now follow. Cross all of them off.
 - **VIPER** → `arch-viper` + `arch-coordinator`
 - **TCA** → `arch-tca` (replaces both architecture and navigation: `@Presents` + `StackState` cover what `arch-swiftui-navigation` would otherwise cover); add `arch-mvvm` only if mixing TCA islands with plain SwiftUI screens elsewhere — but see `arch-tca` "Common Mistakes" #13 first
 - **MVI** → `arch-mvi` + `arch-coordinator` (UIKit) / `arch-swiftui-navigation` (SwiftUI); add `pkg-spm-design` if multi-module
+
+Each stack writes these lines into `## Stack` — catalog values only, since `spine-toolkit:stack-detect` discards any other. Navigation is not written: it follows `UI`.
+
+| Stack | `- Architecture:` | `- UI:` |
+|---|---|---|
+| MVC | `MVC` | from the answer |
+| MVVM + Coordinator (UIKit) | `MVVM` | `UIKit` |
+| MVVM + Router (SwiftUI) | `MVVM` | `SwiftUI` |
+| Hybrid UIKit + SwiftUI | `MVVM` | `UIKit` |
+| Clean Architecture, with or without SPM modules or several platforms | `Clean Architecture` | from the answer |
+| VIPER | `VIPER` | from the answer |
+| MVI | `MVI` | from the answer |
+| TCA | `TCA` | `SwiftUI` |
 
 Cross-cutting (always, regardless of pattern):
 
@@ -120,8 +133,8 @@ Cross-cutting (always, regardless of pattern):
 2. **Try Fast Path.** If a Fast Path scenario clearly applies — skip the questionnaire and recommend.
 3. **Otherwise collect the Five Axes** from the user using the active agent's available question mechanism. If no structured question tool exists, ask concise plain-text questions. Don't infer from project name or vibes.
 4. **Pick the matching row** from the Decision Matrix. If two rows fit — apply the When-in-Doubt defaults.
-5. **Write the choice into the active project guidance file's `## Stack`** in the existing bullet format (`- Architecture: <stack>`, `- UI: <framework>`, etc. — don't invent your own fields). Record a short context line above the section as a comment: `<!-- Chosen YYYY-MM-DD: <axes summary> -> <stack> -->`.
-6. **If user disagrees with the recommendation** — record their choice as-is, then add `Objection: <reason from matrix or Fast Path>` either directly under `## Stack`, or in `Done.md → ## Objections` of the active task. Per the project guidance "Persona" — risks must be visible.
+5. **Write the choice into the active project guidance file's `## Stack`** from the table in Stack Cookbook: the `- Architecture:` line always, the `- UI:` line only when the block has none. Touch no other line and write nothing else into the block — no comment, no note: `swift-setup` reads every line there as an axis.
+6. **If user disagrees with the recommendation** — write their choice if it is a catalog value (otherwise ask again with the catalog's options), and state the objection, with its reason from the matrix or Fast Path, in your reply: the risk stays visible without a line the config cannot parse.
 7. **Hand control** to `swift-init` (new project) or `swift-architect` (existing project) with the skill list from Stack Cookbook.
 
-The output of this skill is one paragraph in the active project guidance file and a list of skills to follow next — nothing more. Don't generate code here.
+The output of this skill is the `## Stack` lines above and a reply carrying the recommendation, any objection and the list of skills to follow next — nothing more. Don't generate code here.
