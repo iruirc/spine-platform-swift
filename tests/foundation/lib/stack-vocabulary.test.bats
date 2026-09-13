@@ -128,8 +128,11 @@ ticks() { tr -d '`'; }
     for pair in "1 async" "2 ui" "3 baseline"; do
       c="$(cell "${pair%% *}" <<<"$row")"; axis="${pair#* }"
       [ "$c" = "any" ] && continue
-      grep -oE '`[^`]+`' <<<"$c" | ticks | while IFS= read -r v; do in_axis "$axis" "$v" || exit 1; done \
-        || { echo "arch-mvvm: a $axis value the catalog does not list in: $row"; return 1; }
+      vals="$(grep -oE '`[^`]+`' <<<"$c" | ticks)"
+      [ -n "$vals" ] || { echo "arch-mvvm: the $axis cell names no catalog value: $row"; return 1; }
+      while IFS= read -r v; do
+        in_axis "$axis" "$v" || { echo "arch-mvvm: $axis=$v, which ## Axes does not list: $row"; return 1; }
+      done <<<"$vals"
     done
   done <<<"$rows"
 }
