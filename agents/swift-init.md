@@ -42,7 +42,7 @@ For apps:
 - UI framework: UIKit / SwiftUI / AppKit
 - Async approach: async/await / Combine / RxSwift
 - DI: four options. **Present them to the user in this exact display order — do NOT reorder by recommendation, default, or platform:** (1) **Swinject** (runtime container, autoregister, name-binding — see `di-swinject`); (2) **Factory** by hmlongco (compile-time DI, `@Injected` property wrapper, preview/test contexts — see `di-factory`); (3) **manual + Factory pattern** (hand-written `CoordinatorFactory`/`ModuleFactory` without a DI library, see `di-module-assembly` + the "Manual DI" section of `di-composition-root`); (4) **plain manual** (no structure — for 1–3 screen prototypes). **Do not confuse the Factory pattern (an architectural pattern) with the Factory library (hmlongco/Factory)** — they are distinct: the Factory pattern exists everywhere, while the Factory library is a separate choice. **For options 1–3 the generated scaffold MUST follow the Module Assembly chain (see "Module Assembly Chain" section below) — only `AppDependencyContainer` knows about the DI library, every other layer talks to it through `AppDependencies` / `*FeatureDependencies` protocols. Option 4 opts out of the chain on purpose.** If the user is unsure, run `architecture-choice` (its Stack Cookbook contains a DI tiebreaker) — but the order in the UI stays Swinject → Factory → manual+Factory → plain. Project-type hints (informational only, NOT a reason to swap positions): SwiftUI-first projects often pick Factory; UIKit projects needing autoregister often pick Swinject; under 10 services often pick manual
-- Architecture: MVVM+Coordinator / VIPER / Clean Architecture / MVC. **If the user is unsure or asks for advice**, run the `architecture-choice` skill (5-axis compass) and answer with a Decision Matrix row; do not guess from the project name
+- Architecture: the options are the values `## Axes` lists for `architecture` in `spine-platform-swift:manifest` — never restated here. Navigation is not part of this answer: it follows the UI framework. **If the user is unsure or asks for advice**, run the `architecture-choice` skill (5-axis compass) and answer with a Decision Matrix row; do not guess from the project name
 - Platforms + minimum versions (iOS 16+, macOS 13+, etc.)
 
 For SPM packages:
@@ -59,7 +59,7 @@ swift-init [--no-prompt]
            [--platform=ios|macos]
            [--ui-framework=swiftui|uikit|appkit]
            [--di=factory|swinject|manual-factory|plain]
-           [--architecture=mvvm-coordinator|mvvm|viper|clean|mvc|tca]
+           [--architecture=mvvm|mvi|tca|viper|clean|mvc|mvvm-coordinator]
            [--async=async-await|combine|rxswift]
            [--min-ios=<semver>]
            [--min-macos=<semver>]
@@ -79,6 +79,7 @@ swift-init [--no-prompt]
 - **Flags present without `--no-prompt`** → flags act as Q&A defaults but Q&A still runs for missing decisions (legacy compat).
 - **`--lang`, `--mode`, `--progress`, `--tasks`, `--docs-map`** → never asked by this agent: each goes unread into the same-named field of `spine-toolkit:setup`'s `## Input` (`--docs-map` into `docs_map`). Absent in an interactive run → the field is left out and setup asks, as it would anyway. Absent under `--no-prompt` → `en`, `manual`, `normal`, `skip`, `skip`, by the same rule that gives `--no-prompt` its stack defaults. `workspace-init` passes `--tasks=skip`: a workspace keeps one shared `Tasks/` beside its repos.
 - **`--main-target-name=<name>`** → overrides the auto-derived project / main-target / `.xcodeproj` name. When present: `project.yml` `name:` field, the single app target name, the scheme name, and the resulting `<name>.xcodeproj` all use `<name>` verbatim. When absent: fall back to the basename of `<output-dir>` (or the basename of `cwd` if no output-dir is supplied) for both target name and `.xcodeproj`. `workspace-init` passes this flag set to `apps.<platform>.repo` so multiple platform-specific app repos within one workspace do not collide on the same `.xcodeproj` filename when opened side-by-side in Xcode.
+- **`--architecture=mvvm-coordinator`** → a retired synonym of `mvvm`, still accepted because existing `workspace.yml` files carry it. It scaffolds exactly what `mvvm` does: navigation follows `--ui-framework`.
 - **Output dir** defaults to `cwd` per existing behavior.
 
 ### Per-platform defaults (when `--no-prompt` set + decision-flag missing)
@@ -93,6 +94,35 @@ swift-init [--no-prompt]
 | `min_macos` | — | `14.0` |
 
 **Why per-platform `architecture`:** Coordinator pattern is iOS-centric (UINavigationController, UISplitViewController). On macOS, AppKit's NSWindowController-driven navigation and SwiftUI's NavigationStack/NavigationSplitView make Coordinator redundant. Default `mvvm` (without coordinator) is a more universal fit on macOS.
+
+### Flag values in `## Stack`
+
+An interactive answer is already spelled as the catalog spells it. A flag value is spelled from this table; a `—` cell has no catalog value, so omit that axis from `stack`.
+
+| Flag | Axis | `## Stack` value |
+|---|---|---|
+| `--ui-framework=swiftui` | `ui` | `SwiftUI` |
+| `--ui-framework=uikit` | `ui` | `UIKit` |
+| `--ui-framework=appkit` | `ui` | `AppKit` |
+| `--async=async-await` | `async` | `async/await` |
+| `--async=combine` | `async` | `Combine` |
+| `--async=rxswift` | `async` | `RxSwift` |
+| `--di=swinject` | `di` | `Swinject` |
+| `--di=factory` | `di` | `Factory` |
+| `--di=manual-factory` | `di` | `manual` |
+| `--di=plain` | `di` | — |
+| `--architecture=mvvm` | `architecture` | `MVVM` |
+| `--architecture=mvvm-coordinator` | `architecture` | `MVVM` |
+| `--architecture=mvi` | `architecture` | `MVI` |
+| `--architecture=tca` | `architecture` | `TCA` |
+| `--architecture=viper` | `architecture` | `VIPER` |
+| `--architecture=clean` | `architecture` | `Clean Architecture` |
+| `--architecture=mvc` | `architecture` | `MVC` |
+| `--platform=ios` with `--min-ios=17.0` or later | `baseline` | `iOS 17+` |
+| `--platform=ios` with `--min-ios=16.x` | `baseline` | `iOS 16+` |
+| `--platform=macos` with `--min-macos=14.0` or later | `baseline` | `macOS 14+` |
+| `--platform=macos` with `--min-macos=13.x` | `baseline` | `macOS 13+` |
+| `--min-ios` below 16, `--min-macos` below 13 | `baseline` | — |
 
 ### Example invocations
 
@@ -119,7 +149,7 @@ swift-init --no-prompt --platform=macos --ui-framework=swiftui --di=factory \
 
 ## Generated Artifacts
 
-Both Markdown config files belong to spine-toolkit, not to this agent: after the Swift artifact is on disk, invoke `spine-toolkit:setup` with the artifact's root — `<output-dir>`, or the cwd when none was given — as the working directory, and fill its `## Input` with the answers already collected — `platform` = `spine-platform-swift`, `stack`, and whatever `--lang`, `--mode`, `--progress`, `--tasks` and `--docs-map` supplied (see **Non-Interactive Flags**) — so it renders them from its own templates without re-asking. It owns where those templates live and what each section must contain; composing the files here would drift from them the day the toolkit adds a section. Spell the `stack` values as the manifest's `## Axes` spells them, and omit an axis you cannot: `SwiftUI`, not the flag's `swiftui`; `MVVM+Coordinator`, not `mvvm-coordinator`; `iOS 17+`, which `--platform=ios --min-ios=17.0` has to be assembled into, and which `--min-ios=15.0` cannot produce at all because the catalog stops at `iOS 16+`. The dialog's fourth DI option (plain manual) has no `di` value either. An axis you omit or mis-spell is asked once by `swift-setup` — the designed fall-through, and cheaper than a `## Stack` line `spine-toolkit:stack-detect` will never match.
+Both Markdown config files belong to spine-toolkit, not to this agent: after the Swift artifact is on disk, invoke `spine-toolkit:setup` with the artifact's root — `<output-dir>`, or the cwd when none was given — as the working directory, and fill its `## Input` with the answers already collected — `platform` = `spine-platform-swift`, `stack`, and whatever `--lang`, `--mode`, `--progress`, `--tasks` and `--docs-map` supplied (see **Non-Interactive Flags**) — so it renders them from its own templates without re-asking. It owns where those templates live and what each section must contain; composing the files here would drift from them the day the toolkit adds a section. Spell the `stack` values from **Flag values in `## Stack`** — the manifest's `## Axes` spelling — and omit an axis whose cell there is `—`. An axis you omit or mis-spell is asked once by `swift-setup` — the designed fall-through, and cheaper than a `## Stack` line `spine-toolkit:stack-detect` will never match.
 
 For every mode:
 - Folder structure matching the chosen mode and architecture
@@ -247,6 +277,7 @@ Consult the relevant skill when scaffolding. The skill body defines the folder s
 - `arch-viper` — VIPER module structure (View / Interactor / Presenter / Entity / Router files)
 - `arch-clean` — Domain/Data/Presentation folder split, Use Cases, Repository protocols
 - `arch-mvc` — classic MVC folder layout
+- `arch-mvi` — MVI module layout (State / Intent / Store, or a single-State ViewModel) when `--architecture=mvi` or the user picks MVI
 - `arch-tca` — The Composable Architecture (Point-Free): folder layout (`*Feature.swift` + `*View.swift`), `swift-composable-architecture` SPM dependency, root `Store` wired in `@main App`, `@Reducer` + `@ObservableState` scaffolding. Use only when CLAUDE-spine-toolkit.md `## Stack` already records TCA — do not propose it on a new project unless the user explicitly asks; default to MVVM
 - `di-swinject` — Swinject specifics: scopes, registrations, autoregister, test containers. **If DI=Swinject and the project has `@MainActor` ViewModels/ViewControllers (UIKit/AppKit apps under Swift 6), do NOT generate `container.register(ViewModel.self)`/`container.register(ViewController.self)` factories — Swinject's closure is nonisolated and the build will fail. Generate a `nonisolated struct *Factory { let dependencies: *FeatureDependencies; @MainActor func makeViewController() -> … }` per module — the `*Factory` accepts the feature dependency protocol, NOT a `Resolver` — and `ModuleFactoryImp` builds it via `*Factory(dependencies: appDependencyContainer)`. Coordinator/AppDelegate calls `make…()` on main. See the "`@MainActor` UI types + Swinject" section in `di-swinject`.**
 - `di-factory` — Factory (hmlongco) specifics: `Container`/`SharedContainer`, property-wrapper injection (`@Injected`/`@LazyInjected`), scopes (`.cached`/`.singleton`/`.shared`/`.graph`/`.unique`), `AutoRegistering`, contexts (`onTest`/`onPreview`). **For scaffolded apps `@Injected` is NOT used on ViewModels — the Module Assembly chain provides constructor injection through `*Assembly.assemble(dependencies:)`. `@Injected` would bypass the chain and hide dependencies from the Assembly signature; see "Module Assembly Chain" below.**
