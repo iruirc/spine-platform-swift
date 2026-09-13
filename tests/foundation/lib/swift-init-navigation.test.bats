@@ -14,7 +14,7 @@ section() { awk -v h="$1" '$0 == h {f = 1; next} f && /^#+ / {exit} f' "$INIT"; 
   s="$(section '### Navigation layer by UI framework')"
   grep -qF '| `uikit` | `Coordinators/AppCoordinator.swift`' <<<"$s" || { echo "no uikit row"; return 1; }
   grep -qF '| `swiftui` | `Navigation/AppRouter.swift`' <<<"$s" || { echo "no swiftui row"; return 1; }
-  grep -qF '| `appkit` |' <<<"$s" || { echo "no appkit row"; return 1; }
+  grep -qF '| `appkit` | `Coordinators/AppCoordinator.swift`, started from `AppDelegate`' <<<"$s" || { echo "no appkit row"; return 1; }
 }
 
 @test "both platforms default to mvvm, and no example passes the retired flag" {

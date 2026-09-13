@@ -52,6 +52,8 @@ ticks() { tr -d '`'; }
   for l in en ru; do
     grep -qx '## report_axis_value_renamed' "$ROOT/skills/swift-setup/locales/$l.md" \
       || { echo "missing in $l.md"; return 1; }
+    grep -A1 -x '## report_axis_value_renamed' "$ROOT/skills/swift-setup/locales/$l.md" | grep -q '{old}.*{new}' \
+      || { echo "$l.md: the entry lacks {old} or {new}"; return 1; }
   done
 }
 
