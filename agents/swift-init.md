@@ -97,7 +97,7 @@ swift-init [--no-prompt]
 
 ### Flag values in `## Stack`
 
-An interactive answer is already spelled as the catalog spells it. A flag value is spelled from this table; a `—` cell has no catalog value, so omit that axis from `stack`.
+An interactive answer for UI framework, async approach and architecture is already spelled as the catalog spells it. Every other answer goes through this table by the flag it stands for: DI option (1) is `--di=swinject`, (2) `--di=factory`, (3) `--di=manual-factory`, (4) `--di=plain`; a minimum version is `--min-ios` / `--min-macos`; an iOS + macOS app writes `baseline` as `iOS+macOS`. A `—` cell has no catalog value, so omit that axis from `stack`.
 
 | Flag | Axis | `## Stack` value |
 |---|---|---|
@@ -214,7 +214,7 @@ Navigation follows `ui_framework`, never the architecture flag — the rule the 
 |---|---|
 | `uikit` | `Coordinators/AppCoordinator.swift`, plus `CoordinatorFactory` once two features exist; `SceneDelegate` starts the coordinator (`arch-coordinator`) |
 | `swiftui` | `Navigation/AppRouter.swift` — `@MainActor @Observable`, holding `NavigationPath` and presentation state ("Router Class Pattern" in `arch-swiftui-navigation`); the `@main` App owns it and the root `NavigationStack`, and `*ModuleFactory` builds each screen inside `navigationDestination`; no `Coordinators/` |
-| `appkit` | `Coordinators/AppCoordinator.swift`, as before |
+| `appkit` | `Coordinators/AppCoordinator.swift`, started from `AppDelegate`; no `SceneDelegate` |
 
 With `--architecture=tca` the scaffold follows `arch-tca` instead: `@Presents` and `StackState` replace both.
 
@@ -286,7 +286,7 @@ Why XcodeGen and not Tuist: for single-artifact initialization Tuist's strong po
 
 Consult the relevant skill when scaffolding. The skill body defines the folder structure, protocol shape, and conventions that must be reflected in the generated scaffold:
 
-- `architecture-choice` — meta-skill: pick the stack before scaffolding when the user is undecided or hesitates; runs the 5-axis questionnaire and writes the choice + justification into CLAUDE-spine-toolkit.md `## Stack`. Use **before** any of the per-pattern skills below
+- `architecture-choice` — meta-skill: pick the stack before scaffolding when the user is undecided or hesitates; runs the 5-axis questionnaire, writes the catalog value into `## Stack` and gives the justification in its reply. Use **before** any of the per-pattern skills below
 - `arch-mvvm` — MVVM module folder layout (View / ViewModel / bindings), binding setup
 - `arch-coordinator` — Coordinator module and Router abstraction, navigation wiring (UIKit)
 - `arch-swiftui-navigation` — SwiftUI navigation: NavigationStack/Path, `@Observable` Router, deep links, hybrid SwiftUI ↔ UIKit interop
@@ -302,7 +302,7 @@ Consult the relevant skill when scaffolding. The skill body defines the folder s
 - `pkg-spm-design` — 4 SPM package archetypes (Feature / Library / API-Contract / Engine-SDK) with public-surface rules
 - `reactive-rxswift` — RxSwift initial imports, DisposeBag setup, Resources subclass if present
 - `reactive-combine` — Combine imports, AnyCancellable storage patterns
-- `concurrency-architecture` — day-1 isolation-map decision for the chosen architecture: which roles are `@MainActor` (View/ViewModel/Presenter/Coordinator), which are `nonisolated` (UseCase/Repository/APIClient), whether custom actors are needed (token refresher / image cache / etc), the Task-ownership pattern (SwiftUI `.task` / UIKit stored-and-cancel / TCA `Effect.cancellable`). The decision is recorded in CLAUDE-spine-toolkit.md `## Stack` next to the architecture. Defer language-level questions (Sendable rules, Swift 6 migration) to `swift-concurrency:swift-concurrency` (AvdLee skill — install separately if not present)
+- `concurrency-architecture` — day-1 isolation-map decision for the chosen architecture: which roles are `@MainActor` (View/ViewModel/Presenter/Coordinator), which are `nonisolated` (UseCase/Repository/APIClient), whether custom actors are needed (token refresher / image cache / etc), the Task-ownership pattern (SwiftUI `.task` / UIKit stored-and-cancel / TCA `Effect.cancellable`). Defer language-level questions (Sendable rules, Swift 6 migration) to `swift-concurrency:swift-concurrency` (AvdLee skill — install separately if not present)
 - `error-architecture` — structure of per-layer Error enums, baseline `UserMessage`/`ErrorMapper`, logging/PII policies in the template
 - `net-architecture` — HTTP client choice (URLSession default / Alamofire / Moya / Get), starter `HTTPClient` protocol, baseline middleware chain
 - `net-openapi` — if the API has an OpenAPI spec, scaffold for `swift-openapi-generator` + adapter wrapper for domain types
