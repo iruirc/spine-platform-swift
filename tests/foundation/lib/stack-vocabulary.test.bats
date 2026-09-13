@@ -36,3 +36,21 @@ ticks() { tr -d '`'; }
     in_axis "$axis" "$value" || { echo "pins $axis=$value, which ## Axes does not list"; return 1; }
   done <<<"$rows"
 }
+
+@test "swift-setup rewrites a retired value into one the catalog lists" {
+  rows="$(table_rows '| Axis | Old value | Current value | Why |' "$SETUP")"
+  [ -n "$rows" ] || { echo "no value table in swift-setup"; return 1; }
+  while IFS= read -r row; do
+    axis="$(cell 1 <<<"$row" | ticks)"; old="$(cell 2 <<<"$row" | ticks)"; new="$(cell 3 <<<"$row" | ticks)"
+    ! in_axis "$axis" "$old" || { echo "$old is still a $axis value"; return 1; }
+    in_axis "$axis" "$new" || { echo "$new is no $axis value"; return 1; }
+  done <<<"$rows"
+}
+
+@test "a value rewrite is reported, in both locales" {
+  grep -qF '`report_axis_value_renamed`' "$SETUP" || { echo "swift-setup never names the key"; return 1; }
+  for l in en ru; do
+    grep -qx '## report_axis_value_renamed' "$ROOT/skills/swift-setup/locales/$l.md" \
+      || { echo "missing in $l.md"; return 1; }
+  done
+}
