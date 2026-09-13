@@ -59,15 +59,13 @@ Presentation → Domain ← Data
 
 ## Choosing an Async Approach
 
-Clean Architecture is independent of the async mechanism. The return types in Repository/UseCase/DataSource protocols depend on the project's chosen approach.
+Clean Architecture is independent of the async mechanism: the return types in Repository/UseCase/DataSource protocols follow the project's `async` axis. Read it from the stack the task arrived with, else from `## Stack` of the active project guidance file. Ask only when neither names it — then analyze the project (existing imports, dependencies, minimum iOS) and recommend with reasoning.
 
-**IMPORTANT**: If the user did NOT explicitly specify which async approach to use, you MUST ask before writing any code. Analyze the project (existing imports, dependencies, min iOS target) and propose a recommendation with reasoning.
-
-| Approach | Return Types | When |
-|----------|-------------|------|
-| **async/await** | `async throws -> [Item]` | iOS 15+, no reactive deps |
-| **RxSwift** | `Single<[Item]>`, `Completable` | Existing RxSwift codebase |
-| **Combine** | `AnyPublisher<[Item], Error>` | Existing Combine codebase |
+| `async` | Return Types |
+|---|---|
+| `async/await` | `async throws -> [Item]` |
+| `Combine` | `AnyPublisher<[Item], Error>` |
+| `RxSwift` | `Single<[Item]>`, `Completable` |
 
 All examples below show three variants. Use the one matching the project's approach.
 

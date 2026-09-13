@@ -51,61 +51,18 @@ Feature/
 
 Pick ONE approach per project. Do not mix binding styles.
 
-**IMPORTANT**: If the user did NOT explicitly specify which binding approach to use, you MUST ask before writing any code. Do not choose silently.
+Read the axes from the stack the task arrived with, else from `## Stack` of the active project guidance file, and take the first row that matches. Ask only when an axis the table needs is named in neither — then analyze the project (imports, `Package.swift`, minimum iOS, SwiftUI vs UIKit) and recommend with reasoning.
 
-Use the decision guide below to suggest an approach. Always explain WHY you suggest it based on the project context.
+### Approach from the stack
 
-### How to Ask
+| `async` | `ui` | `baseline` | Approach |
+|---|---|---|---|
+| `RxSwift` | any | any | 5 — RxSwift |
+| `Combine` | any | any | 2 — Combine + @Published |
+| `async/await` | `SwiftUI` | `iOS 17+` or `macOS 14+` | 4 — @Observable |
+| `async/await` | any | any | 3 — async/await + @MainActor |
 
-Analyze the project (check existing imports, Podfile/Package.swift, min iOS target, SwiftUI vs UIKit usage) and propose a recommendation:
-
-> I see the project targets iOS 15+, uses UIKit, and has no reactive dependencies.
-> I'd recommend **async/await + @Published** because:
-> - No extra dependencies needed
-> - Clean linear async code fits the project style
-> - iOS 15+ requirement is already met
->
-> Other options: **Closures** (simpler but less scalable), **Combine** (if you need stream operators like debounce/combineLatest).
->
-> Which approach would you like?
-
-If the project already uses RxSwift or Combine, mention that as the primary factor.
-
-### Decision Guide
-
-Use this to form your recommendation:
-
-```
-Is the project SwiftUI-first and targets iOS 17+?
-  → Suggest @Observable (native, minimal boilerplate, fine-grained updates)
-
-Is the project UIKit-first and targets iOS 17+?
-  → Do NOT suggest @Observable. UIKit has no built-in @Observable bridge —
-    `withObservationTracking` is one-shot and must be re-registered manually
-    on every change (see "UIKit Integration with @Observable" below for why
-    this is awkward).
-  → Suggest Combine + @Published (if iOS 13+ baseline is fine and stream
-    operators are useful) OR async/await + @Published (if flows are linear
-    and you want the simplest modern code). Both work cleanly with UIKit.
-  → Only choose @Observable on UIKit if the same ViewModel must also be
-    consumed by a SwiftUI screen — and accept the manual tracking cost.
-
-Does the project already use RxSwift?
-  → Suggest RxSwift (consistency with existing code; see reactive-rxswift skill)
-
-Does the project already use Combine?
-  → Suggest Combine (consistency with existing code; see reactive-combine skill)
-
-Does the project need complex stream composition
-(merge, combineLatest, debounce, throttle)?
-  → Suggest Combine (powerful operators, no third-party dependency)
-
-Is the project targeting iOS 15+?
-  → Suggest async/await + @Published (modern, no dependencies, readable)
-
-Otherwise:
-  → Suggest Closures (zero dependencies, works on any iOS version)
-```
+Approach 1 (Closures) only when the task or the user names it. A UIKit screen never reaches row 4: `withObservationTracking` is one-shot and must be re-registered on every change (see "UIKit Integration with @Observable").
 
 ### Comparison Table
 
@@ -113,7 +70,7 @@ Otherwise:
 |----------|---------|-------------|----------|
 | **Closures** | Any | None | Simple apps, small teams, beginners |
 | **Combine** | 13+ | None (Apple) | UIKit apps, stream composition needed |
-| **async/await + @Published** | 15+ | None | Modern UIKit apps, linear async flows |
+| **async/await + @MainActor** | 15+ | None | Modern UIKit apps, linear async flows |
 | **@Observable** | 17+ | None | SwiftUI-first apps (avoid for UIKit-only — see Approach 4) |
 | **RxSwift** | 11+ | RxSwift | Complex reactive chains, existing Rx codebases |
 

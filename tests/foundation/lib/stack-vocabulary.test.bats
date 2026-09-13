@@ -106,3 +106,35 @@ ticks() { tr -d '`'; }
 @test "architecture-choice asks @Observable of iOS 17, not 16" {
   grep -qF 'SwiftUI iOS 17+ | **MVVM + Router**' "$CHOICE"
 }
+
+@test "arch-clean and arch-mvvm read the stack before they ask" {
+  for s in arch-clean arch-mvvm; do
+    f="$ROOT/skills/$s/SKILL.md"
+    grep -qF 'from the stack the task arrived with, else from `## Stack` of the active project guidance file' "$f" \
+      || { echo "$s does not read the stack"; return 1; }
+    ! grep -qF 'you MUST ask' "$f" || { echo "$s still asks first"; return 1; }
+  done
+}
+
+@test "the approach tables key on catalog values" {
+  rows="$(table_rows '| `async` | Return Types |' "$ROOT/skills/arch-clean/SKILL.md")"
+  [ "$(grep -c . <<<"$rows")" -eq 3 ] || { echo "arch-clean: $(grep -c . <<<"$rows") rows, want 3"; return 1; }
+  while IFS= read -r row; do
+    in_axis async "$(cell 1 <<<"$row" | ticks)" || { echo "arch-clean: $row"; return 1; }
+  done <<<"$rows"
+  rows="$(table_rows '| `async` | `ui` | `baseline` | Approach |' "$ROOT/skills/arch-mvvm/SKILL.md")"
+  [ "$(grep -c . <<<"$rows")" -eq 4 ] || { echo "arch-mvvm: $(grep -c . <<<"$rows") rows, want 4"; return 1; }
+  while IFS= read -r row; do
+    for pair in "1 async" "2 ui" "3 baseline"; do
+      c="$(cell "${pair%% *}" <<<"$row")"; axis="${pair#* }"
+      [ "$c" = "any" ] && continue
+      grep -oE '`[^`]+`' <<<"$c" | ticks | while IFS= read -r v; do in_axis "$axis" "$v" || exit 1; done \
+        || { echo "arch-mvvm: a $axis value the catalog does not list in: $row"; return 1; }
+    done
+  done <<<"$rows"
+}
+
+@test "approach 3 goes by one name" {
+  grep -qF '| `async` | `ui` | `baseline` | Approach |' "$ROOT/skills/arch-mvvm/SKILL.md" || { echo "the scan did not reach arch-mvvm"; return 1; }
+  ! grep -qF 'async/await + @Published' "$ROOT/skills/arch-mvvm/SKILL.md"
+}
