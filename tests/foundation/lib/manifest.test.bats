@@ -74,3 +74,17 @@ setup() {
     [ -d "$ROOT/skills/$skill" ] || { echo "topic names a skill with no directory: $skill"; return 1; }
   done
 }
+
+@test "the architecture axis names architectures only" {
+  grep -qE '^architecture[[:space:]]*= MVVM, MVI, TCA, VIPER, Clean Architecture, MVC$' "$M"
+}
+
+@test "the tests axis knows Swift Testing" {
+  grep -qE '^tests[[:space:]]*= XCTest, Swift Testing, Quick\+Nimble$' "$M"
+}
+
+@test "the manifest says navigation follows ui" {
+  axes="$(sed -n '/^## Axes$/,/^## Heuristics$/p' "$M")"
+  grep -qF '| `UIKit` | `arch-coordinator`' <<<"$axes" || { echo "no UIKit row"; return 1; }
+  grep -qF '| `SwiftUI` | `arch-swiftui-navigation`' <<<"$axes" || { echo "no SwiftUI row"; return 1; }
+}
