@@ -68,3 +68,15 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
 @test "swift-init names the directory setup runs in" {
   grep -qF 'as the working directory, and fill its `## Input`' "$INIT"
 }
+
+@test "s06b counts swift-init done by its project and config, not by a marker" {
+  step_row 's06b_project_<app>' \
+    | grep -qF "\`[[ -f <repo>/project.yml ]] && grep -q '^## Platform\$' <repo>/CLAUDE-spine-toolkit.md\`"
+}
+
+@test "no file names the marker swift-init never wrote" {
+  all="$(grep -rlF --exclude-dir=.git --exclude-dir=.superpowers '.swift-init.done' "$ROOT" || true)"
+  grep -qF 'setup-handoff.test.bats' <<<"$all" || { echo "the scan did not reach this file"; return 1; }
+  hits="$(grep -vF 'setup-handoff.test.bats' <<<"$all" || true)"
+  [ -z "$hits" ] || { echo "$hits"; return 1; }
+}
