@@ -72,8 +72,6 @@ manual
 (optional: project-specific overrides for AI leverage classes used by feature-estimation)
 EOF
 
-touch "$repo_dir/.swift-init.done"
-
 # s06c: inject deps + run xcodegen
 wsproj::inject_deps "$repo_dir" "$repo_name"
 ( cd "$repo_dir" && xcodegen generate >&2 ) || {
