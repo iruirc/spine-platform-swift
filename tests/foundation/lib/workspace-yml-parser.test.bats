@@ -212,6 +212,53 @@ teardown() {
   [[ "$output" == *"stack.di 'nonexistent'"* ]]
 }
 
+@test "validate accepts stack.architecture mvi" {
+  local tmp="$(ws_mktemp_dir)/mvi.yml"
+  cat > "$tmp" <<'EOF'
+workspace:
+  name: MviWS
+remotes: [origin]
+project:
+  name: MviApp
+  apps:
+    ios:
+      repo: MviApp-iOS
+      stack:
+        architecture: mvi
+packages:
+  - name: A
+    archetype: api-contract
+    git: { origin: git@github.com:user/A.git }
+    version: 0.1.0
+EOF
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$tmp' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validate rejects a stack.architecture no flag spells" {
+  local tmp="$(ws_mktemp_dir)/router.yml"
+  cat > "$tmp" <<'EOF'
+workspace:
+  name: RouterWS
+remotes: [origin]
+project:
+  name: RouterApp
+  apps:
+    ios:
+      repo: RouterApp-iOS
+      stack:
+        architecture: mvvm-router
+packages:
+  - name: A
+    archetype: api-contract
+    git: { origin: git@github.com:user/A.git }
+    version: 0.1.0
+EOF
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$tmp' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"stack.architecture 'mvvm-router'"* ]]
+}
+
 @test "validate rejects bad stack.min_platforms.ios (non-semver)" {
   local tmp="$(ws_mktemp_dir)/bad-min.yml"
   cat > "$tmp" <<'EOF'
