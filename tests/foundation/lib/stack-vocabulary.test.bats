@@ -81,6 +81,7 @@ ticks() { tr -d '`'; }
 }
 
 @test "swift-init writes no retired architecture value" {
+  grep -qF '| Flag | Axis | `## Stack` value |' "$INIT" || { echo "the scan did not reach swift-init"; return 1; }
   ! grep -qF 'MVVM+Coordinator' "$INIT"
 }
 
@@ -96,6 +97,7 @@ ticks() { tr -d '`'; }
 }
 
 @test "architecture-choice writes no comment, objection or core artifact into the config" {
+  grep -qF '| Stack | `- Architecture:` | `- UI:` |' "$CHOICE" || { echo "the scan did not reach architecture-choice"; return 1; }
   for gone in '<!-- Chosen' '`Objection:' 'Done.md'; do
     ! grep -qF -- "$gone" "$CHOICE" || { echo "still there: $gone"; return 1; }
   done
