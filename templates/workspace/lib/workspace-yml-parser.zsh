@@ -400,10 +400,10 @@ wsyml::validate() {
         print -u2 "$_path: project.apps.$ak.stack.di '$v' must be factory|swinject|manual-factory|plain"
         ((errs++))
       fi
-      # P-rule 6: architecture
+      # P-rule 6: architecture; mvvm-coordinator is kept as a retired synonym of mvvm
       v="$(wsyml::get ".project.apps.$ak.stack.architecture" 2>/dev/null || true)"
-      if [[ -n "$v" && ! "$v" =~ ^(mvvm-coordinator|mvvm|viper|clean|mvc|tca)$ ]]; then
-        print -u2 "$_path: project.apps.$ak.stack.architecture '$v' must be mvvm-coordinator|mvvm|viper|clean|mvc|tca"
+      if [[ -n "$v" && ! "$v" =~ ^(mvvm|mvi|tca|viper|clean|mvc|mvvm-coordinator)$ ]]; then
+        print -u2 "$_path: project.apps.$ak.stack.architecture '$v' must be mvvm|mvi|tca|viper|clean|mvc (mvvm-coordinator reads as mvvm)"
         ((errs++))
       fi
       # P-rule 7: async
