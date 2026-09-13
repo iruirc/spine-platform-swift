@@ -41,9 +41,17 @@ ecosystem    = apple
 ui           = SwiftUI, UIKit, AppKit
 async        = async/await, Combine, RxSwift
 di           = Swinject, Factory, manual
-architecture = MVVM+Coordinator, VIPER, Clean Architecture, MVC
+architecture = MVVM, MVI, TCA, VIPER, Clean Architecture, MVC
 baseline     = iOS 17+, iOS 16+, macOS 14+, macOS 13+, iOS+macOS
-tests        = XCTest, Quick+Nimble
+tests        = XCTest, Swift Testing, Quick+Nimble
+
+`architecture` names the architecture only; navigation follows `ui`, except under `TCA`, which carries its own (`@Presents`, `StackState`):
+
+| `ui` | Navigation |
+|---|---|
+| `UIKit` | `arch-coordinator`; SwiftUI screens inside it follow the "Hybrid" section of `arch-swiftui-navigation` |
+| `SwiftUI` | `arch-swiftui-navigation`, with a router |
+| `AppKit` | no navigation skill yet |
 
 ## Heuristics
 
@@ -57,8 +65,11 @@ import: more than one of SwiftUI/UIKit/AppKit                              → u
 import: `Combine`                                                          → async=Combine
 import: `RxSwift`                                                          → async=RxSwift
 token:  `await `                                                           → async=async/await
-import: `XCTest`                                                           → tests=XCTest
+import: `XCTest` only (no `Testing`, `Quick`)                              → tests=XCTest
+import: `Testing` only (no `XCTest`, `Quick`)                              → tests=Swift Testing
+import: `XCTest` and `Testing` (no `Quick`)                                → tests unresolved (no detection)
 import: `Quick`, `Nimble`                                                  → tests=Quick+Nimble
+import: `ComposableArchitecture`                                           → architecture=TCA
 
 path: `Views/`, `Screens/`, `*View.swift`, `*Screen.swift`                        → ui, architecture
 path: `ViewModels/`, `*ViewModel.swift`, `*Presenter.swift`, `*Coordinator.swift` → architecture (+ ui if SwiftUI binding present)
