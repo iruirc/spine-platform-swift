@@ -74,7 +74,7 @@ keeps a state added later from silently skipping reconciliation.
    ↓ it holds only the template's placeholder (states A, B, C) → no axis has a value yet;
      go to the overlay below with all six unresolved.
    ↓ it holds `- <Label>: <value>` lines (states D and E — a config migrated from an older
-     layout) → reconcile the labels against the manifest's current ## Axes before asking
+     layout) → reconcile the labels and values against the manifest's current ## Axes before asking
      anything (see Axis Reconciliation). A surviving line is that axis's value UNLESS its
      value is still an angle-bracketed option list: the legacy templates shipped ## Stack
      unfilled (`- UI: <SwiftUI | UIKit | AppKit>`), so a project that installed the toolkit
@@ -111,7 +111,8 @@ keeps a state added later from silently skipping reconciliation.
 
 6. Return {stack_lines, notes} to spine-toolkit:setup, which renders the one report. `notes`
    holds the step-2 reconciliation lines already rendered in <lang> — `report_axis_renamed`
-   per rewrite, `report_axis_unknown` per line matching no current axis — and is empty when
+   per label rewrite, `report_axis_value_renamed` per value rewrite, `report_axis_unknown` per
+   line matching no current axis — and is empty when
    there was nothing to reconcile. This return is the only path those lines have to the user.
 ```
 
@@ -138,6 +139,16 @@ in the table above is left in place and written back by step 4, not dropped: los
 wrote is worse than carrying an unread line. A line whose *value* is still an angle-bracketed option
 list is neither renamed nor kept — it is unanswered (step 2), so step 3 asks for it and step 4 writes
 the answer under the current label.
+
+A value this platform has since renamed is rewritten on the same terms — the axis and the line
+stay, the value changes, and the rewrite is reported:
+
+| Axis | Old value | Current value | Why |
+|---|---|---|---|
+| `architecture` | `MVVM+Coordinator` | `MVVM` | Navigation left the architecture axis: `ui` decides it now. |
+
+Render each value rewrite as `report_axis_value_renamed` and return it in `notes` beside the label
+rewrites. Neither table asks a question: the file already holds the user's answer.
 
 ## Stack Questions (q1–q6)
 

@@ -26,3 +26,6 @@ Renamed stack line `{old}` to `{new}` — the axis was renamed since this config
 
 ## report_axis_unknown
 Kept stack line `{old}` as it is — no axis by that name exists today. Nothing reads it; delete it, or rename it to a current axis.
+
+## report_axis_value_renamed
+Rewrote stack line `{old}` to `{new}` — the value was renamed since this config was written; the axis is unchanged.
