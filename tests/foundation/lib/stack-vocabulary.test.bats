@@ -54,3 +54,32 @@ ticks() { tr -d '`'; }
       || { echo "missing in $l.md"; return 1; }
   done
 }
+
+@test "every stack value swift-init spells a flag into is in the catalog" {
+  n=0
+  while IFS= read -r row; do
+    axis="$(cell 2 <<<"$row" | ticks)"; value="$(cell 3 <<<"$row" | ticks)"
+    [ "$value" = "—" ] && continue
+    in_axis "$axis" "$value" || { echo "$(cell 1 <<<"$row") → $axis=$value, which ## Axes does not list"; return 1; }
+    n=$((n + 1))
+  done < <(table_rows '| Flag | Axis | `## Stack` value |' "$INIT")
+  [ "$n" -ge 15 ] || { echo "checked $n rows; the table went missing"; return 1; }
+}
+
+@test "swift-init, its flag table and workspace.yml accept the same architecture flags" {
+  list="$(grep -oE '\[--architecture=[a-z|-]+\]' "$INIT" | tr -d '[]' | sed 's/^--architecture=//' | tr '|' '\n' | sort)"
+  table="$(table_rows '| Flag | Axis | `## Stack` value |' "$INIT" | grep -oE '`--architecture=[a-z-]+`' \
+    | tr -d '`' | sed 's/^--architecture=//' | sort)"
+  yml="$(grep -F -A2 'stack.architecture" 2>/dev/null' "$PARSER" | grep -oE '\^\([a-z|-]+\)\$' | tr -d '^()$' | tr '|' '\n' | sort)"
+  [ -n "$list" ] || { echo "no --architecture entry in the flag list"; return 1; }
+  [ "$list" = "$table" ] || { printf 'flag list:\n%s\ntable:\n%s\n' "$list" "$table"; return 1; }
+  [ "$list" = "$yml" ] || { printf 'flag list:\n%s\nworkspace.yml rule:\n%s\n' "$list" "$yml"; return 1; }
+}
+
+@test "swift-init takes the architecture options from the catalog" {
+  grep -qF 'the options are the values `## Axes` lists for `architecture`' "$INIT"
+}
+
+@test "swift-init writes no retired architecture value" {
+  ! grep -qF 'MVVM+Coordinator' "$INIT"
+}
