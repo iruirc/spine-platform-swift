@@ -1,32 +1,15 @@
----
-name: di-swinject
-description: "Use when working with Swinject dependency injection in iOS apps. Covers Swinject-specific patterns: object scopes, registrations (basic, autoregister, named, with arguments), Assembly pattern, testing configuration. For Composition Root design see di-composition-root skill; for connecting DI to Coordinators see di-module-assembly skill."
----
+# di-swinject — detailed guide
 
-# Swinject Dependency Injection Patterns
+## Contents
 
-This skill provides Swinject-specific guidelines: scopes, registration techniques, autoregistration, testing.
-
-> **Related skills:**
-> - `di-composition-root` — where the Swinject `Container` is created, its lifetime, sync/async bootstrap, scope strategies
-> - `di-module-assembly` — how Coordinators get services from Swinject via the Factory pattern without Service Locator
-> - `pkg-spm-design` — why Swinject **must not** be imported inside SPM packages
-> - `di-factory` — an alternative DI framework (Factory by hmlongco): compile-time safety, property-wrapper injection, SPM-friendly. Comparison table at the end of this skill
-
-## When to Use
-
-**Swinject is the right choice when**:
-- Need runtime dependency injection
-- Want constructor injection with automatic resolution
-- Building modular apps with swappable implementations
-- Need different configurations for production/testing
-- Complex dependency graphs
-
-**Consider alternatives**:
-- Simple apps → Manual DI (pass dependencies in init, see `di-composition-root` section "Manual AppDependencyContainer")
-- SwiftUI apps without runtime binding needs → **Factory** (see `di-factory`) — property-wrapper injection, preview/test contexts out of the box, compile-time safety
-- Compile-time safety priority → `di-factory` (a missing factory closure means the code won't compile) or manual DI
-- A whole TCA feature → `@Dependency` by Point-Free (see `arch-tca`), not Swinject
+- Core Concepts
+- Object Scopes
+- Registration Patterns
+- Assembly Pattern
+- @MainActor UI types + Swinject
+- Testing Configuration
+- Debugging Tips
+- Swinject vs Factory
 
 ## Core Concepts
 
@@ -154,6 +137,18 @@ container.autoregister(SharedState.self, initializer: SharedState.init)
 - Shared state within a feature but not globally
 - Request-scoped objects
 
+### Wrong Scope Selection
+
+```swift
+// ViewModel as singleton - shares state between screens!
+container.register(FeatureViewModel.self) { ... }
+    .inObjectScope(.container)
+
+// ViewModel as transient - fresh state each time
+container.register(FeatureViewModel.self) { ... }
+    .inObjectScope(.transient)  // or omit (default)
+```
+
 ## Registration Patterns
 
 ### Protocol-Based Registration
@@ -223,6 +218,39 @@ let viewModel = container.resolve(
 )!
 ```
 
+### Circular Dependencies
+
+```swift
+// A needs B, B needs A → crash
+container.register(A.self) { r in A(b: r.resolve(B.self)!) }
+container.register(B.self) { r in B(a: r.resolve(A.self)!) }
+
+// Break cycle with property injection
+container.register(A.self) { r in
+    let a = A()
+    a.b = r.resolve(B.self)!
+    return a
+}
+container.register(B.self) { r in B(a: r.resolve(A.self)!) }
+```
+
+### Resolving in Initializers
+
+```swift
+// Accessing container during init — hidden dependency
+class BadService {
+    let dependency = appContainer.resolve(Dep.self)!
+}
+
+// Inject through initializer — explicit, testable
+class GoodService {
+    let dependency: DepProtocol
+    init(dependency: DepProtocol) {
+        self.dependency = dependency
+    }
+}
+```
+
 ## Assembly Pattern
 
 Organize registrations by feature using Assemblies:
@@ -263,7 +291,7 @@ let assembler = Assembler([
 let container = assembler.resolver
 ```
 
-## `@MainActor` UI types + Swinject
+## @MainActor UI types + Swinject
 
 Swinject's `Container.register(_:factory:)` takes a **nonisolated** `(Resolver) -> Service` closure. Calling a `@MainActor`-isolated initializer (any `UIViewController`/`NSViewController` subclass on iOS 13+/macOS, or any `@MainActor` ViewModel) from inside that closure is a Swift 6 error:
 
@@ -388,16 +416,26 @@ final class AppCoordinator {
 
 This matches the Factory pattern in `di-module-assembly` (`ModuleFactory` + `ModuleComponents`) — that skill is the source of truth for the full chain. The Swinject-specific bit is: registered types stay `nonisolated`, `@MainActor` lives on the `make…` method, and `Resolver` never appears outside `AppDependencyContainer`.
 
-## Coordinator and Module Assembly
+### Container as Service Locator
 
-Coordinators should **not** receive the Swinject container directly — this creates a Service Locator anti-pattern. Instead, use the Factory pattern described in the `di-module-assembly` skill:
+```swift
+// Anti-pattern: passing container to Coordinator/ViewModel
+class FeatureCoordinator {
+    private let container: Resolver
+    func start() {
+        let vm = container.resolve(FeatureViewModel.self)!  // Hidden dependency
+    }
+}
 
-- `AppDependencyContainer` wraps Swinject and conforms to feature dependency protocols
-- `ModuleFactory` assembles View + ViewModel using dependency protocols
-- `CoordinatorFactory` creates Coordinators with their ModuleFactory
-- Coordinators never import Swinject
-
-See `di-module-assembly` skill for complete examples.
+// Correct: use Factory pattern (see di-module-assembly skill)
+class FeatureCoordinator {
+    init(router: Router,
+         coordinatorFactory: CoordinatorFactory,
+         factory: FeatureModuleFactory) {
+        let module = factory.makeFeatureModule()  // Explicit, testable
+    }
+}
+```
 
 ## Testing Configuration
 
@@ -464,86 +502,6 @@ func testWithCustomMock() {
 }
 ```
 
-## Common Mistakes
-
-### 1. Force Unwrapping Without Registration
-
-```swift
-// Crashes if not registered
-let service = container.resolve(ServiceProtocol.self)!
-
-// Defensive approach
-guard let service = container.resolve(ServiceProtocol.self) else {
-    fatalError("ServiceProtocol not registered")
-}
-```
-
-### 2. Wrong Scope Selection
-
-```swift
-// ViewModel as singleton - shares state between screens!
-container.register(FeatureViewModel.self) { ... }
-    .inObjectScope(.container)
-
-// ViewModel as transient - fresh state each time
-container.register(FeatureViewModel.self) { ... }
-    .inObjectScope(.transient)  // or omit (default)
-```
-
-### 3. Circular Dependencies
-
-```swift
-// A needs B, B needs A → crash
-container.register(A.self) { r in A(b: r.resolve(B.self)!) }
-container.register(B.self) { r in B(a: r.resolve(A.self)!) }
-
-// Break cycle with property injection
-container.register(A.self) { r in
-    let a = A()
-    a.b = r.resolve(B.self)!
-    return a
-}
-container.register(B.self) { r in B(a: r.resolve(A.self)!) }
-```
-
-### 4. Resolving in Initializers
-
-```swift
-// Accessing container during init — hidden dependency
-class BadService {
-    let dependency = appContainer.resolve(Dep.self)!
-}
-
-// Inject through initializer — explicit, testable
-class GoodService {
-    let dependency: DepProtocol
-    init(dependency: DepProtocol) {
-        self.dependency = dependency
-    }
-}
-```
-
-### 5. Container as Service Locator
-
-```swift
-// Anti-pattern: passing container to Coordinator/ViewModel
-class FeatureCoordinator {
-    private let container: Resolver
-    func start() {
-        let vm = container.resolve(FeatureViewModel.self)!  // Hidden dependency
-    }
-}
-
-// Correct: use Factory pattern (see di-module-assembly skill)
-class FeatureCoordinator {
-    init(router: Router,
-         coordinatorFactory: CoordinatorFactory,
-         factory: FeatureModuleFactory) {
-        let module = factory.makeFeatureModule()  // Explicit, testable
-    }
-}
-```
-
 ## Debugging Tips
 
 ### Check Registration
@@ -584,7 +542,19 @@ extension Container {
 }
 ```
 
-## Swinject vs Factory: when to pick which
+### Force Unwrapping Without Registration
+
+```swift
+// Crashes if not registered
+let service = container.resolve(ServiceProtocol.self)!
+
+// Defensive approach
+guard let service = container.resolve(ServiceProtocol.self) else {
+    fatalError("ServiceProtocol not registered")
+}
+```
+
+## Swinject vs Factory
 
 Swinject and Factory (see `di-factory`) solve the same problem in different ways. The choice:
 

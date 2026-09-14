@@ -8,14 +8,17 @@ description: "Use when assembling UI modules (MVVM/MVVM+Coordinator), creating C
 Connect DI to Coordinators through explicit factories. Coordinators never touch
 the DI container directly; they receive typed factories that create modules.
 
-Detailed examples live in `references/detailed-guide.md`. Load only the relevant
-section with `rg -n "^## " skills/di-module-assembly/references/detailed-guide.md`.
+> **Related skills:**
+> - `di-composition-root` — where the Composition Root lives and how it hands dependencies to the factories
+> - `di-swinject`, `di-factory` — the `AppDependencyContainer` for each DI library; the chain is the same for both
+> - `pkg-spm-design` — how Module Assembly applies inside an SPM package (Feature archetype)
+
+`references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 ## When To Load The Reference
 
 | Need | Reference sections |
 |---|---|
-| Understand the full chain | `Architecture Overview` |
 | Define feature dependency protocols | `Feature Dependency Protocols` |
 | Build View + ViewModel | `Assembly`, `ModuleComponents` |
 | Create feature module factories | `ModuleFactory` |
@@ -23,6 +26,7 @@ section with `rg -n "^## " skills/di-module-assembly/references/detailed-guide.m
 | See the Composition Root role | `Composition Root`, `AppDependencyContainer` |
 | Choose files/folders | `File Structure` |
 | Test coordinators or assemblies | `Testing` |
+| Split a growing ModuleFactory | `Scaling` |
 | Apply factories outside UI | `Beyond UI Modules` |
 
 ## Problem
