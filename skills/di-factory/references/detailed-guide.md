@@ -99,7 +99,7 @@ struct MyApp: App {
 }
 ```
 
-**Never reach for `Container.shared` from domain layers** — only via `@Injected` or an explicit constructor. Otherwise you get a Service Locator (see Common Mistakes).
+**Never reach for `Container.shared` from domain layers** — only via `@Injected` or an explicit constructor. Otherwise you get a Service Locator (see "`Container.shared` from the domain layer — Service Locator" below).
 
 ### `Container.shared` from the domain layer — Service Locator
 

@@ -9,6 +9,11 @@ Factory-specific guidance for `FactoryKit` 2.5+: `Container` /
 `SharedContainer`, computed-property registrations, property-wrapper injection,
 scopes, parameterized factories, contexts, modular organization, and tests.
 
+> **Related skills:**
+> - `di-swinject` — alternative DI framework. Comparison table in the guide's `Swinject vs Factory`
+> - `pkg-spm-design` — Factory, just like Swinject, **must not be imported into the main target of an SPM package**. Modular `extension Container` per feature lives in the **app target**, see the guide's `Modular Containers`
+> - `arch-tca` — TCA uses its own `@Dependency` system; don't mix it with Factory inside TCA features
+
 `references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 ## When To Load The Reference
