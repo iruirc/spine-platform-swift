@@ -65,14 +65,10 @@ Prefer alternatives when:
 Register protocols, not concrete types:
 
 ```swift
-container.register(UserServiceProtocol.self) { _ in
-    UserService()
-}.inObjectScope(.container)
-
-container.register(ProfileViewModel.self) { r in
-    ProfileViewModel(
-        userService: r.resolve(UserServiceProtocol.self)!,
-        analytics: r.resolve(AnalyticsServiceProtocol.self)!
+container.register(ProfileRepositoryProtocol.self) { r in
+    ProfileRepository(
+        apiClient: r.resolve(APIClientProtocol.self)!,
+        cache: r.resolve(CacheProtocol.self)!
     )
 }
 ```
@@ -86,29 +82,29 @@ container.register(APIClientProtocol.self, name: "staging") { _ in
 }
 ```
 
-Use argument registrations for runtime IDs:
+Use argument registrations for runtime values a service is built with:
 
 ```swift
-container.register(DetailViewModel.self) { (r, itemId: String) in
-    DetailViewModel(itemId: itemId, service: r.resolve(ItemServiceProtocol.self)!)
+container.register(UploadSessionProtocol.self) { (r, uploadId: String) in
+    UploadSession(uploadId: uploadId, client: r.resolve(APIClientProtocol.self)!)
 }
 ```
 
-When using the module-assembly chain, prefer passing runtime IDs as factory
-method parameters instead of Swinject `argument:` values. That keeps UI assembly
+A screen's runtime ID never goes through `argument:`: it is a parameter of the
+screen's `ModuleFactory` method and of its `*Assembly`, which keeps UI assembly
 and actor boundaries explicit.
 
 ## Scopes
 
 | Scope | Use |
 |---|---|
-| `.transient` | ViewModels, Coordinators, stateful per-screen objects |
+| `.transient` | Stateful services each consumer needs fresh, such as an upload session |
 | `.container` | Stateless app services, API clients, repositories, database managers |
 | `.weak` | Optional caches/resources that can be recreated |
 | `.graph` | Shared object within one top-level resolve only |
 
-ViewModels should normally be transient. App services and repositories are
-usually `.container`.
+App services and repositories are usually `.container`. ViewModels and
+Coordinators are not registered at all: see MainActor UI Wiring.
 
 ## Assemblies
 
@@ -136,19 +132,13 @@ Swinject registration closures are nonisolated. Directly registering
 Do not fix that with `MainActor.assumeIsolated`, and do not create factories that
 hold `Resolver`.
 
-Use the canonical module-assembly chain:
-
-```
-AppDependencyContainer (imports Swinject)
--> FeatureDependencies
--> ModuleFactory
--> FeatureFactory/Assembly
--> @MainActor makeViewController()
-```
-
-The feature factory receives a narrow dependency protocol and has a
-`@MainActor` make method that builds the ViewModel and View/Controller. It does
-not import Swinject.
+Swinject registers services only. The UI comes from the chain that
+`di-module-assembly` → "Canonical Chain" owns: `ModuleFactoryImp` calls the
+feature's `*Assembly`, whose `@MainActor` `assemble(dependencies:)` builds the
+ViewModel and View/Controller from a narrow `*FeatureDependencies` protocol and
+does not import Swinject. On UIKit and AppKit a Coordinator calls the
+`ModuleFactory`; on SwiftUI the root view does, as
+`di-module-assembly` → "Navigation End By UI Framework" shows.
 
 ## Coordinator And Module Assembly
 
@@ -175,13 +165,14 @@ Use `di-module-assembly` as the source of truth for the full chain.
 ## Common Mistakes
 
 - Force-unwrapping missing registrations without a clear setup failure message.
-- Registering ViewModels as `.container` and sharing state across screens.
+- Registering a stateful service as `.container` and sharing its state across consumers.
 - Creating circular dependencies through constructor resolution.
 - Resolving dependencies inside service initializers.
 - Passing `Container` / `Resolver` to Coordinators or ViewModels.
 - Importing Swinject inside feature packages.
 - Using `MainActor.assumeIsolated` to hide DI design issues.
-- Registering `@MainActor` UI types directly in nonisolated closures.
+- Registering ViewModels, Views, or controllers in Swinject instead of building
+  them in a `@MainActor` `*Assembly`.
 
 ## Swinject vs Factory
 
