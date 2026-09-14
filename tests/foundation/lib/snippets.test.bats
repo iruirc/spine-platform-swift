@@ -25,6 +25,7 @@ setup() {
   run "$TYPECHECK" "$FX/bad-import"
   [ "$status" -eq 2 ] || { echo "status $status: $output"; return 1; }
   grep -qF 'skills/demo/SKILL.md:5: import Swinject' <<<"$output" || { echo "$output"; return 1; }
+  grep -qF 'skills/demo/SKILL.md:10: import MapKit' <<<"$output" || { echo "$output"; return 1; }
 }
 
 @test "a marker not directly above a swift fence is an error, not a skip" {
