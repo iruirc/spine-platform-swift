@@ -144,7 +144,7 @@ Caveats:
 
 ## The Repository Boundary
 
-> **Note on a separate DataSource layer.** Some projects split Repository (Domain-facing) from DataSource (framework-facing) when one Repository combines multiple sources (network + local). For pure local persistence the two collapse into one — the rest of this guide assumes that case. If you need the split, the rules above apply to the DataSource: it owns the framework, Repository owns mapping into the same Domain types.
+> **Note on a separate DataSource layer.** Some projects split Repository (Domain-facing) from DataSource (framework-facing) when one Repository combines multiple sources (network + local). For pure local persistence the two collapse into one — the rest of this guide assumes that case. If you need the split, the rules in the skill's `Core Decision` apply to the DataSource: it owns the framework, Repository owns mapping into the same Domain types.
 
 Repository is the **only** type the rest of the app sees. Its method signatures use Domain types and `throws`/`Result`. Never returns framework objects.
 
