@@ -66,8 +66,9 @@ NavigationLayer.route(Route)        <- arch-coordinator / arch-swiftui-navigatio
   `Route?`, touches no UI, no singletons, no navigation. This is the only unit
   that needs heavy unit tests.
 - **`Route` is a typed enum**, exhaustive, owned by the navigation layer's
-  contract — not stringly-typed `[String: Any]`. Unknown URL → `nil` → defined
-  fallback (open app at root, not crash).
+  contract — not stringly-typed `[String: Any]`. Unknown URL → `nil` → no
+  navigation: a running app stays where it is, a cold start lands on the root by
+  itself, and nothing crashes.
 - **The router does not navigate.** It produces a `Route` and forwards it to the
   navigation abstraction. Crossing that line duplicates `arch-coordinator` /
   `arch-swiftui-navigation`.
@@ -149,7 +150,8 @@ crashes from cold start because navigation graph / auth isn't ready.
 - No cold-start buffer → link from a killed app silently lands on root.
 - Ignoring the auth/onboarding gate → deep link drops the user into a screen
   behind the login wall, or crashes.
-- Treating an unknown/old link as fatal instead of falling back to root.
+- Treating an unknown/old link as fatal, or navigating to the root on it,
+  instead of ignoring it.
 - `try!` / force-unwrapping IDs from an untrusted URL.
 - Performing an authenticated/destructive action straight from a link with no
   in-app confirmation.
