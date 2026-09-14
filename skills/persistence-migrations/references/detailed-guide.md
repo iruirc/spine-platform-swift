@@ -17,7 +17,7 @@
 
 **Lightweight** (free, automatic) supports:
 - Adding/removing optional attributes
-- Renaming via «Renaming Identifier» in the model editor
+- Renaming an attribute or an entity via «Renaming Identifier» in the model editor
 - Adding/removing relationships
 - Changing optional ↔ default value
 
@@ -36,7 +36,6 @@ description.shouldInferMappingModelAutomatically = true
 - Type change requiring conversion (`String` storing ISO date → `Date`).
 - Polymorphic split (one entity with `kind` enum → 4 entities, or vice versa).
 - Computed defaults from existing data (set `displayName` from `firstName + lastName`).
-- Renaming an entity (renaming an attribute is lightweight via «Renaming Identifier»).
 
 ### Step-by-step
 

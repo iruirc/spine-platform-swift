@@ -51,15 +51,15 @@ Migration rules for every framework:
 ## Core Data
 
 Lightweight migration handles additive/optional changes, relationship changes,
-and renames with a renaming identifier. Configure:
+and attribute or entity renames with a renaming identifier. Configure:
 
 ```swift
 description.shouldMigrateStoreAutomatically = true
 description.shouldInferMappingModelAutomatically = true
 ```
 
-Heavyweight migration is needed for splits, merges, type conversions, computed
-defaults, and entity renames. For heavyweight migrations:
+Heavyweight migration is needed for splits, merges, type conversions, and
+computed defaults. For heavyweight migrations:
 
 - Add a new `.xcdatamodeld` version.
 - Create a mapping model for the adjacent source/destination pair.
