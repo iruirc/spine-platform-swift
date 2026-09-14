@@ -8,9 +8,10 @@
 # Exit: 0 every unit compiles, 1 a unit does not, 2 the input or the toolchain is wrong.
 set -euo pipefail
 
-root="$(cd -- "${1:-$(dirname -- "${BASH_SOURCE[0]}")/..}" && pwd)"
-
 die() { echo "typecheck-snippets: $*" >&2; exit 2; }
+
+root_arg="${1:-$(dirname -- "${BASH_SOURCE[0]}")/..}"
+root="$(cd -- "$root_arg" && pwd)" || die "no such root: $root_arg"
 
 command -v xcrun >/dev/null 2>&1 || die "xcrun not found: the typecheck needs Xcode"
 version="$(xcrun swiftc --version 2>&1 | sed -n 's/.*Swift version \([0-9]*\)\.\([0-9]*\).*/\1 \2/p' | head -1)"
@@ -74,13 +75,15 @@ for f in "$root"/skills/*/SKILL.md "$root"/skills/*/references/detailed-guide.md
   printf '%s\n' "$out" | sed -n 's/^ERR|//p' >> "$tmp/errors"
   printf '%s\n' "$out" | sed -n 's/^UNIT|//p' >> "$tmp/units"
 done
+[ "$files" -gt 0 ] || die "no skills/*/SKILL.md under $root"
 if [ -s "$tmp/errors" ]; then
   { echo "typecheck-snippets: malformed input, nothing compiled:"; cat "$tmp/errors"; } >&2
   exit 2
 fi
 
-platform="$(xcrun --sdk iphonesimulator --show-sdk-platform-path)"
-toolchain="$(dirname "$(dirname "$(xcrun -f swiftc)")")"
+platform="$(xcrun --sdk iphonesimulator --show-sdk-platform-path)" || die "no iphonesimulator SDK: install Xcode or run xcode-select -s"
+swiftc_path="$(xcrun -f swiftc)" || die "no swiftc found: install Xcode or run xcode-select -s"
+toolchain="$(dirname "$(dirname "$swiftc_path")")"
 compile() {
   xcrun --sdk iphonesimulator swiftc -typecheck -parse-as-library -swift-version 6 \
     -target arm64-apple-ios17.0-simulator \
