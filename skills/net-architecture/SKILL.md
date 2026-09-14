@@ -9,6 +9,14 @@ Design the app networking layer: boundaries, typed endpoints, auth, retry,
 cancellation, pagination, caching, framework choice, and tests. This skill is
 about architecture, not a URLSession or Alamofire tutorial.
 
+> **Related skills:**
+> - `arch-clean`, `arch-mvvm`, `arch-viper` — which layers the network layer reports into
+> - `error-architecture` — error mapping at the network boundary, retry/idempotency rules, PII-safe logging, cancellation policy
+> - `di-composition-root` — where `URLSession`, `HTTPClient`, `APIClient`, interceptors are wired
+> - `di-module-assembly` — registering networking services into feature modules
+> - `reactive-combine`, `reactive-rxswift` — bridging async/await network calls into reactive pipelines
+> - `concurrency-architecture` — APIClient/HTTPClient stay `nonisolated` (URLSession is thread-safe); auth interceptor's token-refresh single-flight is a legitimate `actor`; `URLRequest.timeoutInterval` (transport) vs `withTimeout` at UseCase boundary (business)
+
 `references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 ## When To Load The Reference
