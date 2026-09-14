@@ -472,7 +472,7 @@ class FeatureViewModel {
 
 ## DI
 
-Clean Architecture splits registrations by layer — typically one Assembly per layer (`DomainAssembly`, `DataAssembly`, `PresentationAssembly`). The dependency rule must be preserved: `PresentationAssembly` registers ViewModels that depend on Use Cases; `DomainAssembly` registers Use Cases that depend on Repository **protocols**; `DataAssembly` binds those Repository protocols to concrete implementations.
+Clean Architecture splits registrations by layer — typically one container Assembly per layer below the UI (`DomainAssembly`, `DataAssembly`). The dependency rule must be preserved: `DomainAssembly` registers Use Cases that depend on Repository **protocols**; `DataAssembly` binds those Repository protocols to concrete implementations. ViewModels are not registered: the module's `*Assembly` builds them from the Use Cases (`di-module-assembly` → "Canonical Chain").
 
 For full registration patterns (Swinject scopes, manual DI alternative, async bootstrap, scope strategies) see:
 - `di-composition-root` — where these Assemblies are bootstrapped, sync vs async, scopes

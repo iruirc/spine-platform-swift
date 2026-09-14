@@ -549,6 +549,7 @@ The architectural pattern (`AppDependencies` → `*FeatureDependencies` → `Coo
 
 ```swift
 // Swinject
+@MainActor
 final class AppDependencyContainer: AppDependencies {
     private let container: Container
     var userService: UserServiceProtocol { container.resolve(UserServiceProtocol.self)! }

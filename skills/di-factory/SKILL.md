@@ -27,7 +27,7 @@ scopes, parameterized factories, contexts, modular organization, and tests.
 | Add preview/test/debug overrides | `AutoRegistering`, `Contexts` |
 | Split registrations by feature | `Modular Containers` |
 | Wire Coordinators and ModuleFactory | `Coordinator and Module Assembly` |
-| Test `@Injected` code | `Testing` |
+| Test the registered graph | `Testing` |
 | Fix Swift 6 / Observation issues | `Concurrency` |
 | Compare or migrate from Swinject | `Swinject vs Factory`, `Migration: Swinject → Factory` |
 | Debug a missing or overridden registration | `Debugging Tips` |

@@ -167,8 +167,9 @@ The chain ends where navigation lives, and navigation follows the UI framework:
   `*ModuleFactory`; the Coordinator calls `make…Module()` and pushes the view.
 - **SwiftUI.** No Coordinator. The view that owns the root `NavigationStack`
   holds the `*ModuleFactory` and builds each screen inside
-  `navigationDestination`; the router holds only navigation state. The Assembly
-  returns the SwiftUI View:
+  `navigationDestination`; the router holds only navigation state. SwiftUI may
+  run that closure again, so the screen keeps the ViewModel it receives in
+  `@State`. The Assembly returns the SwiftUI View:
 
 <!-- typecheck: swiftui -->
 ```swift

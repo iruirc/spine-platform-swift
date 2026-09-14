@@ -294,7 +294,7 @@ actor ItemBackgroundStore {
 }
 ```
 
-- **`@Query` in SwiftUI** — runs on the main context, re-fires on any insert/update/delete to the model type. For detail screens, prefer manual `FetchDescriptor` + `@State` so unrelated writes don't re-render.
+- **`@Query` in SwiftUI** (the skill's one View exception: a read-only list with no business rule) — runs on the main context, re-fires on any insert/update/delete to the model type. For detail screens, prefer manual `FetchDescriptor` + `@State` so unrelated writes don't re-render.
 
 ### GRDB
 
@@ -617,8 +617,8 @@ Lists in modern apps are reactive: when data changes, UI updates without manual 
 
 | Framework | Reactive primitive | Notes |
 |---|---|---|
-| Core Data | `NSFetchedResultsController` (UIKit), `@FetchRequest` (SwiftUI) | Old, battle-tested. Bridges to Combine via `objectWillChange` or custom publisher. |
-| SwiftData | `@Query` (SwiftUI), `FetchDescriptor` (manual) | `@Query` re-fires on any change to the model — fine for lists, wasteful for detail screens. |
+| Core Data | `NSFetchedResultsController`; `@FetchRequest` only under the skill's one View exception | Old, battle-tested. Bridges to Combine via `objectWillChange` or custom publisher. |
+| SwiftData | `FetchDescriptor` (manual); `@Query` only under the skill's one View exception | `@Query` re-fires on any change to the model — fine for a read-only list, wasteful for detail screens. |
 | GRDB | `ValueObservation` | Returns `AsyncValueObservation` or Combine `Publisher`. Diff-aware. |
 | Realm | Live results + `Results.observe(_:)` | Thread-confined; freeze for cross-thread. |
 
