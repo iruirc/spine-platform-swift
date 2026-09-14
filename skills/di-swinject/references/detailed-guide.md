@@ -29,7 +29,6 @@ final class AppDependencyContainer {
 
     func bootstrap() {
         registerServices()
-        registerViewModels()
     }
 }
 ```
@@ -45,10 +44,10 @@ container.register(UserServiceProtocol.self) { _ in
 }
 
 // Register with dependencies
-container.register(ProfileViewModelProtocol.self) { r in
-    ProfileViewModel(
-        userService: r.resolve(UserServiceProtocol.self)!,
-        analyticsService: r.resolve(AnalyticsServiceProtocol.self)!
+container.register(ProfileRepositoryProtocol.self) { r in
+    ProfileRepository(
+        apiClient: r.resolve(APIClientProtocol.self)!,
+        cache: r.resolve(CacheProtocol.self)!
     )
 }
 ```
@@ -59,12 +58,12 @@ Using `SwinjectAutoregistration` for cleaner syntax:
 
 ```swift
 // Auto-resolve dependencies
-container.autoregister(ProfileViewModel.self, initializer: ProfileViewModel.init)
+container.autoregister(ProfileRepository.self, initializer: ProfileRepository.init)
 
 // With protocol
 container.autoregister(
-    ProfileViewModelProtocol.self,
-    initializer: ProfileViewModel.init
+    ProfileRepositoryProtocol.self,
+    initializer: ProfileRepository.init
 )
 ```
 
@@ -75,16 +74,16 @@ container.autoregister(
 New instance every time. Use for stateful objects.
 
 ```swift
-container.register(FeatureViewModel.self) { r in
-    FeatureViewModel(service: r.resolve(ServiceProtocol.self)!)
+container.register(FormDraft.self) { r in
+    FormDraft(validator: r.resolve(ValidatorProtocol.self)!)
 }
 // Each resolve() creates new instance
 ```
 
 **Use for**:
-- ViewModels (each screen needs fresh state)
-- Coordinators (each flow is independent)
-- Stateful helpers
+- Stateful helpers each consumer needs fresh (a form draft, an upload session)
+
+ViewModels and Coordinators are not registered: a `@MainActor` `*Assembly` builds them (see `@MainActor UI types + Swinject`).
 
 ### `.container` (Singleton)
 
@@ -140,12 +139,12 @@ container.autoregister(SharedState.self, initializer: SharedState.init)
 ### Wrong Scope Selection
 
 ```swift
-// ViewModel as singleton - shares state between screens!
-container.register(FeatureViewModel.self) { ... }
+// Form draft as singleton - shares state between consumers!
+container.register(FormDraft.self) { ... }
     .inObjectScope(.container)
 
-// ViewModel as transient - fresh state each time
-container.register(FeatureViewModel.self) { ... }
+// Form draft as transient - fresh state each time
+container.register(FormDraft.self) { ... }
     .inObjectScope(.transient)  // or omit (default)
 ```
 
@@ -189,22 +188,22 @@ let client = container.resolve(APIClientProtocol.self, name: "production")!
 When instance needs runtime parameters:
 
 ```swift
-container.register(DetailViewModel.self) { (r, itemId: String) in
-    DetailViewModel(
-        itemId: itemId,
-        service: r.resolve(ItemServiceProtocol.self)!
+container.register(UploadSession.self) { (r, uploadId: String) in
+    UploadSession(
+        uploadId: uploadId,
+        client: r.resolve(APIClientProtocol.self)!
     )
 }
 
 // Resolve with argument
-let viewModel = container.resolve(DetailViewModel.self, argument: "item-123")!
+let session = container.resolve(UploadSession.self, argument: "upload-123")!
 ```
 
 ### Multiple Arguments
 
 ```swift
-container.register(ChatViewModel.self) { (r, roomId: String, userId: String) in
-    ChatViewModel(
+container.register(ChatConnection.self) { (r, roomId: String, userId: String) in
+    ChatConnection(
         roomId: roomId,
         userId: userId,
         chatService: r.resolve(ChatServiceProtocol.self)!
@@ -212,8 +211,8 @@ container.register(ChatViewModel.self) { (r, roomId: String, userId: String) in
 }
 
 // Resolve
-let viewModel = container.resolve(
-    ChatViewModel.self,
+let connection = container.resolve(
+    ChatConnection.self,
     arguments: "room-1", "user-42"
 )!
 ```
@@ -268,28 +267,26 @@ class ServicesAssembly: Assembly {
     }
 }
 
-class ProfileAssembly: Assembly {
+class ProfileServicesAssembly: Assembly {
     func assemble(container: Container) {
         container.autoregister(
-            ProfileViewModelProtocol.self,
-            initializer: ProfileViewModel.init
+            ProfileRepositoryProtocol.self,
+            initializer: ProfileRepository.init
         )
-
-        container.register(ProfileCoordinator.self) { (r, router: Router) in
-            ProfileCoordinator(router: router, container: r)
-        }
     }
 }
 
 // In DIContainer
 let assembler = Assembler([
     ServicesAssembly(),
-    ProfileAssembly(),
-    SettingsAssembly(),
+    ProfileServicesAssembly(),
+    SettingsServicesAssembly(),
     // ... more assemblies
 ])
 let container = assembler.resolver
 ```
+
+A Swinject `Assembly` registers services. It is not the module's `*Assembly` enum, which builds the UI and never sees the container.
 
 ## @MainActor UI types + Swinject
 
@@ -346,25 +343,26 @@ struct RootFactory {
 
 This solves the `@MainActor` build error but reintroduces the **Service Locator** anti-pattern that `di-module-assembly` exists to prevent: the Factory now imports `Swinject`, the dependency surface of the screen is invisible at the type level, and the closure can resolve anything from the global graph. Coordinator tests can no longer mock the Factory without spinning up a real container.
 
-### ✅ Correct — `*Factory` accepts a `*FeatureDependencies` protocol, built UI on main
+### ✅ Correct — `*Assembly` builds the UI on main from a `*FeatureDependencies` protocol
 
-Use the canonical chain from `di-module-assembly`: `AppDependencyContainer` is the only type that imports `Swinject` and calls `container.resolve(...)`. Feature `*Factory` types receive a narrow `*FeatureDependencies` protocol via init and have a `@MainActor` `make…` method that wires the View + ViewModel:
+Use the canonical chain from `di-module-assembly`: `AppDependencyContainer` is the only type that imports `Swinject` and calls `container.resolve(...)`. The module's `*Assembly` receives a narrow `*FeatureDependencies` protocol and builds the View + ViewModel in a `@MainActor` `assemble` method:
 
 ```swift
 // DI/Protocols/RootFeatureDependencies.swift
+@MainActor
 protocol RootFeatureDependencies {
     var appInfoService: AppInfoService { get }
 }
 
-// Modules/Root/RootFactory.swift              ← no `import Swinject`
-struct RootFactory {
-    private let dependencies: RootFeatureDependencies
-    init(dependencies: RootFeatureDependencies) { self.dependencies = dependencies }
-
+// Modules/Root/RootAssembly.swift             ← no `import Swinject`
+enum RootAssembly {
     @MainActor
-    func makeViewController() -> RootViewController {
+    static func assemble(
+        dependencies: RootFeatureDependencies
+    ) -> ModuleComponents<RootViewController, RootViewModel> {
         let viewModel = RootViewModel(appInfo: dependencies.appInfoService)
-        return RootViewController(viewModel: viewModel)
+        let view = RootViewController(viewModel: viewModel)
+        return ModuleComponents(view: view, viewModel: viewModel)
     }
 }
 
@@ -388,19 +386,19 @@ final class ModuleFactoryImp: RootModuleFactory {
     private let dependencies: AppDependencies
     init(dependencies: AppDependencies) { self.dependencies = dependencies }
 
-    func makeRootFactory() -> RootFactory {
-        RootFactory(dependencies: dependencies)         // protocol upcast: AppDependencies → RootFeatureDependencies
+    func makeRootModule() -> ModuleComponents<RootViewController, RootViewModel> {
+        RootAssembly.assemble(dependencies: dependencies)   // protocol upcast: AppDependencies → RootFeatureDependencies
     }
 }
 
-// Coordinator / AppDelegate (already @MainActor) — receives ModuleFactory, NOT Resolver
+// Coordinators/AppCoordinator.swift           ← receives ModuleFactory, NOT Resolver
+@MainActor
 final class AppCoordinator {
     private let moduleFactory: RootModuleFactory
     init(moduleFactory: RootModuleFactory) { self.moduleFactory = moduleFactory }
 
     func start(window: UIWindow) {
-        let viewController = moduleFactory.makeRootFactory().makeViewController()
-        window.rootViewController = viewController
+        window.rootViewController = moduleFactory.makeRootModule().view
         window.makeKeyAndVisible()
     }
 }
@@ -408,13 +406,13 @@ final class AppCoordinator {
 
 **Rules:**
 
-- `*Factory` is a `nonisolated` struct/`enum` and **never** imports `Swinject` or holds a `Resolver`. It only knows about its `*FeatureDependencies` protocol.
-- The `make…` method is `@MainActor` — it's the boundary that crosses into UI isolation, called from `@MainActor` Coordinator / `AppDelegate` / `SceneDelegate`.
-- `import Swinject` is restricted to `AppDependencyContainer` (and Swinject Assemblies that register services in it). Feature code, Coordinators, ModuleFactory, `*Factory`, `*Assembly` must not import it.
-- For runtime parameters (`itemId`, `userId`, …) add them as method parameters on `make…`, not as Swinject `arguments:` — keeps the isolation boundary explicit.
-- Services (`AppInfoService`, etc.) stay registered in Swinject directly (they're `nonisolated`); the Factory pulls them through the dependency protocol, not via `resolver.resolve`.
+- Swinject registers services only; they are nonisolated and `Sendable`, or actors. ViewModels, Views and ViewControllers never go into the container.
+- `*Assembly` is an `enum` with a `@MainActor` `assemble(dependencies:)`. It knows only its `*FeatureDependencies` protocol, never imports `Swinject` and never holds a `Resolver`.
+- `ModuleFactoryImp` calls the Assembly. On UIKit and AppKit a Coordinator (or `AppDelegate`) calls the `ModuleFactory` on main; on SwiftUI the view that owns the root `NavigationStack` calls it inside `navigationDestination` (`di-module-assembly` → "Navigation End By UI Framework").
+- `import Swinject` is restricted to `AppDependencyContainer` and the Swinject Assemblies that register services in it.
+- Runtime parameters (`itemId`, `userId`, …) are parameters of `assemble` and of `make…Module`, not Swinject `arguments:` — keeps the isolation boundary explicit.
 
-This matches the Factory pattern in `di-module-assembly` (`ModuleFactory` + `ModuleComponents`) — that skill is the source of truth for the full chain. The Swinject-specific bit is: registered types stay `nonisolated`, `@MainActor` lives on the `make…` method, and `Resolver` never appears outside `AppDependencyContainer`.
+This is the chain `di-module-assembly` → "Canonical Chain" owns. The Swinject-specific part: the container holds only nonisolated services, and `Resolver` never appears outside `AppDependencyContainer`.
 
 ### Container as Service Locator
 
@@ -581,11 +579,11 @@ Swinject and Factory (see `di-factory`) solve the same problem in different ways
 
 **When Factory is better:**
 - New SwiftUI-first project
-- 10–100 services in the graph, monorepo or SPM modules
+- A graph past the manual-DI threshold, monorepo or SPM modules
 - Want to see the entire dependency surface at compile time
 - Team prefers the property-wrapper style
 - Critical: tests must run in parallel without reset headaches
 
 **When neither fits:**
-- < 10 services → manual DI on `lazy var` (see `di-composition-root`)
+- A graph under the manual-DI threshold → manual DI on `lazy var` (`di-composition-root` → "DI: container vs manual graph")
 - A whole TCA feature → `@Dependency` by Point-Free
