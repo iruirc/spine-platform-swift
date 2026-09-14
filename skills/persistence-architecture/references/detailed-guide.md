@@ -651,7 +651,7 @@ extension GRDBItemRepository {
 
 ViewModel consumes the stream; never knows GRDB exists.
 
-For SwiftUI + Core Data, `@FetchRequest` is the analogue of SwiftData's `@Query`:
+Where the skill's one `@Query` / `@FetchRequest` exception applies — a read-only list with no business rule in a SwiftUI app — `@FetchRequest` is the Core Data analogue of SwiftData's `@Query`:
 
 ```swift
 struct ItemList: View {
