@@ -43,7 +43,8 @@ inblock && /^```[ \t]*$/ { print "#sourceLocation()" > unit; inblock = 0; next }
 inblock {
   line = $0
   sub(/^[ \t]*/, "", line)
-  sub(/^@(testable|preconcurrency)[ \t]+/, "", line)
+  while (sub(/^@[A-Za-z_][A-Za-z0-9_]*(\([^)]*\))?[ \t]+/, "", line)) { }
+  sub(/^(public|package|internal|fileprivate|private)[ \t]+/, "", line)
   if (line ~ /^import[ \t]/) {
     sub(/^import[ \t]+/, "", line)
     sub(/^(typealias|struct|class|enum|protocol|let|var|func)[ \t]+/, "", line)
