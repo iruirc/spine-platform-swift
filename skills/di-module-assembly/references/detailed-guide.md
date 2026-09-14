@@ -1,59 +1,19 @@
----
-name: di-module-assembly
-description: "Use when assembling UI modules (MVVM/MVVM+Coordinator), creating CoordinatorFactory/ModuleFactory, wiring View+ViewModel. Covers Factory pattern that connects DI container with Coordinators without Service Locator. Also covers non-UI factories and late/conditional initialization patterns."
----
+# di-module-assembly — detailed guide
 
-# Module Assembly Pattern
+## Contents
 
-Connects Dependency Injection with Coordinators through explicit Factory objects. Coordinators never touch the DI container directly — they receive pre-built modules from Factories.
-
-> **Related skills:**
-> - `di-composition-root` — where the CR lives, how it passes dependencies to Factories (extracted separately — this skill **no longer describes CR in detail**, just uses it)
-> - `di-swinject` — Swinject specifics, if chosen as the DI framework
-> - `di-factory` — Factory (hmlongco) specifics. The architectural pattern (`AppDependencies` → `CoordinatorFactory` → `ModuleFactory`) is identical; only the `AppDependencyContainer` facade implementation changes (instead of `container.resolve(...)` — `Container.shared.foo()`)
-> - `pkg-spm-design` — how Module Assembly applies inside an SPM package (Feature archetype)
-
-## Problem
-
-Without Factories, coordinators become dependency dumps:
-
-```swift
-// Anti-pattern: Coordinator as Service Locator
-class FeatureCoordinator: BaseCoordinator {
-    private let container: Resolver  // knows about DI container
-
-    func start() {
-        // Hidden dependencies — impossible to know what's needed without reading body
-        let viewModel = container.resolve(FeatureViewModelProtocol.self)!
-        let viewController = FeatureViewController(viewModel: viewModel)
-        router.push(viewController)
-    }
-}
-```
-
-Problems:
-- Coordinator has hidden dependencies (only visible at runtime)
-- Crash if registration is missing — no compile-time safety
-- Hard to test — need full container setup
-- Violates Dependency Inversion — high-level module depends on container
-
-## Architecture Overview
-
-```
-SceneDelegate (Composition Root)
-    └── AppDependencyContainer (DI facade)
-            └── CoordinatorFactory (creates coordinators)
-                    └── ModuleFactory (assembles View + ViewModel)
-                            └── Assembly (actual wiring per module)
-                                    └── ModuleComponents<View, ViewModel>
-```
-
-**Rules:**
-- Only `AppDependencyContainer` knows about DI container internals
-- `CoordinatorFactory` knows about `ModuleFactory` and dependency protocols
-- `ModuleFactory` delegates to `Assembly` enums
-- `Assembly` receives only the dependency protocol it needs
-- Coordinators receive only `CoordinatorFactory` + typed `ModuleFactory` protocol
+- ModuleComponents
+- Feature Dependency Protocols
+- Assembly
+- ModuleFactory
+- CoordinatorFactory
+- Coordinator Usage
+- Composition Root
+- AppDependencyContainer
+- File Structure
+- Testing
+- Scaling
+- Beyond UI Modules
 
 ## ModuleComponents
 
@@ -319,7 +279,7 @@ final class ProfileCoordinator: BaseCoordinator {
 }
 ```
 
-## Composition Root (its brief role in Module Assembly)
+## Composition Root
 
 The CR creates `AppDependencyContainer`, passes it to `CoordinatorFactoryImp`, creates the root Coordinator and starts the UI. Full CR description — bootstrap patterns, scope strategies, testing, what does NOT belong there — see the **`di-composition-root` skill**.
 
@@ -504,20 +464,6 @@ class MockProfileDependencies: ProfileFeatureDependencies {
 }
 ```
 
-## When to Use
-
-**Use this pattern when:**
-- App has 5+ screens with navigation between features
-- Using Coordinator pattern for navigation
-- Using Swinject or other DI container
-- Want compile-time safety for dependency graph
-- Need testable coordinators without DI container in tests
-
-**Skip for:**
-- Simple apps with 2-3 screens — manual DI in Coordinator is fine
-- SwiftUI-only apps with NavigationStack — use Environment instead
-- Prototypes — overhead not justified
-
 ## Scaling
 
 **Growing number of modules:** Split `ModuleFactoryImp` into feature-grouped partial implementations using extensions, or separate factory classes per feature group.
@@ -561,9 +507,9 @@ The CR creates the **root** of the graph, but not all objects are created at sta
 | **Heavy resource** | `lazy var` in AppDependencyContainer | `lazy var imageCache: ImageCache = makeImageCache()` |
 | **Per-flow service** | Created by the Coordinator on `start()`, disposed on `finish` | `OnboardingState`, `CheckoutSession` |
 | **Config from user input** | Service has `configure(with:)` or `bootstrap(token:)` | `APIClient.configure(token:)` after login |
-| **Async init** | See `di-composition-root`, section "Async bootstrap" | DB with migrations, cache warm-up |
+| **Async init** | See `di-composition-root` → "Bootstrap: sync vs async" | DB with migrations, cache warm-up |
 | **Conditional creation** (Pro-only feature) | Lazy + flag check in the getter; or a separate factory method that the Coordinator calls only under the right condition | Export with or without Pro formats — branch in `makeExportModule()` |
-| **Circular dependencies** | See `di-swinject` skill, "Circular Dependencies" — property injection or introducing a third type | A↔B → A→C, B→C |
+| **Circular dependencies** | See `di-swinject` → "Common Mistakes" — property injection or introducing a third type | A↔B → A→C, B→C |
 
 General rule: **CR is the root, not the only place where things get created.** If something can't be created at the CR — that's not a reason to drag the container into the call site (Service Locator). It's a reason to extract the creation logic into a factory or Assembly with explicit parameters.
 
@@ -577,12 +523,3 @@ Not every object creation needs a factory. Use one when at least one of the foll
 - Creation has side effects that need to be isolated (observer registration, starting a timer)
 
 If none of these apply — a plain inline init is better. Premature factory introduction complicates the code without any benefit.
-
-## Common Mistakes
-
-1. **Coordinator resolving from container** — Coordinator should never import Swinject or call `resolve()`. It receives factories.
-2. **Fat ModuleFactoryImp** — If it has 30+ methods, split by feature group using extensions or separate classes.
-3. **Assembly with side effects** — Assembly should only wire objects. No analytics, no logging, no network calls.
-4. **Skipping feature dependency protocols** — Passing `AppDependencies` everywhere defeats the purpose. Each Assembly should accept its minimal protocol.
-5. **Creating ModuleFactory inside Coordinator** — Factory is created once in CoordinatorFactory and passed down. Coordinator doesn't create factories.
-6. **Premature factory for trivial init** — `UserFactory.make() -> User { User() }` is pointless. Apply Factory only with real complexity (see the checklist "When to apply the Factory pattern outside UI").

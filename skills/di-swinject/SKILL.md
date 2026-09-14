@@ -8,19 +8,20 @@ description: "Use when working with Swinject dependency injection in iOS apps. C
 Swinject-specific guidance: scopes, registration patterns, autoregistration,
 Assemblies, `@MainActor` UI wiring, testing, and comparison with Factory.
 
-Detailed examples live in `references/detailed-guide.md`. Load only the relevant
-section with `rg -n "^## " skills/di-swinject/references/detailed-guide.md`.
+> **Related skills:**
+> - `pkg-spm-design` — why Swinject **must not** be imported inside SPM packages
+
+`references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 ## When To Load The Reference
 
 | Need | Reference sections |
 |---|---|
-| Set up a container | `Core Concepts`, `Container Setup` |
+| Set up a container | `Core Concepts` |
 | Register protocols, names, arguments | `Registration Patterns` |
 | Pick Swinject scopes | `Object Scopes` |
 | Use Assemblies | `Assembly Pattern` |
 | Register/build `@MainActor` UI types | `@MainActor UI types + Swinject` |
-| Wire Coordinators/modules | `Coordinator and Module Assembly` |
 | Test the graph | `Testing Configuration` |
 | Debug missing registrations | `Debugging Tips` |
 | Compare with Factory | `Swinject vs Factory` |

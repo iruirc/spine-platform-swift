@@ -161,7 +161,7 @@ final class AppDependencyContainer: AppDependencies {
 }
 ```
 
-The mechanics are identical to the Swinject variant, just without autoresolve. More detail — `di-swinject` skill, "Circular Dependencies" section.
+The mechanics are identical to the Swinject variant, just without autoresolve. More detail — `di-swinject` → "Common Mistakes".
 
 ### When manual definitely doesn't fit
 
@@ -255,7 +255,7 @@ Different objects live for different durations — the CR must distinguish them 
 | **flow** | while a single user flow is active (onboarding, checkout) | OnboardingState, CheckoutSession | The flow's parent Coordinator |
 | **request** | one network request / screen | RequestParameters, ScreenLogger | Created inline, not registered |
 
-**In Swinject:** `.container` ≈ app/scene scope (depending on whose container it is); `.transient` ≈ request scope; `.weak` ≈ optional shared. See `di-swinject` skill, "Object Scopes" section.
+**In Swinject:** `.container` ≈ app/scene scope (depending on whose container it is); `.transient` ≈ request scope; `.weak` ≈ optional shared. See `di-swinject` → "Scopes".
 
 **In manual DI:** scope = lifetime of the reference. Hold strong → alive; weak/optional → may be deallocated.
 
@@ -276,7 +276,7 @@ Typical order (top to bottom):
 8. RootCoordinator                    ← Factories
 ```
 
-If a cycle appears (A needs B, B needs A) — that's an **architectural defect**, not an excuse to use lazy injection as a workaround. Introduce a third type C, or use property injection (see `di-swinject` skill, "Circular Dependencies").
+If a cycle appears (A needs B, B needs A) — that's an **architectural defect**, not an excuse to use lazy injection as a workaround. Introduce a third type C, or use property injection (see `di-swinject` → "Common Mistakes").
 
 ## Multiple Composition Roots
 
