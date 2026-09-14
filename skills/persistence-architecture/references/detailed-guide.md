@@ -760,12 +760,28 @@ Persistence stack is **process-wide singleton scope**. Bootstrap once in Composi
 
 ### Pattern A — Container directly in DI
 
+The Composition Root loads the store in its warm-up, before any repository exists, and a load error fails the warm-up:
+
+<!-- typecheck -->
 ```swift
-container.register(NSPersistentContainer.self) { _ in
-    let c = NSPersistentContainer(name: "Model")
-    c.loadPersistentStores { _, _ in }
-    return c
-}.inObjectScope(.container)
+import CoreData
+
+func loadPersistentContainer() async throws -> NSPersistentContainer {
+    let container = NSPersistentContainer(name: "Model")
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        // The default container has one store description, so the handler runs once.
+        container.loadPersistentStores { _, error in
+            if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+        }
+    }
+    return container
+}
+```
+
+```swift
+// Composition Root, after `let persistentContainer = try await loadPersistentContainer()`
+container.register(NSPersistentContainer.self) { _ in persistentContainer }
+    .inObjectScope(.container)
 
 container.register(ItemRepository.self) { r in
     CoreDataItemRepository(container: r.resolve(NSPersistentContainer.self)!)
