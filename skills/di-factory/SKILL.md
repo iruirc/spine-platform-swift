@@ -9,8 +9,7 @@ Factory-specific guidance for `FactoryKit` 2.5+: `Container` /
 `SharedContainer`, computed-property registrations, property-wrapper injection,
 scopes, parameterized factories, contexts, modular organization, and tests.
 
-Detailed examples live in `references/detailed-guide.md`. Load only the relevant
-section with `rg -n "^## " skills/di-factory/references/detailed-guide.md`.
+`references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 ## When To Load The Reference
 
@@ -25,7 +24,8 @@ section with `rg -n "^## " skills/di-factory/references/detailed-guide.md`.
 | Wire Coordinators and ModuleFactory | `Coordinator and Module Assembly` |
 | Test `@Injected` code | `Testing` |
 | Fix Swift 6 / Observation issues | `Concurrency` |
-| Compare or migrate from Swinject | `Swinject vs Factory`, `Migration: Swinject -> Factory` |
+| Compare or migrate from Swinject | `Swinject vs Factory`, `Migration: Swinject → Factory` |
+| Debug a missing or overridden registration | `Debugging Tips` |
 
 ## When To Use Factory
 
@@ -221,3 +221,4 @@ need correct isolation.
 - Calling `register` in production code outside `autoRegister()`.
 - Putting services directly into SwiftUI Views instead of ViewModels.
 - Allowing registration-name collisions in large modular apps.
+- Importing `Factory` instead of `FactoryKit`.
