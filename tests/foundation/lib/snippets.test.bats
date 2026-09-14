@@ -43,6 +43,12 @@ setup() {
   grep -qF 'older than 6.2' <<<"$output" || { echo "$output"; return 1; }
 }
 
+@test "a root without skills is an error, not an empty pass" {
+  run "$TYPECHECK" "$BATS_TEST_TMPDIR"
+  [ "$status" -eq 2 ] || { echo "status $status: $output"; return 1; }
+  grep -qF 'no skills/*/SKILL.md' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "every marked block in the plugin compiles" {
   run "$TYPECHECK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
