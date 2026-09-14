@@ -9,8 +9,9 @@ Connect DI to Coordinators through explicit factories. Coordinators never touch
 the DI container directly; they receive typed factories that create modules.
 
 > **Related skills:**
-> - `di-composition-root` — where the Composition Root lives and how it hands dependencies to the factories
-> - `di-swinject`, `di-factory` — the `AppDependencyContainer` for each DI library; the chain is the same for both
+> - `di-composition-root` — where the CR lives, how it passes dependencies to Factories
+> - `di-swinject` — Swinject specifics, if chosen as the DI framework
+> - `di-factory` — Factory (hmlongco) specifics. The architectural pattern (`AppDependencies` → `CoordinatorFactory` → `ModuleFactory`) is identical; only the `AppDependencyContainer` facade implementation changes (instead of `container.resolve(...)` — `Container.shared.foo()`)
 > - `pkg-spm-design` — how Module Assembly applies inside an SPM package (Feature archetype)
 
 `references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
