@@ -26,7 +26,7 @@ A block of another group compiles on its own, so it may redeclare a type:
 import SwiftUI
 
 struct Greeting: View {
-    var body: some View { Text("Hello") }
+    var body: some View { Text(Headline.text) }
 }
 ```
 
