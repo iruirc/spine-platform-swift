@@ -76,7 +76,7 @@ View ── send(intent) ──▶ Store ──▶ reduce(state, intent) ──�
 
 - `State` — value type (struct or enum), `Equatable`.
 - `Intent` — enum; cases name **events** (`viewAppeared`, `retryTapped`, `itemsLoaded([Item])`), not commands.
-- Pure `func reduce(_ state: inout State, _ intent: Intent) -> Effect?`.
+- Pure reducer: `(inout State, Intent, dependencies) -> Effect?`.
 - `Effect` — async work that eventually feeds an `Intent` back into the store.
 - `Store` — owns current `State`, drives the reduce/effect loop, exposes state to the View as `@Published` or `@Observable`.
 
