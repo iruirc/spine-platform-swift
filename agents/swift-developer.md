@@ -110,7 +110,7 @@ Consult the appropriate skill based on the architecture in use:
 - `persistence-architecture` — implementing Repository over Core Data / SwiftData / GRDB / Realm, background-context discipline (`performBackgroundTask` / `@ModelActor` / `DatabasePool.write`), Storage → Domain mapping, in-memory store for tests
 - `persistence-migrations` — implementing concrete migrations (`NSEntityMigrationPolicy` subclass, SwiftData `MigrationStage.custom` `willMigrate`/`didMigrate`, GRDB `DatabaseMigrator` registration), atomic backup-and-replace pattern, manual progressive chain for Core Data, transformable Codable payload migration via custom `init(from:)`
 - `di-swinject` — Swinject-specific patterns: Assembly registration, autoregister, named bindings, runtime args
-- `di-factory` — Factory (hmlongco)-specific patterns: `extension Container { var foo: Factory<Foo> }` registration, `@Injected`/`@LazyInjected`/`@WeakLazyInjected` placement, `@ObservationIgnored` discipline in `@Observable`, `ParameterFactory`, contexts for preview/test
+- `di-factory` — Factory (hmlongco)-specific patterns: `extension Container { var foo: Factory<Foo> }` registration, `@Injected`/`@LazyInjected`/`@WeakLazyInjected` only at the composition edge, `ParameterFactory`, contexts for preview/test
 - `di-composition-root` — where to wire new services (CR layout, bootstrap), choice between manual / Swinject / Factory
 - `di-module-assembly` — Factory pattern, Assembly, non-UI factories, late initialization (architecture pattern, works over any DI)
 - `pkg-spm-design` — when implementing inside SPM packages (per-archetype rules)

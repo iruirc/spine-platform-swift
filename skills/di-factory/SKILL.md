@@ -37,15 +37,16 @@ scopes, parameterized factories, contexts, modular organization, and tests.
 Factory is a good fit when:
 
 - You want compile-time checked registration properties.
-- You prefer property-wrapper injection (`@Injected`) for presentation objects.
+- You want property-wrapper injection at the composition edge (`@Injected` on
+  the `@main` App or the root view).
 - The app is SwiftUI/Observation-heavy.
 - You need built-in test/preview/debug contexts.
 - The dependency graph is medium-sized and manual DI is getting noisy.
 
 Prefer alternatives when:
 
-- The graph has fewer than roughly 10 services: use manual DI in the Composition
-  Root.
+- The graph is under the manual-DI threshold: use manual DI
+  (`di-composition-root` → "DI: container vs manual graph").
 - The app is already stable on Swinject and there is no concrete migration pain.
 - The feature is TCA-based: use Point-Free `@Dependency`, not Factory.
 - You need name-based runtime lookup with many registrations of the same type:
@@ -62,8 +63,9 @@ Prefer alternatives when:
   dependency structs/protocols through `init(dependencies:)`.
 - Use `self.foo()` inside Factory closures, not `Container.shared.foo()`, so
   tests and custom containers stay isolated.
-- `Container.shared` is allowed in the app composition layer. It is not allowed
-  in services, repositories, Domain, or feature packages.
+- `Container.shared` and the property wrappers resolve only at the composition
+  edge (see Resolution); services, repositories, Domain, and feature packages
+  never touch them.
 
 ## Registration Shape
 
@@ -88,26 +90,23 @@ overrides and context modifiers use that key.
 
 ## Resolution
 
-Use constructor injection by default for services and repositories. Use Factory
-property wrappers mainly at graph edges: ViewModels, Coordinators, SwiftUI root
-views, or app composition objects.
+Services, repositories, ViewModels, and Coordinators take their dependencies
+through initializers. Only the composition edge resolves from Factory:
+
+- With the Module Assembly chain, the edge is `AppDependencyContainer` alone.
+- Without it, property wrappers sit only on the `@main` App, the scene delegate,
+  and the root view that builds screens inside `navigationDestination`.
+
+The wrappers:
 
 - `@Injected`: eager required dependency.
 - `@LazyInjected`: first-use dependency.
 - `@WeakLazyInjected`: weak optional cache/cycle breaker.
-- `@InjectedObservable`: SwiftUI root ViewModel integration.
+- `@InjectedObservable`: the root view's `@Observable` ViewModel.
 
-Inside `@Observable` classes, mark injected properties:
-
-```swift
-@Observable
-final class ContentViewModel {
-    @ObservationIgnored @Injected(\.repository) private var repository
-}
-```
-
-Without `@ObservationIgnored`, injection participates in Observation and can
-cause unnecessary UI updates.
+A ViewModel that still carries `@Injected` inside `@Observable` needs
+`@ObservationIgnored`; without it, injection participates in Observation and
+causes unnecessary UI updates.
 
 ## Scopes
 
@@ -164,12 +163,8 @@ that dependency surface.
 
 ## Coordinator And Module Assembly
 
-The canonical chain stays:
-
-```
-AppDependencyContainer -> FeatureDependencies -> CoordinatorFactory
--> ModuleFactory -> Assembly
-```
+The chain is `di-module-assembly` → "Canonical Chain"; with Factory only the
+body of `AppDependencyContainer` changes.
 
 Only `AppDependencyContainer` and app-target `extension Container` files import
 FactoryKit. `ModuleFactoryImp`, Coordinators, ViewModels, and feature assemblies
@@ -195,7 +190,7 @@ Composition Root bootstrap.
 ## Testing
 
 - Prefer direct initializer injection for ViewModel and service unit tests.
-- For code that uses `@Injected`, register mocks before creating the SUT.
+- To test the registered graph, register mocks before resolving the SUT.
 - Reset `Container.shared.reset(options: .all)` in XCTest `setUp` and
   `tearDown`.
 - In Swift Testing with Factory 2.5+, prefer `@Suite(.container)` from
@@ -210,7 +205,8 @@ need correct isolation.
 - Put `@MainActor` on ViewModel types, not on the `Container` property.
 - Use `self { @MainActor in ContentViewModel() }` when constructing a
   main-actor ViewModel.
-- Keep non-UI registrations nonisolated so background work can resolve them.
+- Keep non-UI registrations nonisolated. Background work still receives its
+  services through initializers and does not resolve.
 - Factory does not make non-Sendable services safe. The instance returned by the
   factory must still be Sendable or actor-isolated as appropriate.
 
@@ -220,7 +216,8 @@ need correct isolation.
 - Resolving from `Container.shared` inside a Factory closure instead of `self`.
 - Registering ViewModels as `.singleton`.
 - Forgetting `reset(options: .all)` in tests.
-- Using `@Injected` inside `@Observable` without `@ObservationIgnored`.
+- Using `@Injected` in a ViewModel, Coordinator, or service instead of an
+  initializer.
 - Using `.cached` on `ParameterFactory` without `scopeOnParameters` when args
   should produce distinct instances.
 - Calling `register` in production code outside `autoRegister()`.
