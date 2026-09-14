@@ -43,8 +43,12 @@ The examples below use **async/await** as the default. Combine and callback vari
 
 ### Protocols (define all contracts first)
 
+<!-- typecheck -->
 ```swift
+import UIKit
+
 // MARK: - View
+@MainActor
 protocol FeatureViewProtocol: AnyObject {
     func showItems(_ items: [FeatureItemViewModel])
     func showLoading()
@@ -53,6 +57,7 @@ protocol FeatureViewProtocol: AnyObject {
 }
 
 // MARK: - Presenter
+@MainActor
 protocol FeaturePresenterProtocol: AnyObject {
     var view: FeatureViewProtocol? { get set }
 
@@ -66,6 +71,7 @@ protocol FeatureInteractorProtocol {
 }
 
 // MARK: - Router
+@MainActor
 protocol FeatureRouterProtocol: AnyObject {
     func navigateToDetail(for item: FeatureEntity)
     func dismiss()
@@ -81,6 +87,7 @@ protocol DetailModuleFactory {
 
 Only renders what Presenter tells it to. No business logic, no data transformation.
 
+<!-- typecheck -->
 ```swift
 class FeatureViewController: UIViewController, FeatureViewProtocol {
     private let presenter: FeaturePresenterProtocol
@@ -136,6 +143,7 @@ extension FeatureViewController: UITableViewDelegate {
 
 Receives user events from View, requests data from Interactor, formats results for View, delegates navigation to Router.
 
+<!-- typecheck -->
 ```swift
 @MainActor
 final class FeaturePresenter: FeaturePresenterProtocol {
@@ -283,6 +291,7 @@ struct FeatureItemViewModel {
 
 Handles all navigation. Creates and wires the next VIPER module.
 
+<!-- typecheck -->
 ```swift
 class FeatureRouter: FeatureRouterProtocol {
     weak var viewController: UIViewController?
