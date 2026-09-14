@@ -105,3 +105,19 @@ section_cells() {
   done <<<"$GUIDES"
   [ -z "$hits" ] || { echo "$hits"; return 1; }
 }
+
+@test "a section reference names an H2 of the SKILL.md it points to" {
+  # The form is `<skill>` → "<H2>". An agent follows it to that heading, so the heading must exist.
+  refs="$(grep -rnoE '`[a-z0-9-]+` → "[^"]+"' "$ROOT/skills" "$ROOT/agents" "$ROOT/commands" || true)"
+  n="$(grep -c . <<<"$refs" || true)"
+  [ "$n" -ge 15 ] || { echo "found $n section references, expected at least 15"; return 1; }
+  bad=""
+  while IFS= read -r line; do
+    loc="${line%%\`*}"; ref="${line#"$loc"}"
+    s="${ref#\`}"; s="${s%%\`*}"
+    h="${ref#*\"}"; h="${h%\"}"
+    f="$ROOT/skills/$s/SKILL.md"
+    [ -f "$f" ] && h2s "$f" | grep -qxF -- "$h" || bad="$bad"$'\n'"${loc#"$ROOT"/}$ref"
+  done <<<"$refs"
+  [ -z "$bad" ] || { echo "no such H2 in the SKILL.md the reference names:$bad"; return 1; }
+}
