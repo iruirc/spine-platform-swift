@@ -163,11 +163,14 @@ synchronous work.
 Repositories may expose observations, but the values emitted are Domain
 snapshots:
 
-- Core Data: `NSFetchedResultsController`, `@FetchRequest`, or a custom bridge.
-- SwiftData: `@Query` for lists; manual `FetchDescriptor` for detail screens
-  where unrelated changes would cause wasteful rerenders.
+- Core Data: `NSFetchedResultsController` or a custom bridge.
+- SwiftData: manual `FetchDescriptor` fetches.
 - GRDB: `ValueObservation`.
 - Realm: live results mapped/frozen before crossing boundaries.
+
+One named exception: a read-only list with no business rule in a SwiftUI app may
+use `@Query` / `@FetchRequest` in the View. The price is a View that depends on
+the schema, so a schema change edits the View.
 
 ## Migrations
 
