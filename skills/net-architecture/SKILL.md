@@ -40,13 +40,13 @@ about architecture, not a URLSession or Alamofire tutorial.
 View / ViewModel
       |
       v
-Repository (Domain DTO <-> API DTO mapping, cache, error mapping)
+Repository (API DTO -> Domain mapping, cache, error mapping)
       |
       v
 APIClient (typed endpoint methods returning DTOs)
       |
       v
-HTTPClient (untyped request/response boundary)
+HTTPClient (untyped boundary: HTTPRequest in, HTTPResponse out)
       |
       v
 Transport (URLSession / Alamofire / Moya / generated client)

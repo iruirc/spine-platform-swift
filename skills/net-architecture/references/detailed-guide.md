@@ -312,11 +312,11 @@ Three patterns. Choose based on what the API supports; never roll multiple in on
 
 ```swift
 public struct ItemsPage {
-    public let items: [Item]
+    public let items: [ItemDTO]
     public let nextCursor: String?     // nil = end
 }
 
-actor ItemsPaginator {
+actor ItemsPaginator {                 // repository layer: maps API DTOs to Domain
     let api: ItemsAPI
     private var cursor: String?
     private var isExhausted = false
@@ -325,7 +325,7 @@ actor ItemsPaginator {
     func loadNext() async throws -> [Item] {
         guard !isExhausted else { return items }
         let page = try await api.fetchItems(cursor: cursor)
-        items.append(contentsOf: page.items)
+        items.append(contentsOf: page.items.map(Item.init(dto:)))
         cursor = page.nextCursor
         isExhausted = page.nextCursor == nil
         return items
