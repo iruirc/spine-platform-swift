@@ -198,7 +198,7 @@ final class FeatureInteractor: FeatureInteractorProtocol {
 }
 ```
 
-The Interactor has no back-reference to the Presenter — results flow back through `await`. Threading is owned by the caller (`@MainActor` Presenter); the Interactor itself is unisolated unless it touches mutable state that needs protection (use an `actor` then).
+The Interactor has no back-reference to the Presenter — results flow back through `await`. The Interactor is `nonisolated` unless it touches mutable state that needs protection (use an `actor` then); where its body runs is the toolchain mode's call — `concurrency-architecture` → "Toolchain modes".
 
 #### Combine variant
 
