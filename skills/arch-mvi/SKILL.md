@@ -115,9 +115,9 @@ A ViewModel with **one** `State` property and **one** `send(_:)` entry point. No
 
 ### Reducer (Flavor A only)
 
-- Pure function: `func reduce(_ state: inout State, _ intent: Intent) -> Effect?`.
+- Pure function of the state, the intent, and the dependencies it needs: `(inout State, Intent, dependencies) -> Effect?`.
 - **Synchronous.** No `await`, no `Task`, no captures of `self.client`. All async work returns as an `Effect`.
-- Does not hold dependencies — the `Store` injects them into `Effect` execution.
+- Does not hold dependencies. The `Store` passes them in as parameters; the reducer only captures them into the `Effect` it returns.
 
 ### Effect (Flavor A only)
 
