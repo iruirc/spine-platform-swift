@@ -50,3 +50,6 @@ which the self-containment guard rejects.
   `skills/manifest/SKILL.md` — core dispatches by role, so an agent no row names never runs.
 - Changing `skills/manifest/SKILL.md`: run `scripts/lint-manifest.sh .` — this fork differs from
   core's only in comments. Do it before pushing.
+- A reference guide keeps only what its SKILL.md does not; its format and load table are held by
+  `tests/foundation/lib/skill-references.test.bats`. A Swift block that must compile carries
+  `<!-- typecheck -->` above its fence, and `scripts/typecheck-snippets.sh` compiles it.
