@@ -21,7 +21,7 @@ h2s() {
 }
 
 contents() {
-  awk '$0 == "## Contents" {f = 1; next} f && /^#/ {exit} f && /^- / {sub(/^- /, ""); print}' "$1"
+  awk '$0 == "## Contents" {f = 1; next} f && /^#/ {exit} f && NF {sub(/^- /, ""); print}' "$1"
 }
 
 # The last cell of each data row of the table under "## When To Load The Reference".
