@@ -116,7 +116,7 @@ Cross-cutting (always, regardless of pattern):
 | Coordinator vs Router on hybrid UIKit+SwiftUI | Coordinator at the top; Router inside SwiftUI islands |
 | "Should we modularize?" | Not yet. One package, multiple folders, until 2+ devs collide or compile time hurts |
 | RxSwift vs Combine on a new project | Combine. RxSwift only if existing code already uses it |
-| Manual DI vs Factory vs Swinject | Manual graph (`di-composition-root` "Manual DI" section) until 10+ services. Then **Factory** (`di-factory`) by default for SwiftUI-first projects — compile-time safety, property-wrapper injection, preview/test contexts out of the box. **Swinject** (`di-swinject`) only when you need runtime autoregister, name-based lookup, or are stuck with legacy |
+| Manual DI vs Factory vs Swinject | Manual graph (`di-composition-root` → "DI: container vs manual graph") until 10+ services. Then **Factory** (`di-factory`) by default for SwiftUI-first projects — compile-time safety, property-wrapper injection, preview/test contexts out of the box. **Swinject** (`di-swinject`) only when you need runtime autoregister, name-based lookup, or are stuck with legacy |
 | TCA? | Pick TCA only when SwiftUI-only **and** team already fluent **and** the project benefits from exhaustive reducer-level tests. Otherwise default to MVVM (`arch-mvvm`) — see `arch-tca` "When Appropriate" for the full criteria. TCA is a non-default track; don't pick it on a deadline or to "future-proof" |
 
 ## Anti-Patterns at Choice Time
