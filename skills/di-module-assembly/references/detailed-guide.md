@@ -361,7 +361,7 @@ final class AppDependencyContainer: AppDependencies {
 }
 ```
 
-Use for small apps (< 30 services) and **mandatory** for SPM packages (see `pkg-spm-design`). Full comparison, scope strategies, and handling of cycles — in `di-composition-root`, section "DI: container vs manual graph".
+Use for small apps (< 30 services) and **mandatory** for SPM packages (see `pkg-spm-design`). Full comparison, scope strategies, and handling of cycles — in `di-composition-root` → "DI: container vs manual graph".
 
 ## File Structure
 
