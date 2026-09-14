@@ -165,7 +165,8 @@ Use `di-module-assembly` as the source of truth for the full chain.
 ## Common Mistakes
 
 - Force-unwrapping missing registrations without a clear setup failure message.
-- Registering a stateful service as `.container` and sharing its state across consumers.
+- Registering a stateful service as `.container` and sharing its state
+  across consumers.
 - Creating circular dependencies through constructor resolution.
 - Resolving dependencies inside service initializers.
 - Passing `Container` / `Resolver` to Coordinators or ViewModels.
