@@ -387,7 +387,8 @@ final class ModuleFactoryImp: RootModuleFactory {
     init(dependencies: AppDependencies) { self.dependencies = dependencies }
 
     func makeRootModule() -> ModuleComponents<RootViewController, RootViewModel> {
-        RootAssembly.assemble(dependencies: dependencies)   // protocol upcast: AppDependencies → RootFeatureDependencies
+        // protocol upcast: AppDependencies → RootFeatureDependencies
+        RootAssembly.assemble(dependencies: dependencies)
     }
 }
 
