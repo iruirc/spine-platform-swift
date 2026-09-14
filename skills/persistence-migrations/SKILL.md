@@ -8,9 +8,12 @@ description: "Use when designing or shipping a schema migration in an iOS app �
 Design, ship, test, and recover from local-store migrations across Core Data,
 SwiftData, GRDB, Realm, and Codable payloads stored as `Data`.
 
-Detailed framework examples live in `references/detailed-guide.md`. Load only
-the relevant section with
-`rg -n "^## " skills/persistence-migrations/references/detailed-guide.md`.
+> **Related skills:**
+> - `persistence-architecture` — Repository boundary, threading, write patterns, DI; this skill is its migration counterpart
+> - `error-architecture` — typed migration errors, failure surfacing, recoverable vs fatal classification
+> - `arch-clean`, `arch-mvvm` — where the migration UI fits in the launch sequence
+
+`references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 ## When To Load The Reference
 
@@ -42,6 +45,8 @@ Migration rules for every framework:
 8. Emit telemetry for success/failure, duration, source/destination versions,
    and relevant system state.
 9. Run migration on the foreground launch path. Defer background launches.
+10. Plan the recovery path: what the user sees when a migration fails, and
+    whether the app is still useful after "Start fresh".
 
 ## Core Data
 
@@ -189,3 +194,5 @@ For App Group stores shared with extensions/widgets:
 - Changing Codable payloads without legacy decode/snapshot tests.
 - Deleting old `.xcdatamodel` versions.
 - Sharing an App Group store without idempotent migration.
+- No backup before a destructive migration.
+- `try?` on decoding a transformable Codable payload — silent data loss.
