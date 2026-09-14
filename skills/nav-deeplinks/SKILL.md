@@ -12,8 +12,7 @@ tests. It is **not** a navigation tutorial — how a `Route` reaches a screen is
 owned by `arch-coordinator` (Coordinator) or `arch-swiftui-navigation` (SwiftUI
 Router) or `arch-tca` (state mutation).
 
-Detailed code lives in `references/detailed-guide.md`. Load only the section you
-need with `rg -n "^## " skills/nav-deeplinks/references/detailed-guide.md`.
+`references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 > **Related skills:**
 > - `arch-coordinator` — how a parsed `Route`/`DeepLink` drives UIKit Coordinator navigation
