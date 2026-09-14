@@ -19,6 +19,7 @@ Assemblies, `@MainActor` UI wiring, testing, and comparison with Factory.
 |---|---|
 | Set up a container | `Core Concepts` |
 | Register protocols, names, arguments | `Registration Patterns` |
+| Break a circular dependency, avoid resolving in initializers | `Registration Patterns` |
 | Pick Swinject scopes | `Object Scopes` |
 | Use Assemblies | `Assembly Pattern` |
 | Register/build `@MainActor` UI types | `@MainActor UI types + Swinject` |
