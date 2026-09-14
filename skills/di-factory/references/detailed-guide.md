@@ -99,7 +99,7 @@ struct MyApp: App {
 }
 ```
 
-**Never reach for `Container.shared` from domain layers** — only via `@Injected` or an explicit constructor. Otherwise you get a Service Locator (see "`Container.shared` from the domain layer — Service Locator" below).
+**Never reach for `Container.shared` below the composition edge** — there, dependencies come through an explicit constructor. Otherwise you get a Service Locator (see "`Container.shared` from the domain layer — Service Locator" below).
 
 ### `Container.shared` from the domain layer — Service Locator
 
@@ -111,14 +111,14 @@ final class ProfileService {
     }
 }
 
-// ✅ Correct: explicit init OR @Injected at the top level (ViewModel/Coordinator)
+// ✅ Correct: explicit init
 final class ProfileService {
     private let analytics: AnalyticsProtocol
     init(analytics: AnalyticsProtocol) { self.analytics = analytics }
 }
 ```
 
-`@Injected` is acceptable in the **presentation/ViewModel/Coordinator layer**, which owns the feature's graph. Services and repositories must accept dependencies explicitly via init.
+Services, repositories, ViewModels and Coordinators accept dependencies through init. Property wrappers belong only to the composition edge that the skill's `Resolution` names.
 
 ### Resolving via `Container.shared` inside a Factory closure
 
@@ -142,32 +142,35 @@ If someone creates a separate `Container()` for tests, in the first variant `api
 
 ## Resolution: Property Wrappers
 
+Every wrapper resolves from `Container.shared`, so it sits only at the composition edge the skill's `Resolution` names; the owners below are those edges.
+
 ### `@Injected` — eager, sync
 
 Resolved **at the moment the owner is created**. Use for required dependencies.
 
 ```swift
-final class ProfileViewModel: ObservableObject {
-    @Injected(\.userService) private var userService
+@main
+struct MyApp: App {
     @Injected(\.analyticsService) private var analytics
 
-    func load() async {
-        let user = try await userService.fetchCurrent()
-        analytics.track(.profileLoaded)
+    init() {
+        analytics.track(.appLaunched)
     }
+
+    var body: some Scene { … }
 }
 ```
 
-`\.userService` is a KeyPath to the `Container.userService` property.
+`\.analyticsService` is a KeyPath to the `Container.analyticsService` property.
 
 ### `@LazyInjected` — lazy, sync
 
 Resolved on first access. Use when the dependency isn't always needed or the owner is created frequently.
 
 ```swift
-final class AuthService {
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     @LazyInjected(\.biometricAuthenticator) private var biometric
-    // BiometricAuthenticator is created only if biometrics is actually invoked
+    // BiometricAuthenticator is created only if the scene actually asks for biometrics
 }
 ```
 
@@ -176,7 +179,7 @@ final class AuthService {
 Use to **break cycles** or for optionally-cached resources.
 
 ```swift
-final class CoordinatorRoot {
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     @WeakLazyInjected(\.imageCache) private var imageCache: ImageCache?
     // imageCache lives while someone else retains it
 }
@@ -185,18 +188,20 @@ final class CoordinatorRoot {
 ### `@InjectedObservable` — for @Observable view models (Factory 2.4+)
 
 ```swift
+@MainActor
 @Observable
 final class ContentViewModel {
-    @ObservationIgnored @Injected(\.repository) private var repository
+    private let repository: RepositoryProtocol
+    init(repository: RepositoryProtocol) { self.repository = repository }
 }
 
-struct ContentView: View {
+struct ContentView: View {          // the root view
     @InjectedObservable(\.contentViewModel) var viewModel
     var body: some View { … }
 }
 ```
 
-`@ObservationIgnored` is mandatory on `@Injected` inside an `@Observable` class — otherwise the property becomes part of the change graph and every resolve triggers a UI update.
+The registration builds the ViewModel through its initializer; the ViewModel never resolves.
 
 ### Direct resolution (no property wrappers)
 
@@ -217,10 +222,15 @@ struct ProfileView: View {
     var body: some View { … }
 }
 
-// ✅ DI lands on the ViewModel; the View receives it via @InjectedObservable or @State
-struct ProfileView: View {
-    @InjectedObservable(\.profileViewModel) var viewModel
-    var body: some View { … }
+// ✅ The root view resolves the screen's ViewModel and passes it through init
+struct RootView: View {
+    var body: some View {
+        NavigationStack {
+            HomeView().navigationDestination(for: ProfileRoute.self) { _ in
+                ProfileView(viewModel: Container.shared.profileViewModel())
+            }
+        }
+    }
 }
 
 // ✅ Composable components — via init, no DI:
@@ -232,8 +242,8 @@ struct ProfileHeaderView: View {
 ```
 
 **Rule:**
-- Services (`UserService`, `Analytics`, `Repository`) — **never** in a `View`. Only in the ViewModel via `@Injected` + `@ObservationIgnored`.
-- `@InjectedObservable` for the screen's root ViewModel — acceptable.
+- Services (`UserService`, `Analytics`, `Repository`) — **never** in a `View`. The ViewModel receives them through `init`, from its registration.
+- `@InjectedObservable` and `Container.shared` — only in the root view; a screen's `View` takes its ViewModel through `init`.
 - Composable subviews — `let`/`@Binding` via init. DI = a headache for previews and snapshot tests.
 
 ## Scopes
@@ -499,9 +509,9 @@ let svc = ProfileContainer.shared.service()
 
 See also `pkg-spm-design`'s **library/feature archetypes** section — it describes the general contract for how a package accepts dependencies through `init`, which works with any DI framework (Swinject / Factory / manual).
 
-### Name collisions in a multi-package setup
+### Name collisions across registration files
 
-Two packages declare `extension Container { var apiClient: Factory<…> }` with different implementations → one silently overrides the other. Grep for `var .*: Factory<` across all packages or give each package its own `Container`.
+Two registration files in the app target declare `extension Container { var apiClient: Factory<…> }` with different implementations → one silently overrides the other. Grep for `var .*: Factory<` across the app target, or give each feature group its own `SharedContainer`.
 
 ## Contexts
 
@@ -591,7 +601,7 @@ final class AppCoordinator {
 
 > **Shortcut inside ModuleFactory.** It can be tempting to let `ModuleFactory` call `Container.shared.foo()` directly and drop the `AppDependencyContainer` facade. Don't do this: it disguises a Service Locator, breaks Coordinator tests (no init injection — no mock), and zeroes out compile-time visibility of the dependency surface. The pattern is the same on 1, 5, and 50 screens — the cost of the facade pays for itself the first time you have a regression.
 
-> **`@Injected` exception.** `@Injected` is acceptable inside ViewModels/Coordinators **only** when the project has explicitly opted into property-wrapper injection at the architecture level and there is no ModuleFactory layer for that feature. In a project that uses the Module Assembly chain (the default scaffold), `@Injected` on a ViewModel bypasses the chain — the ViewModel goes through constructor injection from `*Assembly`, not via `@Injected`. Mixing both styles in the same feature produces hidden dependencies that don't show up in `ProfileAssembly.assemble(dependencies:)` signatures.
+> **Without the chain.** A feature with no ModuleFactory layer still keeps `@Injected` off its ViewModels and Coordinators: the root view or the `@main` App resolves, and everything below it takes `init` parameters. Mixing both styles in one feature produces hidden dependencies that show up in no initializer.
 
 ## Testing
 
@@ -612,9 +622,9 @@ final class ProfileViewModelTests: XCTestCase {
 }
 ```
 
-This only works if the ViewModel accepts dependencies via init. For the `@Injected` case — see below.
+ViewModels take their dependencies through init, so this is the default. To test the registered graph — see below.
 
-### Override via `register` — for @Injected
+### Override via `register` — the registered graph
 
 ```swift
 final class ProfileViewModelTests: XCTestCase {
@@ -633,7 +643,7 @@ final class ProfileViewModelTests: XCTestCase {
             MockUserService(result: .success(.fixture))
         }
 
-        let sut = ProfileViewModel()    // @Injected picks up the mock
+        let sut = Container.shared.profileViewModel()    // the registration passes the mock to init
 
         await sut.load()
         XCTAssertEqual(sut.state, .loaded(.fixture))
@@ -657,7 +667,7 @@ struct ProfileViewModelTests {
         Container.shared.userService.register {
             MockUserService(result: .success(.fixture))
         }
-        let sut = ProfileViewModel()
+        let sut = Container.shared.profileViewModel()
         await sut.load()
         #expect(sut.state == .loaded(.fixture))
     }
@@ -666,7 +676,7 @@ struct ProfileViewModelTests {
         Container.shared.userService.register {
             MockUserService(result: .failure(TestError.network))
         }
-        let sut = ProfileViewModel()
+        let sut = Container.shared.profileViewModel()
         await sut.load()
         #expect(sut.state == .error)
     }
@@ -699,7 +709,8 @@ extension Container: AutoRegistering {
 }
 
 #Preview {
-    ProfileView()    // mock is picked up automatically
+    // mock is picked up automatically
+    ProfileView(viewModel: Container.shared.profileViewModel())
 }
 ```
 
@@ -708,7 +719,7 @@ extension Container: AutoRegistering {
 ```swift
 #Preview("Loading state") {
     Container.shared.userService.register { MockUserService(result: .pending) }
-    return ProfileView()
+    return ProfileView(viewModel: Container.shared.profileViewModel())
 }
 ```
 
@@ -763,20 +774,26 @@ extension Container {
 
 If Swift 6 complains about resolving from nonisolated code — that means you're resolving a MainActor-bound type in the wrong place. Move the resolve into a MainActor zone (e.g. `View.task`/`onAppear`) instead of annotating the registration.
 
-### `@Injected` in `@Observable` classes
+### `@Injected` in an `@Observable` ViewModel
 
 ```swift
+// ❌ Hidden dependency — and without @ObservationIgnored every resolve triggers a UI update
 @MainActor
 @Observable
 final class FeatureViewModel {
-    @ObservationIgnored @Injected(\.repository) private var repository
-    @ObservationIgnored @Injected(\.analytics) private var analytics
+    @Injected(\.repository) private var repository
+}
 
-    var state: State = .idle
+// ✅ Dependency through init; the registration passes it
+@MainActor
+@Observable
+final class FeatureViewModel {
+    private let repository: RepositoryProtocol
+    init(repository: RepositoryProtocol) { self.repository = repository }
 }
 ```
 
-`@ObservationIgnored` is mandatory. Without it every `@Injected` property becomes observable, and SwiftUI will redraw the view unnecessarily.
+Code that keeps `@Injected` inside an `@Observable` class while it migrates marks it `@ObservationIgnored`.
 
 ### `nonisolated` Factory from a global-actor context
 
@@ -787,22 +804,6 @@ extension Container {
     var repository: Factory<RepositoryProtocol> {
         self { Repository(client: self.apiClient()) }.cached     // nonisolated → OK
     }
-}
-```
-
-### `@Injected` in `@Observable` without `@ObservationIgnored`
-
-```swift
-// ❌ Every resolve triggers a UI update
-@Observable
-final class ViewModel {
-    @Injected(\.service) var service
-}
-
-// ✅
-@Observable
-final class ViewModel {
-    @ObservationIgnored @Injected(\.service) var service
 }
 ```
 
