@@ -9,13 +9,18 @@ Design the local data layer: where data lives, how it survives app launches, and
 how the rest of the app talks to it. This is an architecture skill, not a Core
 Data tutorial.
 
-Detailed examples and framework-specific code live in
-`references/detailed-guide.md`. Load that reference only for the section you
-need; use `rg -n "^## "` or the section names below.
+> **Related skills:**
+> - `arch-clean`, `arch-mvvm`, `arch-viper` — which layer the persistence layer reports into
+> - `error-architecture` — error mapping at the storage boundary, conflict resolution, recoverable vs fatal classification
+> - `di-composition-root` — where `ModelContainer` / `NSPersistentContainer` / `DatabasePool` are bootstrapped (singleton scope)
+> - `di-module-assembly` — registering Repository implementations into feature modules
+> - `reactive-combine`, `reactive-rxswift` — bridging persistence queries into reactive pipelines
+> - `pkg-spm-design` — when extracting persistence into its own SPM package (and what the public surface should be)
+> - `concurrency-architecture` — Repository façade stays `nonisolated`; backing context confinement (`viewContext` / `@ModelActor` / `DatabasePool` / Realm thread-confinement) is a per-framework concern; cross-context object passing (always by `NSManagedObjectID` / `PersistentIdentifier`, never by reference)
+
+`references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 ## When To Load The Reference
-
-Read `references/detailed-guide.md` selectively:
 
 | Need | Reference sections |
 |---|---|
@@ -24,8 +29,8 @@ Read `references/detailed-guide.md` selectively:
 | Write repository implementations | `The Repository Boundary`, `Threading and Contexts`, `Sendable and Swift Concurrency` |
 | Design transactions, child collection updates, conflicts | `Repository Write Patterns` |
 | Add observations / reactive lists | `Querying and Reactivity` |
-| Plan migrations | `Migrations`; then switch to `persistence-migrations` |
 | Add CloudKit / offline sync | `CloudKit and Sync`, `Persistent History Tracking (Core Data)` |
+| Cache remote data in the local store | `Caching: Persistence as a Cache` |
 | Protect sensitive local data | `Encryption and File Protection` |
 | Wire persistence into DI | `Dependency Injection` |
 | Reduce mapper boilerplate | `Generic Mappers — What's Universal, What Isn't` |
@@ -174,6 +179,9 @@ Persistence architecture still owns the lifecycle decision: migrations run
 during explicit stack warm-up in the Composition Root, before repositories are
 resolved.
 
+Repositories operate on an already-migrated store, and a failed migration
+surfaces as a typed error mapped per `error-architecture`.
+
 ## Sync, CloudKit, And Multi-Process
 
 - Enable Persistent History Tracking for Core Data stores shared across app
@@ -234,3 +242,16 @@ storage primitive still owns how the framework works.
 - Treating CloudKit sync as instant or ignoring CloudKit schema constraints.
 - Skipping migration tests for shipped schemas.
 - Lazy-loading the persistence stack on the first repository call.
+- Storing PII or tokens unencrypted.
+- Mixing remote and local errors at the Repository boundary.
+- Using auto-increment IDs for records that sync across devices.
+- Hard-deleting records that need an audit trail or sync.
+- Storing large blobs in the database instead of files.
+- Declaring a write `throws` while its async work fails after the call returns.
+- Returning `Optional` from a mapper to signal an error.
+- Keeping mutable shared state inside a mapper.
+- Putting `NSPredicate` / `NSSortDescriptor` in the storage protocol.
+- Building a universal storage facade over every framework.
+- Sharing a Core Data store with an extension without Persistent History Tracking.
+- Storing dates as locale-formatted strings.
+- Migration mistakes: see `persistence-migrations` → "Common Mistakes".

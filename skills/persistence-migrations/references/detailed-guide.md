@@ -1,39 +1,17 @@
----
-name: persistence-migrations
-description: "Use when designing or shipping a schema migration in an iOS app — Core Data lightweight vs heavyweight + NSEntityMigrationPolicy, SwiftData VersionedSchema/MigrationStage, GRDB DatabaseMigrator, Realm migration block; transformable Codable payloads (evolutionary / lazy / proactive / envelope); progressive multi-step migrations; long-migration UX and atomic backup; failure recovery and telemetry; fixture-based migration tests; Codable snapshot tests."
----
+# persistence-migrations — detailed guide
 
-# Persistence Migrations
+## Contents
 
-Schema evolution is a low-frequency but high-blast-radius activity. This skill covers how to design, ship, and recover from migrations across Core Data, SwiftData, GRDB, and Realm — plus the orthogonal axis of evolving Codable payloads stored as transformable `Data`.
-
-> **Related skills:**
-> - `persistence-architecture` — Repository boundary, threading, write patterns, DI; this skill is its migration counterpart
-> - `error-architecture` — typed migration errors, failure surfacing, recoverable vs fatal classification
-> - `arch-clean`, `arch-mvvm` — where the migration UI fits in the launch sequence
-
-## Why This Skill Exists
-
-Apps live for years. Schema changes are not optional — and they fail in the wild in ways that are silent without explicit planning:
-
-- Half of users get `Cannot create NSManagedObjectModel: model is not loadable` on launch after `v3` ships.
-- Heavyweight migration loads 50K records into memory on a 3-year-old device — process killed, store half-baked.
-- A Codable payload field gets renamed; `try? JSONDecoder().decode(...)` silently returns `nil`; users see blank projects.
-- One mega mapping model `v1 → v5` works in the test (where the dev was on `v4`); breaks every user who hadn't opened the app since `v1`.
-- Migration fails for one user; their data is gone with no recovery path because `try? fs.remove(dbURL)` was the «recovery».
-
-Fix: **adjacent-pair migrations, atomic backup before any heavyweight step, fixture tests for every migration, typed failure surfaced to UI, telemetry on outcomes.**
-
-## Discipline (any framework)
-
-1. **Schema version is checked into git.** Never edit a shipped schema in place.
-2. **Never edit a shipped migration.** Once a migration ran on a user's device, it's frozen. Corrections go in a **new** migration.
-3. **Adjacent pairs only.** No mega mapping models from version N to current — see *Progressive migration*.
-4. **Every migration has a fixture test** — see *Testing / Migration tests*.
-5. **Backup before any heavyweight or chained migration** — see *Long migrations*.
-6. **Telemetry on every migration outcome** — see *Failure recovery*. Migration failures in the wild are silent without it.
-7. **Plan a recovery path explicitly** — what does the user see if migration fails? Does «Start fresh» still leave them with a useful app, or is the data the entire app? If data is unrecoverable without the server, document the dependency.
-8. **Run migration on the foreground launch path.** Defer if launched in background.
+- Core Data — lightweight vs heavyweight
+- SwiftData — VersionedSchema + MigrationPlan
+- GRDB — DatabaseMigrator
+- Realm — migration block
+- Migrating transformable Codable payloads
+- Progressive migration
+- Long migrations
+- Failure recovery
+- Cross-process migration
+- Testing
 
 ## Core Data — lightweight vs heavyweight
 
@@ -326,7 +304,7 @@ Common combination: Approach 1 by default, Approach 3 for breaking changes that 
 - **Removing old `PayloadV1` types** before all users have rolled forward (breaks Approaches 2 and 4).
 - **Trusting that lightweight schema migration «does something»** to the blob — it does literally nothing.
 
-## Progressive migration — v1 → v2 → v3 → … → current
+## Progressive migration
 
 The most common production migration disaster: you assume everyone is on v(current-1) and write a single mapping model from there. In reality, your users are on **all past versions** — someone hasn't opened the app in a year and is still on v1. A direct v1→v5 mapping model rarely exists; even if you write one, you've doubled the surface area.
 
@@ -375,7 +353,7 @@ func migrateStoreIfNeeded(at storeURL: URL) throws {
 
 **Anti-pattern: deleting old model versions to «clean up».** Once a model version shipped, it stays in `.xcdatamodeld` forever. Removing it breaks all users still on that version.
 
-## Long migrations — UX and performance
+## Long migrations
 
 Heavyweight migration loads source instances into memory and creates destination ones. For 50K+ records on mobile this can take **tens of seconds to minutes**, during which:
 
@@ -403,12 +381,10 @@ What to do:
   }
   ```
 
-  This is the **single canonical backup pattern** for the skill — every other section refers back here.
-
 - **Set `description.shouldAddStoreAsynchronously = true`** for Core Data when you need to keep the launch responsive (the `loadPersistentStores` callback fires on a background queue). The migration itself still runs serially — but the main thread isn't blocked while it does.
 - **Skip-the-shore option for very large stores:** if the migration is too long to be reasonable, ship the new app with the **old schema still readable** for a release or two, and migrate lazily (one row per access) or in background batches. Cost: complexity in repository code that handles both schemas.
 
-## Failure recovery — what to show the user
+## Failure recovery
 
 Heavyweight migration **will** fail in production. Disk pressure, OOM kill, corrupted store from a previous crash, mapping model bug that escaped tests. Plan it like network failure:
 
@@ -421,7 +397,7 @@ Heavyweight migration **will** fail in production. Disk pressure, OOM kill, corr
   3. **Start fresh** — delete the broken store, start with empty DB, but **keep the backup** so the user can recover later if support helps.
 - **Telemetry**: from-version / to-version / duration / error-domain / error-code / available-disk / memory-pressure-at-failure → SwiftyBeaver / Firebase non-fatal / your stack. Without this you don't know that 0.4% of users on v3→v4 fail with `disk full`.
 
-## Cross-process migration (App + Extension)
+## Cross-process migration
 
 If a Core Data / SwiftData store lives in an App Group and is shared between the main app and an Extension (Share / Widget / Notification Service), **either side may launch first after install or update**. The Extension might trigger migration before the user opens the app.
 
@@ -429,7 +405,7 @@ Rules:
 
 - **Migration logic must be idempotent** — running it again from the main app on the next launch must be a no-op (`DatabaseMigrator` and SwiftData `MigrationPlan` already are).
 - **No Extension may write to the store before migration completes.** Wrap any Extension write in the same `warmUp()` call the main app uses.
-- **Persistent History Tracking is mandatory** if the store is shared — see `persistence-architecture` / *Persistent History Tracking*. Otherwise the main app won't see writes the Extension made before/during migration.
+- **Persistent History Tracking is mandatory** if the store is shared — see `persistence-architecture` → "Sync, CloudKit, And Multi-Process". Otherwise the main app won't see writes the Extension made before/during migration.
 - **Test the «Extension launched first» path explicitly** — boot a fresh simulator, install, trigger the Extension before opening the app, observe the store on first app launch.
 
 ## Testing
@@ -498,19 +474,3 @@ final class PayloadSnapshotTests: XCTestCase {
 
 The third test is the critical one — it pins the contract «v1 payload still decodes», which is what protects users on older versions.
 
-## Common Mistakes
-
-Each entry one line + cross-reference to the body section that explains the fix.
-
-1. **No migration plan from day one** — first user upgrade crashes the app. See *Discipline*.
-2. **Editing a shipped migration** — never change a migration that ran on a user's device. See *Discipline*.
-3. **`shouldInferMappingModelAutomatically = true` with a heavyweight schema change** — see *Core Data*.
-4. **No fixture test for heavyweight migration** — see *Testing / Migration tests*.
-5. **No backup before destructive migration** — see *Long migrations*.
-6. **One mega mapping model from version N to current** — see *Progressive migration*.
-7. **Running heavyweight migration on background launch** — defer to next foreground launch. See *Long migrations*.
-8. **Auto-deleting the user's database on migration failure** — see *Failure recovery*.
-9. **Changing a Codable struct stored in a transformable attribute without a payload-migration plan** — see *Migrating transformable Codable payloads*.
-10. **`try?` on decode of a transformable Codable** — silent data loss. See *Migrating transformable Codable payloads / What NOT to do*.
-11. **Removing an old `.xcdatamodel` version to «clean up»** — breaks every user still on that version. See *Progressive migration*.
-12. **Shared App Group store without idempotent migration** — Extension launches first, runs migration, main app crashes on duplicate. See *Cross-process migration*.
