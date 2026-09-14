@@ -14,7 +14,7 @@ The Composition Root (CR) is the single place in the application where **concret
 > - `pkg-spm-design` — how SPM packages plug into the CR via `Dependencies` structs
 > - `persistence-architecture` — where `ModelContainer` / `NSPersistentContainer` / `DatabasePool` are created (singleton scope in CR), how to switch `.disk` / `.inMemory` for tests
 > - `persistence-migrations` — `try await stack.warmUp()` step in CR bootstrap where migration runs; why async warm-up belongs in the CR rather than lazy-on-first-call inside a Repository
-> - `concurrency-architecture` — singletons with mutable state are registered as `actor`s; `@MainActor`-isolated singletons (RootRouter, AppState `@Observable`) are created on main; the container itself is `nonisolated`
+> - `concurrency-architecture` — singletons with mutable state are registered as `actor`s; `@MainActor`-isolated singletons (RootRouter, AppState `@Observable`) are created on main; the `AppDependencyContainer` facade is `@MainActor` and background work never resolves from it
 
 ## Why a Composition Root
 
@@ -80,11 +80,13 @@ The CR can be implemented in three ways — through a runtime DI framework (Swin
 
 ### Manual AppDependencyContainer — full example
 
-Keep `AppDependencyContainer` itself **nonisolated**. Background services and
-repositories may resolve dependencies too; put `@MainActor` on UI factories,
-coordinators, routers, and app-scoped UI state instead.
+`AppDependencyContainer` and the dependency protocols it conforms to are
+`@MainActor` — `di-module-assembly` → "AppDependencyContainer" owns that rule.
+The services it builds are nonisolated and `Sendable`, or actors.
 
+<!-- typecheck -->
 ```swift
+@MainActor
 final class AppDependencyContainer: AppDependencies {
 
     // App-scope: lazy var — created on first access, lives until the app is killed
@@ -147,6 +149,7 @@ If A needs B and B needs A — using `lazy` directly won't work (init requires t
 
 ```swift
 // Property injection: each service holds a weak reference to the other
+@MainActor
 final class AppDependencyContainer: AppDependencies {
     lazy var userService: UserService = {
         let service = UserService(network: networkClient)
@@ -175,6 +178,7 @@ The mechanics are identical to the Swinject variant, just without autoresolve. M
 ### Sync bootstrap (typical case)
 
 ```swift
+@MainActor
 final class AppDependencyContainer {
     private let container = Container()
 
@@ -200,6 +204,7 @@ Two approaches:
 **A) Wait on the splash screen**
 
 ```swift
+@MainActor
 final class AppDependencyContainer {
     func bootstrapAsync() async throws {
         registerServices()
@@ -294,6 +299,7 @@ Sometimes you need **more than one CR**:
 CRs are rarely covered with unit tests (they are testing infrastructure themselves), but **a smoke test on registrations is useful**:
 
 ```swift
+@MainActor
 final class CompositionRootSmokeTests: XCTestCase {
     func test_allCriticalServicesResolve() {
         let container = AppDependencyContainer()
@@ -315,6 +321,7 @@ final class CompositionRootSmokeTests: XCTestCase {
 For async bootstrap — verify the graph builds in a reasonable time:
 
 ```swift
+@MainActor
 func test_asyncBootstrapCompletesInReasonableTime() async throws {
     let container = AppDependencyContainer()
     let start = Date()

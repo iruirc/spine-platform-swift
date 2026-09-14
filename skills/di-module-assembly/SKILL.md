@@ -75,12 +75,15 @@ Rules:
 
 Each feature declares the minimum dependencies it needs:
 
+<!-- typecheck -->
 ```swift
+@MainActor
 protocol ProfileFeatureDependencies {
     var userService: UserServiceProtocol { get }
     var analyticsService: AnalyticsServiceProtocol { get }
 }
 
+@MainActor
 protocol AppDependencies: ProfileFeatureDependencies,
                           SettingsFeatureDependencies {}
 ```
@@ -203,9 +206,13 @@ struct RootView: View {
 The external contract is the same: it conforms to `AppDependencies` and the rest
 of the app sees only feature dependency protocols.
 
-Keep the facade itself nonisolated unless it truly owns UI state. UI creation is
-`@MainActor` on assemblies, module factories, coordinator factories, and
-coordinator methods.
+The facade and the `AppDependencies` / `*FeatureDependencies` protocols are
+`@MainActor`. Only main-actor code resolves from them: the Composition Root,
+`ModuleFactoryImp`, and `CoordinatorFactoryImp`. The services the facade hands
+out are nonisolated and `Sendable`, or actors. Background work receives its
+services through `init` and never resolves; an entry point the system calls off
+the main actor — a `BGTaskScheduler` handler, a background `URLSession` delegate
+— captures its service at bootstrap.
 
 ## Non-UI Factories
 

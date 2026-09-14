@@ -30,20 +30,24 @@ struct ModuleComponents<View, ViewModel> {
 
 Each feature declares **only the dependencies it needs**:
 
+<!-- typecheck -->
 ```swift
 // Feature declares what it needs — nothing more
+@MainActor
 protocol ProfileFeatureDependencies {
     var userService: UserServiceProtocol { get }
     var analyticsService: AnalyticsServiceProtocol { get }
     var imageLoader: ImageLoaderProtocol { get }
 }
 
+@MainActor
 protocol SettingsFeatureDependencies {
     var appSettingsManager: AppSettingsManagerProtocol { get }
     var userService: UserServiceProtocol { get }
 }
 
 // App container conforms to all feature protocols
+@MainActor
 protocol AppDependencies: ProfileFeatureDependencies,
                           SettingsFeatureDependencies,
                           HomeFeatureDependencies {
@@ -298,11 +302,8 @@ appCoordinator.start()
 
 Facade over Swinject that conforms to all feature dependency protocols:
 
-The facade itself stays **nonisolated**. UI construction remains `@MainActor`
-on `Assembly`, `ModuleFactory`, `CoordinatorFactory`, and Coordinator methods;
-the dependency container may also be used by background services.
-
 ```swift
+@MainActor
 final class AppDependencyContainer: AppDependencies {
 
     private let container = Container()
@@ -352,6 +353,7 @@ final class AppDependencyContainer: AppDependencies {
 `AppDependencyContainer` can be implemented with `lazy var` fields instead of Swinject — the external contract (`AppDependencies` + per-feature `*FeatureDependencies`) is identical, the rest of the chain (`CoordinatorFactory`, `ModuleFactory`, `Assembly`) is unchanged.
 
 ```swift
+@MainActor
 final class AppDependencyContainer: AppDependencies {
     lazy var userService: UserServiceProtocol = UserService(networkClient: networkClient)
     lazy var analyticsService: AnalyticsServiceProtocol = AnalyticsService()
@@ -361,7 +363,7 @@ final class AppDependencyContainer: AppDependencies {
 }
 ```
 
-Use for small apps (< 30 services) and **mandatory** for SPM packages (see `pkg-spm-design`). Full comparison, scope strategies, and handling of cycles — in `di-composition-root` → "DI: container vs manual graph".
+It is **mandatory** for SPM packages (see `pkg-spm-design`). Whether it fits an app — the threshold, the full comparison, scope strategies, and handling of cycles — is `di-composition-root` → "DI: container vs manual graph".
 
 ## File Structure
 
