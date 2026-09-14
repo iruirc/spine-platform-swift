@@ -124,7 +124,7 @@ enum DeepLinkParser {
             else { return nil }
             return .promo(code: code)
         default:
-            return nil   // unknown / old link -> caller falls back to root
+            return nil   // unknown / old link -> the caller does not navigate
         }
     }
 }
@@ -164,7 +164,8 @@ final class DeepLinkRouter {
 
     // Custom scheme
     func handle(_ url: URL) {
-        guard let route = DeepLinkParser.parse(url) else { return }  // app already at root
+        // unknown link: stay where the app is
+        guard let route = DeepLinkParser.parse(url) else { return }
         dispatch(route)
     }
 
