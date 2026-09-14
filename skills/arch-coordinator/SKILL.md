@@ -28,7 +28,9 @@ Feature/
 
 ## Core Protocol
 
+<!-- typecheck -->
 ```swift
+@MainActor
 protocol Coordinator: AnyObject {
     var childCoordinators: [Coordinator] { get set }
     func start()
@@ -47,6 +49,7 @@ extension Coordinator {
 
 ## Base Coordinator
 
+<!-- typecheck -->
 ```swift
 class BaseCoordinator: Coordinator {
     var childCoordinators: [Coordinator] = []
@@ -61,7 +64,11 @@ class BaseCoordinator: Coordinator {
 
 Wrap UINavigationController to make Coordinators testable:
 
+<!-- typecheck -->
 ```swift
+import UIKit
+
+@MainActor
 protocol Router: AnyObject {
     func push(_ viewController: UIViewController, animated: Bool)
     func pop(animated: Bool)
@@ -92,6 +99,7 @@ extension Router {
     }
 }
 
+@MainActor
 class AppRouter: Router {
     private let navigationController: UINavigationController
 
