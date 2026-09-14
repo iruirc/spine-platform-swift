@@ -1,60 +1,22 @@
----
-name: persistence-architecture
-description: "Use when designing local data storage in an iOS app — choosing between Core Data, SwiftData, GRDB/SQLite, Realm, UserDefaults, file storage; Repository as the boundary that hides the framework; background contexts and threading; reactive queries; write patterns and conflict handling; CloudKit sync; encryption / file protection; in-memory testing strategies. For schema migrations see `persistence-migrations`."
----
+# persistence-architecture — detailed guide
 
-# Persistence Architecture
+## Contents
 
-Decisions about **where data lives, how it survives app launches, and how the rest of the app talks to it**. Not a tutorial on Core Data fetch requests — this skill tells you **how to wire any persistence framework into a layered architecture** that survives upgrades, threading, and framework swaps.
-
-> **Related skills:**
-> - `persistence-migrations` — schema migrations (lightweight/heavyweight, NSEntityMigrationPolicy, SwiftData VersionedSchema, GRDB DatabaseMigrator), transformable Codable payload evolution, progressive chains, long-migration UX, failure recovery, fixture tests
-> - `arch-clean`, `arch-mvvm`, `arch-viper` — which layer the persistence layer reports into
-> - `error-architecture` — error mapping at the storage boundary, conflict resolution, recoverable vs fatal classification
-> - `net-architecture` — pairing remote source + local cache (offline-first, sync, ETag/conditional GET)
-> - `di-composition-root` — where `ModelContainer` / `NSPersistentContainer` / `DatabasePool` are bootstrapped (singleton scope)
-> - `di-module-assembly` — registering Repository implementations into feature modules
-> - `reactive-combine`, `reactive-rxswift` — bridging persistence queries into reactive pipelines
-> - `pkg-spm-design` — when extracting persistence into its own SPM package (and what the public surface should be)
-> - `concurrency-architecture` — Repository façade stays `nonisolated`; backing context confinement (`viewContext` / `@ModelActor` / `DatabasePool` / Realm thread-confinement) is a per-framework concern; cross-context object passing (always by `NSManagedObjectID` / `PersistentIdentifier`, never by reference)
-
-## Why This Skill Exists
-
-Without an architecture, persistence code drifts into:
-
-- **`NSManagedObject` in the ViewModel** — UI binds to thread-confined Core Data objects; one async fetch and you crash with `NSObjectInaccessibleException`.
-- **One context for everything** — main-thread `viewContext` does writes too; UI hangs for 400ms during sync.
-- **Schema migration roulette** — version 3 ships, half the users get `Cannot create NSManagedObjectModel: model is not loadable` on launch.
-- **`UserDefaults` as a database** — 5MB of JSON in a single key, synchronous I/O on every read, lost on iCloud restore in some cases.
-- **No Repository boundary** — `NSFetchRequest` literals scattered across 40 files; replacing Core Data with SwiftData requires touching every screen.
-- **Thread-confined objects crossing actors** — Realm object captured in a `Task`, accessed on the wrong thread → silent data corruption or crash.
-- **No backups before destructive migration** — heavyweight migration fails for one user → data gone, no recovery path.
-
-Fix: **a typed Repository boundary returning Domain models, framework hidden behind it, contexts/threading owned by the persistence layer, migrations versioned and tested.**
-
-## Layering
-
-```
-View / ViewModel              ← never imports CoreData / SwiftData / GRDB / Realm
-        │
-        ▼
-Repository (Domain in/out, framework hidden inside)
-        │
-        ▼
-Storage primitive (NSPersistentContainer / ModelContainer / DatabasePool / Realm)
-        │
-        ▼
-Disk (sqlite file / Realm file / .plist / files)
-```
-
-**Rules:**
-
-- **ViewModel/UseCase imports only Domain types.** Never `import CoreData` outside the persistence layer.
-- **Repository owns mapping** Domain ↔ Storage entity, plus error mapping. See `error-architecture`.
-- **Container/pool is a singleton** registered in Composition Root (`scope = .container`). Never created on demand.
-- **Domain models are value types (`struct`).** They are snapshots — not references to live database rows.
-
-> **Note on a separate DataSource layer.** Some projects split Repository (Domain-facing) from DataSource (framework-facing) when one Repository combines multiple sources (network + local). For pure local persistence the two collapse into one — the rest of this skill assumes that case. If you need the split, the rules above apply to the DataSource: it owns the framework, Repository owns mapping into the same Domain types.
+- Choosing the Framework
+- Schema Design
+- Storage Location and Sharing
+- The Repository Boundary
+- Threading and Contexts
+- Sendable and Swift Concurrency
+- Persistent History Tracking (Core Data)
+- Repository Write Patterns
+- Querying and Reactivity
+- CloudKit and Sync
+- Caching: Persistence as a Cache
+- Encryption and File Protection
+- Dependency Injection
+- Generic Mappers — What's Universal, What Isn't
+- Testing
 
 ## Choosing the Framework
 
@@ -68,7 +30,7 @@ There is no universal answer. Match storage to the **shape of the data and the a
 | **Realm** | Cross-platform (iOS+Android), live objects auto-update, MongoDB Atlas Device Sync | Thread-confined live objects (footgun), proprietary format, ownership uncertainty since MongoDB acquisition | Cross-platform code sharing, existing MongoDB Atlas backend |
 | **UserDefaults** | Trivial API, automatically persisted | Sync I/O, 4KB practical limit per key, no querying, NOT for sensitive data | Simple flags, last-selected-tab, onboarding-shown bool |
 | **Plain files (`FileManager`)** | Zero ceremony, full control, easy to inspect | No querying, no transactions, manual concurrency | Documents the user owns (exports, downloads, attachments), large blobs (images, video) |
-| **Keychain** | Encrypted, survives reinstall (configurable), iCloud-syncable | Slow, small values only, awkward API | Tokens, passwords, encryption keys — see `swift-security` audit checklist |
+| **Keychain** | Encrypted, survives reinstall (configurable), iCloud-syncable | Slow, small values only, awkward API | Tokens, passwords, encryption keys — see the `@spine-platform-swift:swift-security` agent's audit checklist |
 
 **Decision shortcut:**
 
@@ -81,7 +43,7 @@ There is no universal answer. Match storage to the **shape of the data and the a
 
 Mixing is normal: GRDB for the main store + UserDefaults for flags + Keychain for tokens + files for downloaded media. Don't put media blobs in Core Data — `external storage` or no, the database file balloons.
 
-> **On Realm:** coverage in this skill is intentionally minimal beyond migration and threading specifics. For new projects prefer Core Data / SwiftData / GRDB; the Realm sections here exist for maintenance of existing projects.
+> **On Realm:** coverage in this guide is intentionally minimal beyond migration and threading specifics. For new projects prefer Core Data / SwiftData / GRDB; the Realm sections here exist for maintenance of existing projects.
 
 ## Schema Design
 
@@ -121,7 +83,7 @@ If most checks land on the right column → transformable Data. If even one impo
 
 Cheap to introduce, but they have specific failure modes you must own:
 
-1. **Schema drift inside the blob** — Core Data sees only bytes; renaming/removing/retyping a Codable field silently breaks decode for all existing rows. See `persistence-migrations` / *Migrating transformable Codable payloads* for the four mitigation approaches.
+1. **Schema drift inside the blob** — Core Data sees only bytes; renaming/removing/retyping a Codable field silently breaks decode for all existing rows. See `persistence-migrations` → "Transformable Codable Payloads" for the four mitigation approaches.
 2. **Not searchable via predicate** — `predicate = NSPredicate(format: "address.zipCode == %@", ...)` returns nothing useful. Decoding the blob in memory just to filter defeats the purpose of a database.
 3. **Whole-blob writes** — touching one inner field rewrites the entire payload. Fine at tens of bytes, slow at hundreds of KB.
 4. **No referential integrity** — if the blob holds an `id` of another entity, the database can't enforce the foreign key.
@@ -177,10 +139,12 @@ let storeURL = groupURL.appendingPathComponent("Model.sqlite")
 Caveats:
 
 - **Multiple processes hitting the same SQLite file** can corrupt it without proper coordination. Core Data handles cross-process notifications **only** if you enable Persistent History Tracking — see the dedicated section below. GRDB uses SQLite WAL mode by default — concurrent reads safe, concurrent writes serialised.
-- **Schema migrations across processes** — the extension may launch first after install/update and trigger migration. The main app on next launch will see an already-migrated store. Migration logic must be idempotent. See `persistence-migrations` / *Cross-process migration*.
+- **Schema migrations across processes** — the extension may launch first after install/update and trigger migration. The main app on next launch will see an already-migrated store. Migration logic must be idempotent. See `persistence-migrations` → "Cross-Process Stores".
 - **App Group container survives uninstall** in some configurations on iCloud — different from the main bundle's Documents.
 
 ## The Repository Boundary
+
+> **Note on a separate DataSource layer.** Some projects split Repository (Domain-facing) from DataSource (framework-facing) when one Repository combines multiple sources (network + local). For pure local persistence the two collapse into one — the rest of this guide assumes that case. If you need the split, the rules above apply to the DataSource: it owns the framework, Repository owns mapping into the same Domain types.
 
 Repository is the **only** type the rest of the app sees. Its method signatures use Domain types and `throws`/`Result`. Never returns framework objects.
 
@@ -354,7 +318,7 @@ try pool.write { db in
 
 ## Sendable and Swift Concurrency
 
-The Domain layer of this skill leans on Sendable `struct`s, but the framework side does not naturally cooperate. Three things to know.
+The Domain layer here leans on Sendable `struct`s, but the framework side does not naturally cooperate. Three things to know.
 
 ### Domain models must be Sendable
 
@@ -699,17 +663,6 @@ Same caveat: re-fires on any change to the entity type — fine for lists, waste
 >
 > **Cross-process / multi-coordinator change notifications:** standard `NSManagedObjectContextDidSave` / `ObjectsDidChange` only fire within one coordinator instance. For cross-process notifications, see *Persistent History Tracking*.
 
-## Migrations
-
-Schema evolution is a separate concern with its own mental model: lightweight vs heavyweight, `NSEntityMigrationPolicy`, SwiftData `VersionedSchema`/`MigrationStage`, GRDB `DatabaseMigrator`, transformable Codable payloads, progressive chains, long-migration UX, atomic backup, failure recovery, fixture-based tests.
-
-→ **See `persistence-migrations` skill.** Applies whenever a shipped schema changes, a transformable Codable payload changes, or a heavyweight migration needs to run on the launch path.
-
-The persistence-architecture skill assumes:
-- Container/stack lifecycle in DI (this skill, *Dependency Injection*) calls `try await stack.warmUp()` before any Repository resolves; that's where `persistence-migrations` runs.
-- Repository methods (this skill, *Repository Boundary*) operate on an already-migrated store — they don't deal with version drift.
-- Migration failures surface as typed `MigrationFailure` errors mapped per `error-architecture` rules.
-
 ## CloudKit and Sync
 
 When data must follow the user across devices, you have three choices:
@@ -794,7 +747,7 @@ By default, iOS encrypts files when the device is locked (`NSFileProtectionCompl
 
 - **Keychain for keys, encryption library for data** — if you need at-rest encryption above iOS defaults, use SQLCipher (with GRDB) or a Realm encryption key stored in Keychain.
 - **Never store secrets in Core Data / SwiftData / SQLite without encryption** — the file is readable by anyone with filesystem access (jailbroken device, backup).
-- **Keychain access control** — `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` prevents iCloud sync of the key. See `swift-security` skill / agent.
+- **Keychain access control** — `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` prevents iCloud sync of the key. See the `@spine-platform-swift:swift-security` agent.
 
 ## Dependency Injection
 
@@ -1085,7 +1038,7 @@ For testing background actors (`@ModelActor`), test methods are non-isolated by 
 
 Fixture-based migration tests and snapshot tests for transformable Codable payloads belong with the migration mechanics they verify.
 
-→ See `persistence-migrations` / *Testing*.
+→ See `persistence-migrations` → "Testing".
 
 ### Concurrency tests
 
@@ -1154,32 +1107,3 @@ func test_archive_setsIsArchived() async throws {
 
 Default values mean each test mentions only the fields it cares about — readable assertions about behaviour, not setup noise.
 
-## Common Mistakes
-
-Each entry one line + cross-reference to the body section that explains the fix.
-
-1. **Returning `NSManagedObject` / `@Model` / Realm `Object` from Repository** — leaks the framework, thread-confined. See *Repository Boundary*.
-2. **One context for reads and writes on the main thread** — UI freezes. See *Threading and Contexts*.
-3. **Sharing `NSManagedObject` / Realm object across threads** — silent crashes/corruption. See *Sendable and Swift Concurrency*.
-4. **`UserDefaults` for «real» data** — sync I/O, 4KB practical limit, NOT encrypted. Use Keychain for secrets, a real DB for collections.
-5. **Storing PII / tokens unencrypted** — see *Encryption and File Protection*.
-6. **`@Query` / `@FetchRequest` in detail screens** — re-renders on any model change. Use manual fetch + `@State`.
-7. **Mixing remote and local errors at the Repository boundary** — see `error-architecture`.
-8. **Treating CloudKit sync as instant** — first sync can take minutes; show sync-status UI.
-9. **No identity strategy** — auto-increment IDs collide on cross-device sync. Use `UUID`.
-10. **Hard delete with no audit / sync** — see *Schema Design / Soft delete*.
-11. **Loading large blobs into the database** — store as files, keep path in DB.
-12. **Fake `throws` over async work** — see *Repository Write Patterns / Anti-pattern: silent write failure*.
-13. **Delete-and-recreate children on every parent save** — see *Updating child collections — diff*.
-14. **Returning `Optional<Domain>` from a mapper as an error signal** — make mappers `throws` with typed `MappingError(field:, reason:)`.
-15. **Mutable shared state inside a mapper** (`var transaction`) — pass context as a parameter to each call.
-16. **`NSPredicate` / `NSSortDescriptor` in the abstract storage protocol** — leaks Core Data; use a domain-level `Filter`.
-17. **«Universal storage facade»** — see *Dependency Injection / Anti-pattern*.
-18. **Lazy bootstrap inside the first Repository call** — run `try await stack.warmUp()` explicitly in Composition Root.
-19. **DB file in `Documents/`** — backed up to iCloud, eats user quota, visible in Files. Use `Library/Application Support/`. See *Storage Location and Sharing*.
-20. **Sharing Core Data between app and Extension without Persistent History Tracking** — extension writes invisible to main app. See *Persistent History Tracking*.
-21. **Storing `Date` as locale-formatted `String`** — `DateFormatter` without `.iso8601` is locale-dependent; user travelling between locales gets garbled timestamps. Use `Date` natively or `ISO8601DateFormatter`.
-22. **Domain model with non-Sendable types (`UIImage`, `NSAttributedString`)** — Swift 6 rejects, or silently passes corrupt data across actors. Store as `Data` / `URL` and convert at the UI layer. See *Sendable and Swift Concurrency*.
-23. **CloudKit-incompatible schema** (required attributes without defaults, missing inverse relationships, `Unique` constraints) — local store works, sync silently broken. See *CloudKit / Schema constraints*.
-
-> Migration-specific mistakes (no migration plan, edited shipped migration, mega mapping model, missing fixture test, auto-deleting DB on failure, etc.) live in `persistence-migrations` / *Common Mistakes*.
