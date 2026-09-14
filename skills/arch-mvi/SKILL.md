@@ -144,7 +144,7 @@ Feature/
 ├── FeatureView.swift            # SwiftUI / UIViewController
 ├── FeatureState.swift           # struct/enum State : Equatable
 ├── FeatureIntent.swift          # enum Intent
-├── FeatureReducer.swift         # Flavor A only — pure reduce(_:_:)
+├── FeatureReducer.swift         # Flavor A only — pure reduce(_:_:_:), dependencies as parameters
 ├── FeatureEffects.swift         # Flavor A only — Effect builders
 └── FeatureStore.swift           # Store (Flavor A) or ViewModel (Flavor B)
 ```

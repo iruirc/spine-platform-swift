@@ -415,7 +415,7 @@ A few `arch-*`-spanning rules about wiring concurrency dependencies in Compositi
 
 1. **`@MainActor` on Repository / APIClient / Logger.** Pushes I/O onto the main thread. The fix: remove the annotation. If you got a Swift 6 warning, the right answer is `Sendable` on the Repository's input/output types, not `@MainActor` on the Repository.
 
-2. **`Task.detached` to "escape" `@MainActor`.** Loses cancellation, loses caller context, and almost always wrong. Use plain `Task { }` (inherits caller) and let the `await` boundary do the hop.
+2. **`Task.detached` to "escape" `@MainActor`.** Loses cancellation, loses caller context, and almost always wrong. Use plain `Task { }` (inherits caller) and `await` a `nonisolated` callee; with Approachable Concurrency on, mark the callee `@concurrent` for the hop (see "Toolchain modes").
 
 3. **`actor` for stateless services.** No state ⇒ no need for serialization. Use a plain `Sendable` `struct` or `final class`.
 
@@ -435,7 +435,7 @@ A few `arch-*`-spanning rules about wiring concurrency dependencies in Compositi
 
 11. **Mixing `nonisolated(unsafe)` and `@unchecked Sendable` because Swift 6 complains.** These are escape hatches with documented invariants. If you don't have an invariant to document, the right answer is to fix the data flow. Defer to `swift-concurrency:swift-concurrency` for when these are legitimate.
 
-12. **`@MainActor` on a UseCase to "make the warning go away".** UseCase is now serialized through main thread. The right answer is almost always: make the UseCase nonisolated, make its inputs/outputs `Sendable`, and let the `@MainActor` ViewModel `await` it.
+12. **`@MainActor` on a UseCase to "make the warning go away".** UseCase is now serialized through main thread. The right answer is almost always: make the UseCase nonisolated (and `@concurrent` where its work must leave main under Approachable Concurrency — see "Toolchain modes"), make its inputs/outputs `Sendable`, and let the `@MainActor` ViewModel `await` it.
 
 13. **`Task.sleep` for production debounce/throttle/retry-backoff without a clock abstraction.** `Task.sleep` itself is correct and respects cancellation — the real problem is wall-clock coupling that makes tests slow and flaky. In production use `swift-async-algorithms` `.debounce` for streams; for raw delays, inject a `Clock` (`ContinuousClock` / `SuspendingClock`) and substitute `TestClock` (swift-clocks) in tests.
 

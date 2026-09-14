@@ -184,8 +184,6 @@ final class AppDependencyContainer {
 
     func bootstrap() {
         registerServices()      // registration only — no async operations
-        registerViewModels()
-        registerFactories()
     }
 }
 
@@ -335,7 +333,7 @@ func test_asyncBootstrapCompletesInReasonableTime() async throws {
 
 1. **CR as a singleton** — `static let shared = AppContainer()`. That's a Service Locator and throws away the value of DI.
 2. **CR imports UIKit views directly** — should go through Factory/Assembly so the UI layer can be swapped out.
-3. **CR methods called from arbitrary code** — `AppDependencyContainer.shared.userService` anywhere = anti-pattern. The CR is accessible only to root objects (Coordinator, RootView).
+3. **CR methods called from arbitrary code** — `AppDependencyContainer.shared.userService` anywhere = anti-pattern. Only the Composition Root, `ModuleFactoryImp` and `CoordinatorFactoryImp` hold the facade (`di-module-assembly` → "AppDependencyContainer"); a Coordinator or a root view receives factories, never the container.
 4. **Bootstrap performs network requests synchronously** — blocks the main thread, the app looks frozen. Use async bootstrap (variant A or B above).
 5. **Registration in multiple places** — part in AppDelegate, part in SceneDelegate, part in some Manager. There must be one (or explicitly several with clear scopes) CR.
 
