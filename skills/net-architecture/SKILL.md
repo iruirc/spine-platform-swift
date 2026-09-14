@@ -9,8 +9,7 @@ Design the app networking layer: boundaries, typed endpoints, auth, retry,
 cancellation, pagination, caching, framework choice, and tests. This skill is
 about architecture, not a URLSession or Alamofire tutorial.
 
-Detailed examples live in `references/detailed-guide.md`. Load only the section
-you need with `rg -n "^## " skills/net-architecture/references/detailed-guide.md`.
+`references/detailed-guide.md` lies beside this file; its `## Contents` names the sections — read only the ones the table points to.
 
 ## When To Load The Reference
 

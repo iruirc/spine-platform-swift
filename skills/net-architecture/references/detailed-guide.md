@@ -1,61 +1,17 @@
----
-name: net-architecture
-description: "Use when designing the networking layer of an iOS app — HTTPClient protocol behind framework choice (URLSession/Alamofire/Moya/Get), endpoint design, auth interceptors with token refresh, retry policies (idempotency-aware), pagination patterns, cancellation propagation, multipart/background URLSession, WebSocket/SSE, HTTP-level vs Repository-level caching, framework comparison, mock/stub testing strategies."
----
+# net-architecture — detailed guide
 
-# Networking Architecture
+## Contents
 
-Decisions about **how the network layer is shaped** in an iOS app: layering, the `HTTPClient` boundary, interceptors, retry/cancellation, pagination, framework choice. Not a tutorial on URLSession or Alamofire — this skill tells you **how to wire any of them into a layered architecture** that stays testable as the app grows.
-
-> **Related skills:**
-> - `arch-clean`, `arch-mvvm`, `arch-viper` — which layers the network layer reports into
-> - `error-architecture` — error mapping at the network boundary, retry/idempotency rules, PII-safe logging, cancellation policy
-> - `di-composition-root` — where `URLSession`, `HTTPClient`, `APIClient`, interceptors are wired
-> - `di-module-assembly` — registering networking services into feature modules
-> - `reactive-combine`, `reactive-rxswift` — bridging async/await network calls into reactive pipelines
-> - `net-openapi` — generating typed clients from OpenAPI specs (Apple's `swift-openapi-generator`)
-> - `persistence-architecture` — pairing remote source with a local cache (offline-first, read-through, observe-with-refresh)
-> - `persistence-migrations` — when a server contract change requires a local-store schema migration (DTO restructure → cached DTO/entity restructure)
-> - `concurrency-architecture` — APIClient/HTTPClient stay `nonisolated` (URLSession is thread-safe); auth interceptor's token-refresh single-flight is a legitimate `actor`; `URLRequest.timeoutInterval` (transport) vs `withTimeout` at UseCase boundary (business)
-
-## Why This Skill Exists
-
-Without an architecture, network code drifts into:
-
-- **API call inside ViewModel** — `URLSession.shared.dataTask(...)` lives in 30 ViewModels, each handling auth/retry/decoding differently.
-- **Hardcoded base URL and headers** — staging/prod toggles via `#if DEBUG`, can't run UI tests against a stub.
-- **Copy-pasted JSON decoding** — same DTO defined twice with different field cases; one screen breaks when API renames a field.
-- **Auth token refresh races** — five parallel requests get 401, all five trigger `/refresh` simultaneously.
-- **Retry that double-charges** — `POST /payments` retried on timeout because "the framework does it".
-- **Mocking nightmare** — to test a ViewModel you need to swap `URLSession`, but it's a `let` inside a singleton.
-
-Fix: **a typed boundary (`HTTPClient` / `APIClient` protocols) with all cross-cutting concerns implemented as composable interceptors, isolated from the rest of the app behind a Repository.**
-
-## Layering
-
-```
-View / ViewModel              ← never touches HTTP directly
-        │
-        ▼
-Repository (Domain DTO ↔ API DTO mapping, cache, error mapping)
-        │
-        ▼
-APIClient (typed endpoints: func fetchItems() async throws -> [ItemDTO])
-        │
-        ▼
-HTTPClient (untyped: takes Request, returns (Data, HTTPURLResponse))
-        │
-        ▼
-Transport (URLSession / Alamofire / Moya / generated client)
-```
-
-**Rules:**
-
-- **ViewModel/UseCase never imports Foundation.URL or HTTP types.** They depend on `Repository` (domain types only).
-- **Repository owns mapping** API DTO → Domain model and `RepositoryError` ← network errors. See `error-architecture`.
-- **APIClient is the typed surface** — one method per endpoint, returns DTO, throws `APIError` (or `Result<DTO, APIError>` for storage; see `error-architecture` decision table).
-- **HTTPClient is the framework-agnostic boundary** — any of URLSession/Alamofire/Moya hides behind it. This is what tests stub.
-- **Transport is where the framework actually lives.** If you swap Alamofire for raw URLSession, only `URLSessionHTTPClient` changes.
+- The HTTPClient Boundary
+- Endpoint Design
+- Interceptors / Middleware
+- Cancellation
+- Pagination
+- Multipart, Downloads, Background URLSession
+- WebSocket / SSE
+- Caching
+- Framework Comparison
+- Testing
 
 ## The HTTPClient Boundary
 
@@ -466,17 +422,17 @@ Persistent storage strategies (Core Data, SwiftData, SQLite) — see `persistenc
 | Moya | Declarative endpoint enum on top of Alamofire | async/await (Moya 15+), Combine ✅, RxSwift ✅ | Plugins | — | Large API surface (100+ endpoints), Rx-heavy team, want endpoint catalog. |
 | Get (kean) | Modern minimal URLSession wrapper | async/await ✅ | Delegate-based | — | Greenfield projects that want less boilerplate than raw URLSession. |
 | `swift-openapi-generator` | Generated client from OpenAPI spec | async/await ✅ | `ClientMiddleware` | ✅ from yaml | API has stable OpenAPI spec; want compile-time guarantees. See `net-openapi`. |
-| Apollo iOS | GraphQL client (different paradigm) | async/await ✅ | Interceptors | ✅ from `.graphql` | GraphQL backend — out of scope for this skill. |
+| Apollo iOS | GraphQL client (different paradigm) | async/await ✅ | Interceptors | ✅ from `.graphql` | GraphQL backend — out of scope here. |
 
 **Recommendation matrix:**
 
-- **New project, REST, no spec yet** → URLSession + this skill's HTTPClient pattern.
+- **New project, REST, no spec yet** → URLSession + the skill's HTTPClient pattern.
 - **New project, REST, OpenAPI spec exists** → `swift-openapi-generator` wrapped in your `APIClient` protocol.
 - **Existing Alamofire codebase** → keep Alamofire, adapt to `HTTPClient` protocol via `AlamofireHTTPClient`.
 - **Existing Moya codebase** → keep, but consider whether the enum endpoint catalog still pays for itself in async/await world (Moya's RxSwift sweet spot is fading).
 - **GraphQL** → Apollo, separate skill territory.
 
-### URLSession integration (mini-section)
+### URLSession integration
 
 ```swift
 final class URLSessionHTTPClient: HTTPClient {
@@ -500,7 +456,7 @@ final class URLSessionHTTPClient: HTTPClient {
 
 Bootstrap in CR: one `URLSession(configuration: .default)` per environment; **do not** use `URLSession.shared` if you have custom delegate or auth challenge logic.
 
-### Alamofire integration (mini-section)
+### Alamofire integration
 
 ```swift
 import Alamofire
@@ -525,7 +481,7 @@ final class AlamofireHTTPClient: HTTPClient {
 
 Use Alamofire's `RequestInterceptor` only if you actively use Alamofire-specific features (auth challenge, custom server trust). Otherwise put interceptor logic in your own `HTTPMiddleware` chain — keeps it portable.
 
-### Moya integration (mini-section)
+### Moya integration
 
 ```swift
 enum ItemsTarget: TargetType {
@@ -549,7 +505,7 @@ final class MoyaItemsAPI: ItemsAPI {
 
 `MoyaProvider` is itself the transport — for Moya projects you can skip `HTTPClient` middleware and use Moya `PluginType` instead. **But** keep the `ItemsAPI` protocol layer above Moya so the rest of the app doesn't import Moya types.
 
-### swift-openapi-generator (cross-link)
+### swift-openapi-generator
 
 Setup, integration, error mapping, mocking — see dedicated `net-openapi` skill.
 
@@ -626,18 +582,3 @@ func test_fetchItems_encodesPageAsQuery() async throws {
 ```
 
 **Always** verify URL composition for at least one happy-path test per endpoint — endpoint encoding bugs are silent until QA finds them in prod.
-
-## Common Mistakes
-
-1. **`URLSession.shared` everywhere** — can't swap for tests, no place to inject auth interceptor or custom delegate. Use a CR-bootstrapped `URLSession` instance.
-2. **Hardcoded `https://api.example.com`** — staging/prod toggles via `#if DEBUG`. Inject `BaseURLProvider` or `Environment` value type from CR.
-3. **JSON decoding in the ViewModel** — couples UI to API DTO shape. Decode in `APIClient`, map to Domain in Repository, hand the View a Domain type.
-4. **Using `JSONDecoder()` ad-hoc** — forgot `keyDecodingStrategy`, dates parsed as ISO8601 in one place and Unix timestamp in another. Centralize one `JSONDecoder.api` extension.
-5. **Showing `URLError.localizedDescription`** to the user (`The Internet connection appears to be offline. (Code -1009.)`). Map at the Repository boundary to `RepositoryError.networkUnavailable`, then to a `UserMessage` in the ViewModel. See `error-architecture`.
-6. **Auto-retrying `POST` on timeout** — double-charge in payments, duplicate orders. `POST` retries require `Idempotency-Key` agreed with backend.
-7. **Token refresh race** — 5 parallel 401s fire 5 refresh requests. Single in-flight refresh via `actor`.
-8. **Logging request body / `Authorization` header in production** — leaks PII and credentials. Strip at the logger; OSLog `privacy:` markers. See `error-architecture`.
-9. **Treating `CancellationError` as user-facing** — flash of "Cancelled" message every time the user navigates away. Filter at the ViewModel.
-10. **Caching authorized GETs in `URLCache`** — `URLCache` is shared across users on the same device. Use Repository-level cache keyed by user.
-11. **WebSocket reconnect logic in the ViewModel** — every screen reinvents it. Belongs in the channel implementation; ViewModel just consumes the `AsyncStream`.
-12. **Mocking `URLSession` directly with subclassing** — fragile; methods are not all overridable. Stub via `URLProtocol` or hide behind `HTTPClient` protocol and fake that.
