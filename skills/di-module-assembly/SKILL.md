@@ -156,6 +156,41 @@ init(
 
 No `Resolver`, no `Container`, no global `shared`.
 
+## Navigation End By UI Framework
+
+The chain ends where navigation lives, and navigation follows the UI framework:
+
+- **UIKit, AppKit.** `CoordinatorFactory` creates the Coordinator with its
+  `*ModuleFactory`; the Coordinator calls `make…Module()` and pushes the view.
+- **SwiftUI.** No Coordinator. The view that owns the root `NavigationStack`
+  holds the `*ModuleFactory` and builds each screen inside
+  `navigationDestination`; the router holds only navigation state. The Assembly
+  returns the SwiftUI View:
+
+<!-- typecheck: swiftui -->
+```swift
+import SwiftUI
+enum SettingsAssembly {
+    @MainActor static func assemble(dependencies: SettingsFeatureDependencies)
+        -> ModuleComponents<SettingsView, SettingsViewModel> {
+        let viewModel = SettingsViewModel(settings: dependencies.appSettingsManager)
+        return ModuleComponents(view: SettingsView(viewModel: viewModel), viewModel: viewModel)
+    }
+}
+
+struct RootView: View {
+    @State private var router = AppRouter()   // navigation state only
+    let factory: SettingsModuleFactory
+    var body: some View {
+        NavigationStack(path: $router.path) {
+            HomeView().navigationDestination(for: SettingsRoute.self) { _ in
+                factory.makeSettingsModule().view
+            }
+        }
+    }
+}
+```
+
 ## AppDependencyContainer
 
 `AppDependencyContainer` is the facade over the concrete DI mechanism:

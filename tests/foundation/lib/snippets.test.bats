@@ -52,7 +52,7 @@ setup() {
 @test "every marked block in the plugin compiles" {
   run "$TYPECHECK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  # No floor on marked blocks yet: none is marked. The file count proves the scan ran.
+  # No floor on marked blocks yet. The file count proves the scan ran.
   n="$(ls "$ROOT"/skills/*/SKILL.md "$ROOT"/skills/*/references/detailed-guide.md 2>/dev/null | wc -l | tr -d ' ')"
   grep -qE "^scanned $n files, " <<<"$output" || { echo "want $n files scanned: $output"; return 1; }
 }
