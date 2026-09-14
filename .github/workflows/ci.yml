@@ -15,7 +15,7 @@ jobs:
           # typecheck-snippets.sh refuses an older swiftc; switch only when the default is older.
           v="$(xcrun swiftc --version 2>&1 | sed -n 's/.*Swift version \([0-9]*\.[0-9]*\).*/\1/p' | head -1)"
           if [ "$(printf '%s\n' 6.2 "$v" | sort -V | head -1)" != 6.2 ]; then
-            x="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)"
+            x="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1 || true)"
             [ -n "$x" ] || { echo "default swiftc is '${v:-unreadable}', below 6.2, and no /Applications/Xcode_*.app to switch to"; exit 1; }
             sudo xcode-select -s "$x"
           fi
