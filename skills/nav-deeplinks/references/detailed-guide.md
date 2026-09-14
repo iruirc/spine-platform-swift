@@ -1,10 +1,14 @@
-# nav-deeplinks — Detailed Guide
+# nav-deeplinks — detailed guide
 
-Load one section at a time:
-`rg -n "^## " skills/nav-deeplinks/references/detailed-guide.md`
+## Contents
 
-The navigation layer (`Route` → screen) is **out of scope** here. See
-`arch-coordinator`, `arch-swiftui-navigation`, or `arch-tca`.
+- Link Type Decision
+- Universal Links Setup
+- The DeepLink Parser
+- Entry Points
+- Cold Start & Pending Route
+- Deferred Deep Links
+- Testing
 
 ## Link Type Decision
 
