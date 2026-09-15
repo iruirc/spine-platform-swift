@@ -22,10 +22,11 @@ setup() {
   [ "$got" = "ios-simulator,ios-device,macos" ] || { echo "surfaces: $got"; return 1; }
 }
 
-@test "the declared core floor reads everything this plugin writes" {
+@test "the declared core floor reads everything this plugin relies on" {
   # Core reads `surfaces` from 1.7.1, and the `tasks`, `docs_map` and `stack = —`
-  # answers workspace-init hands to setup from 1.9.0. Below that, setup asks instead. The agents pin
-  # no model, and the `## Models` a user sets to keep them on opus exists from 1.11.0.
+  # answers workspace-init hands to setup from 1.9.0. Below that, setup asks instead.
+  # The agents no longer pin opus, and the `## Models` a user sets to keep them on it
+  # exists from 1.11.0.
   run python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))["dependencies"]; print([x["version"] for x in d if x["name"]=="spine-toolkit"][0])' "$ROOT/.claude-plugin/plugin.json"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ "$output" = ">=1.11.0 <2" ] || { echo "floor: $output"; return 1; }
