@@ -4,7 +4,6 @@ description: |
   Designs and reviews iOS/macOS application architecture. Use when: planning new feature modules, evaluating architectural patterns, designing service layers, configuring dependency injection, deciding package boundaries, or refactoring architecture.
   Use when (en): "design architecture", "plan new feature module", "evaluate architectural pattern", "review project architecture", "should I split into a package?"
   Use when (ru): "спроектируй архитектуру", "запланируй модуль", "оцени архитектурный паттерн", "проведи ревью архитектуры", "нужен ли отдельный пакет?"
-model: opus
 color: purple
 ---
 

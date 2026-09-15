@@ -4,7 +4,6 @@ description: |
   Reviews iOS/Swift code for bugs, security issues, performance problems, and adherence to project standards. Use when: reviewing PRs or diffs, auditing code quality, checking implementations before merge, or validating code after writing. Never modifies code.
   Use when (en): "review this code", "audit the diff", "check this implementation", "is this ready to merge?"
   Use when (ru): "проведи ревью этого кода", "проверь диф", "оцени эту реализацию", "готово ли к мержу?"
-model: opus
 color: red
 ---
 

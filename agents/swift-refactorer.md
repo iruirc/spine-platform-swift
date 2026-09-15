@@ -4,7 +4,6 @@ description: |
   Refactors existing code to improve structure, readability, and maintainability without changing behavior. Use when: extracting protocols, splitting large classes, migrating patterns, reducing technical debt, or reorganizing module boundaries.
   Use when (en): "refactor this", "extract protocol", "split this class", "reduce coupling", "modularize this"
   Use when (ru): "отрефактори это", "вынеси протокол", "разбей этот класс", "сократи связность", "вынеси в модуль"
-model: opus
 color: orange
 ---
 
