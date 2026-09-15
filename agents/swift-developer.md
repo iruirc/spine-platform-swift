@@ -4,7 +4,6 @@ description: |
   Implements iOS/macOS features, updates existing functionality, and fixes bugs. Use when: writing new code, modifying existing code, implementing UI, integrating services, or resolving crashes and defects.
   Use when (en): "implement feature", "build this UI", "wire up service", "fix this bug"
   Use when (ru): "реализуй фичу", "собери этот UI", "подключи сервис", "почини этот баг"
-model: opus
 color: purple
 ---
 

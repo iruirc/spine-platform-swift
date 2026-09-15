@@ -4,7 +4,6 @@ description: |
   Generates unit and integration tests. Use when: writing tests for new or existing code, covering edge cases, testing services/ViewModels/repositories, or verifying bug fixes with regression tests. Never modifies production code.
   Use when (en): "write tests for this", "cover this with unit tests", "add a regression test", "test this ViewModel"
   Use when (ru): "напиши тесты для этого", "покрой unit-тестами", "добавь regression-тест", "оттестируй ViewModel"
-model: opus
 color: blue
 ---
 

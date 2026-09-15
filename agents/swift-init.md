@@ -4,7 +4,6 @@ description: |
   Bootstraps a new Swift/Apple project: iOS/macOS apps or SPM packages. Generates exactly one artifact per invocation. For a multi-module project run multiple times; assemble the .xcworkspace manually in Xcode. To attach the toolkit to an existing project use `/setup`. Initializes SwiftLint, a minimal user-owned `CLAUDE.md` (with `@./CLAUDE-spine-toolkit.md` import line), and the toolkit-owned `CLAUDE-spine-toolkit.md`. Interactive — always confirms stack choices before generating.
   Use when (en): "create new Swift project", "scaffold iOS app", "generate SPM package", "init macOS app from scratch", "/swift-init"
   Use when (ru): "создай Swift-проект", "новый iOS-проект", "сгенерируй SPM-пакет", "инициализируй macOS-приложение", "/swift-init"
-model: opus
 color: blue
 ---
 

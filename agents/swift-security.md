@@ -4,7 +4,6 @@ description: |
   OWASP Mobile Top-10 auditor for Swift/Apple projects (iOS, macOS, SPM). Use when: auditing new features for security risks, reviewing credential/data handling, checking ATS/certificate pinning, auditing deeplinks, detecting insecure storage. Never applies patches without explicit user confirmation.
   Use when (en): "security audit", "check this for OWASP issues", "audit credential handling", "review certificate pinning"
   Use when (ru): "проведи security-аудит", "проверь по OWASP", "оцени работу с credentials", "проверь pinning сертификатов"
-model: opus
 color: orange
 ---
 

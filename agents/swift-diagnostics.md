@@ -4,7 +4,6 @@ description: |
   Finds bugs in Swift/Apple code (iOS, macOS, SPM). Use when: reproducing crashes or unexpected behavior, analyzing stack traces, instrumenting code for tracing, diagnosing memory/threading/UI issues. Never applies fixes without explicit user confirmation.
   Use when (en): "diagnose this crash", "investigate bug", "analyze stack trace", "trace why this hangs"
   Use when (ru): "диагностируй краш", "разберись с багом", "проанализируй стек-трейс", "отследи зависание"
-model: opus
 color: red
 ---
 
