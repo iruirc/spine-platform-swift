@@ -160,9 +160,11 @@ Keep pagination state in a paginator/repository object, not in every ViewModel.
 
 Keep specialized flows in dedicated clients:
 
+<!-- typecheck -->
 ```swift
 public protocol UploadClient {
-    func upload(_ data: Data, to url: URL, mimeType: String, filename: String) async throws -> URL
+    func upload(fileAt file: URL, to url: URL, mimeType: String, filename: String)
+        async throws -> URL
 }
 
 public protocol DownloadClient {
@@ -170,9 +172,11 @@ public protocol DownloadClient {
 }
 ```
 
-Background URLSession requires a separate background configuration, delegate
-bridge, stored completion handler, and relaunch recovery. Do not bolt those
-concerns onto the generic `HTTPClient`.
+Background URLSession requires a separate background configuration, uploads
+from a file, a delegate that owns each result (an awaiting continuation dies
+with the process), the stored completion handler, and the session recreated with
+the same identifier at launch. Do not bolt those concerns onto the generic
+`HTTPClient`.
 
 For WebSocket/SSE, expose a channel that returns `AsyncThrowingStream` and owns
 reconnect, heartbeat, and multiplexing. ViewModels consume events; they do not
@@ -198,8 +202,8 @@ For local storage and cache schema evolution, use `persistence-architecture` and
 - New REST app with no spec: URLSession + this `HTTPClient` pattern.
 - Stable OpenAPI spec: `swift-openapi-generator` wrapped in your own protocol.
 - Existing Alamofire codebase: keep Alamofire, adapt it behind `HTTPClient`.
-- Existing Moya codebase: keep Moya endpoint catalog, but keep an app-owned
-  API protocol above it.
+- Moya: existing codebases only. Keep its endpoint catalog behind an app-owned
+  API protocol; its last release, 15.0.3, has no async API.
 - GraphQL: Apollo and generated GraphQL models; keep it as a separate transport
   paradigm.
 
