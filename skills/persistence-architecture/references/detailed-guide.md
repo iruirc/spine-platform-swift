@@ -864,13 +864,15 @@ final class PersistenceStack {
 }
 ```
 
+Under Pattern B the repository takes the facade, not the container:
+
 ```swift
 container.register(PersistenceStack.self) { _ in
     PersistenceStack(location: .disk(Self.dbURL))
 }.inObjectScope(.container)
 
 container.register(ItemRepository.self) { r in
-    CoreDataItemRepository(stack: r.resolve(PersistenceStack.self)!)
+    CoreDataFacadeItemRepository(stack: r.resolve(PersistenceStack.self)!)
 }
 ```
 
