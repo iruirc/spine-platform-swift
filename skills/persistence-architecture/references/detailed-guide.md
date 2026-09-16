@@ -147,7 +147,10 @@ Caveats:
 
 Repository is the **only** type the rest of the app sees. Its method signatures use Domain types and `throws`/`Result`. Never returns framework objects.
 
+<!-- typecheck: boundary -->
 ```swift
+import Foundation
+
 public protocol ItemRepository {
     func fetch(id: Item.ID) async throws -> Item?
     func list(filter: ItemFilter) async throws -> [Item]
@@ -162,6 +165,7 @@ public struct Item: Identifiable, Sendable, Equatable {
     public var createdAt: Date
     public var updatedAt: Date
     public var isArchived: Bool
+    public var version: Int
 }
 ```
 
@@ -172,30 +176,22 @@ public struct Item: Identifiable, Sendable, Equatable {
 - **No accidental persistence** — caller cannot save changes by mutating a property; the only write path is `upsert(_:)`.
 - **Framework-swappable** — replacing Core Data with GRDB doesn't change a single ViewModel.
 
-The Repository internally maps Storage → Domain on read and Domain → Storage on write. Mappers are pure functions, easy to unit-test.
+The Repository internally maps Storage → Domain on read and Domain → Storage on write. Mappers are pure functions, easy to unit-test. The implementations below show `fetch`; the other requirements follow its shape.
 
 ### Core Data implementation
 
+`NSPersistentContainer.performBackgroundTask` has had an `async` overload since iOS 15. A hand-written continuation wrapper with the same name shadows it and gains nothing:
+
+<!-- typecheck: core-data -->
 ```swift
-extension NSPersistentContainer {
-    func performBackgroundTask<T>(
-        _ block: @escaping (NSManagedObjectContext) throws -> T
-    ) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            performBackgroundTask { context in
-                do {
-                    let value = try block(context)
-                    continuation.resume(returning: value)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-}
+import CoreData
 
 final class CoreDataItemRepository: ItemRepository {
     private let container: NSPersistentContainer
+
+    init(container: NSPersistentContainer) {
+        self.container = container
+    }
 
     func fetch(id: Item.ID) async throws -> Item? {
         try await container.performBackgroundTask { ctx in
@@ -213,7 +209,8 @@ final class CoreDataItemRepository: ItemRepository {
             title: entity.title,
             createdAt: entity.createdAt,
             updatedAt: entity.updatedAt,
-            isArchived: entity.isArchived
+            isArchived: entity.isArchived,
+            version: Int(entity.version)
         )
     }
 }
@@ -221,9 +218,13 @@ final class CoreDataItemRepository: ItemRepository {
 
 ### SwiftData implementation
 
-The same shape via `@ModelActor` — the actor owns its `ModelContext`, callers get pure value snapshots:
+The same shape via `@ModelActor` — the actor owns its `ModelContext`, callers get pure value snapshots. Isolated methods meet the `async` requirements; the synchronous `observe(filter:)` cannot be actor-isolated, so it is `nonisolated` and reaches the actor from a `Task`:
 
+<!-- typecheck: swiftdata -->
 ```swift
+import Foundation
+import SwiftData
+
 @ModelActor
 actor SwiftDataItemRepository: ItemRepository {
     func fetch(id: Item.ID) async throws -> Item? {
@@ -234,9 +235,23 @@ actor SwiftDataItemRepository: ItemRepository {
         return Self.toDomain(entity)
     }
 
+    nonisolated func observe(filter: ItemFilter) -> AsyncStream<[Item]> {
+        AsyncStream { continuation in
+            let task = Task {
+                defer { continuation.finish() }
+                let saves = NotificationCenter.default.notifications(named: ModelContext.didSave)
+                continuation.yield(try await list(filter: filter))
+                for await _ in saves {
+                    continuation.yield(try await list(filter: filter))
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     nonisolated private static func toDomain(_ entity: ItemEntity) -> Item {
         Item(id: entity.id, title: entity.title, createdAt: entity.createdAt,
-             updatedAt: entity.updatedAt, isArchived: entity.isArchived)
+             updatedAt: entity.updatedAt, isArchived: entity.isArchived, version: entity.version)
     }
 }
 ```
@@ -270,9 +285,14 @@ This is where most persistence bugs live. The rules differ by framework — pick
 - **Never share an `NSManagedObject` across contexts.** Pass `NSManagedObjectID`, re-fetch on the other side.
 - **Never `await` while holding a context block** — the `perform` block must complete synchronously inside the closure.
 
+<!-- typecheck -->
 ```swift
-container.viewContext.automaticallyMergesChangesFromParent = true
-container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+import CoreData
+
+func configureViewContext(of container: NSPersistentContainer) {
+    container.viewContext.automaticallyMergesChangesFromParent = true
+    container.viewContext.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
+}
 ```
 
 ### SwiftData
@@ -567,21 +587,30 @@ For synced data prefer **soft delete** — see *Schema Design / Soft delete*.
 
 ### Optimistic concurrency
 
-If two devices (or two screens) can edit the same record, naïve last-write-wins silently loses data. Add a `version: Int` field, bump it inside the same transaction as the upsert, throw `RepositoryError.conflict` on mismatch:
+If two devices (or two screens) can edit the same record, naïve last-write-wins silently loses data. `Item` carries the `version` it was read at, and a new item starts at 0. The upsert compares it with the stored version, bumps it in the same save, and throws `RepositoryError.conflict` on a mismatch. Two background contexts can both pass that comparison, so a save that fails Core Data's own merge check is the same conflict:
 
+<!-- typecheck: core-data -->
 ```swift
-if let existing = try ctx.fetch(req).first {
-    guard existing.version == item.expectedVersion else {
-        throw RepositoryError.conflict(stored: existing.version, attempted: item.expectedVersion)
+extension CoreDataItemRepository {
+    func upsert(_ item: Item) async throws {
+        try await container.performBackgroundTask { ctx in
+            let req = ItemEntity.fetchRequest()
+            req.predicate = NSPredicate(format: "id == %@", item.id as CVarArg)
+            req.fetchLimit = 1
+            let entity = try ctx.fetch(req).first ?? ItemEntity(context: ctx)
+            guard entity.version == item.version else {
+                throw RepositoryError.conflict(id: item.id)
+            }
+            Self.fill(entity, from: item)
+            entity.version = Int64(item.version + 1)
+            do {
+                try ctx.save()
+            } catch let error as CocoaError where error.code == .managedObjectMerge {
+                throw RepositoryError.conflict(id: item.id)
+            }
+        }
     }
-    Self.fill(existing, from: item)
-    existing.version += 1
-} else {
-    let new = ItemEntity(context: ctx)
-    Self.fill(new, from: item)
-    new.version = 1
 }
-try ctx.save()
 ```
 
 ViewModel handles `RepositoryError.conflict` by re-fetching and prompting the user (or by merging). See `error-architecture` for the conflict → `UserMessage` mapping.
@@ -794,25 +823,46 @@ container.register(ItemRepository.self) { r in
 
 ### Pattern B — `PersistenceStack` facade
 
+<!-- typecheck -->
 ```swift
+enum StoreLocation {
+    case disk(URL)
+    case inMemory
+}
+
 final class PersistenceStack {
     private let container: NSPersistentContainer
 
     init(location: StoreLocation) {
         container = NSPersistentContainer(name: "Model")
-        configureLocation(location)
+        let description = container.persistentStoreDescriptions[0]
+        switch location {
+        case .disk(let url): description.url = url
+        case .inMemory: description.url = URL(fileURLWithPath: "/dev/null")
+        }
     }
 
     func warmUp() async throws {
-        try await container.loadPersistentStoresAsync()
+        try await withCheckedThrowingContinuation { (loaded: CheckedContinuation<Void, Error>) in
+            container.loadPersistentStores { _, error in
+                if let error { loaded.resume(throwing: error) } else { loaded.resume() }
+            }
+        }
         container.viewContext.automaticallyMergesChangesFromParent = true
-        container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        container.viewContext.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
     }
 
     var viewContext: NSManagedObjectContext { container.viewContext }
-    func performBackgroundTask<T>(_ block: @escaping (NSManagedObjectContext) throws -> T) async throws -> T { ... }
-}
 
+    func performBackgroundTask<T>(
+        _ block: @escaping (NSManagedObjectContext) throws -> T
+    ) async rethrows -> T {
+        try await container.performBackgroundTask(block)
+    }
+}
+```
+
+```swift
 container.register(PersistenceStack.self) { _ in
     PersistenceStack(location: .disk(Self.dbURL))
 }.inObjectScope(.container)
@@ -1066,13 +1116,16 @@ Fixture-based migration tests and snapshot tests for transformable Codable paylo
 
 Repository methods that allow concurrent writes need explicit conflict tests:
 
+<!-- typecheck: tests -->
 ```swift
+import XCTest
+
 func test_concurrentUpsert_oneSucceedsOneConflicts() async throws {
     let id = UUID()
-    try await repo.upsert(Item.makeFixture(id: id, title: "original"))   // version=1
+    try await repo.upsert(Item.makeFixture(id: id, title: "original"))   // stored at version 1
 
-    let edit1 = Item.makeFixture(id: id, title: "device A", expectedVersion: 1)
-    let edit2 = Item.makeFixture(id: id, title: "device B", expectedVersion: 1)
+    let edit1 = Item.makeFixture(id: id, title: "device A", version: 1)
+    let edit2 = Item.makeFixture(id: id, title: "device B", version: 1)
 
     func capture(_ operation: @escaping () async throws -> Void) async -> Result<Void, Error> {
         do {
@@ -1105,6 +1158,7 @@ func test_concurrentUpsert_oneSucceedsOneConflicts() async throws {
 
 For complex Domain types, hand-rolled `Item(...)` constructors in every test get unwieldy. A builder pattern keeps tests focused on the field that matters:
 
+<!-- typecheck: tests -->
 ```swift
 extension Item {
     static func makeFixture(
@@ -1112,9 +1166,13 @@ extension Item {
         title: String = "test",
         createdAt: Date = .now,
         updatedAt: Date = .now,
-        isArchived: Bool = false
+        isArchived: Bool = false,
+        version: Int = 0
     ) -> Item {
-        Item(id: id, title: title, createdAt: createdAt, updatedAt: updatedAt, isArchived: isArchived)
+        Item(
+            id: id, title: title, createdAt: createdAt, updatedAt: updatedAt,
+            isArchived: isArchived, version: version
+        )
     }
 }
 
