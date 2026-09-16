@@ -161,18 +161,19 @@ final class FeaturePresenter: FeaturePresenterProtocol {
 
     func viewDidLoad() {
         view?.showLoading()
-        fetchTask = Task { [weak self] in
-            guard let self else { return }
+        fetchTask = Task { [weak self, interactor] in
             do {
                 let items = try await interactor.fetchItems()
+                // Not before the await: a strong self across it would keep deinit from running
+                guard let self else { return }
                 self.items = items
                 view?.hideLoading()
                 view?.showItems(items.map(FeatureItemViewModel.init(entity:)))
             } catch is CancellationError {
                 // Cancelled — no UI update
             } catch {
-                view?.hideLoading()
-                view?.showError(error.localizedDescription)
+                self?.view?.hideLoading()
+                self?.view?.showError(error.localizedDescription)
             }
         }
     }
