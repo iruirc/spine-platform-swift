@@ -81,22 +81,36 @@ final class ItemStore {
 - Reports user actions via target-action / delegate / closure
 - Custom subviews are separate UIViews, not baked into the VC
 
+<!-- typecheck -->
 ```swift
+import UIKit
+
 final class ItemCell: UITableViewCell {
     private let titleLabel = UILabel()
-    private let checkmark = UIImageView()
+    private let checkmarkButton = UIButton(type: .system)
 
     var onToggleTap: (() -> Void)?
 
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        let row = UIStackView(arrangedSubviews: [titleLabel, checkmarkButton])
+        row.frame = contentView.bounds
+        row.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        contentView.addSubview(row)
+        checkmarkButton.addTarget(self, action: #selector(didTapCheckmark), for: .touchUpInside)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
     func configure(with item: Item) {
-        titleLabel.text = item.title
         titleLabel.attributedText = item.isDone
             ? NSAttributedString(string: item.title, attributes: [.strikethroughStyle: 1])
             : NSAttributedString(string: item.title)
-        checkmark.image = item.isDone ? UIImage(systemName: "checkmark.circle.fill") : UIImage(systemName: "circle")
+        let symbol = item.isDone ? "checkmark.circle.fill" : "circle"
+        checkmarkButton.setImage(UIImage(systemName: symbol), for: .normal)
     }
 
-    @IBAction private func didTapCheckmark() {
+    @objc private func didTapCheckmark() {
         onToggleTap?()
     }
 }
