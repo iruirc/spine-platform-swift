@@ -110,7 +110,7 @@ path.removeLast()            // pop
 path.removeLast(path.count)  // pop to root
 ```
 
-`NavigationPath` is `Codable` if all values it holds are `Codable` — useful for state restoration.
+`NavigationPath` itself is not `Codable`. For state restoration, encode its `codable` property (a `NavigationPath.CodableRepresentation`) and restore with `NavigationPath(_:)`. `codable` is `nil` if any value in the path is not `Codable` or was appended where only its `Hashable` conformance is visible, as in `AppRouter.push` below.
 
 ## Routing: enum-based vs type-based
 
@@ -256,7 +256,10 @@ To reset a tab to root when re-tapped — use `.onChange(of: selection)` and cle
 
 When navigation logic outgrows view-local `@State`, extract it into an `@Observable` Router. This is the SwiftUI equivalent of Coordinator — but reactive, not imperative.
 
+<!-- typecheck -->
 ```swift
+import SwiftUI
+
 @MainActor
 @Observable
 final class AppRouter {
@@ -271,7 +274,7 @@ final class AppRouter {
     func dismissSheet() { presentedSheet = nil }
 }
 
-enum SheetRoute: Identifiable {
+enum SheetRoute: Identifiable, Equatable {
     case settings, profileEdit(userId: UUID)
     var id: String {
         switch self {
@@ -378,6 +381,7 @@ belong to `nav-deeplinks`; this Router applies an already validated route.
 > `nav-deeplinks` skill. This section only shows the SwiftUI side: applying a
 > parsed `Route` to `NavigationPath` / tab selection.
 
+<!-- typecheck -->
 ```swift
 extension AppRouter {
     func apply(_ route: Route) {
@@ -465,7 +469,10 @@ Don't mix paradigms inside a single screen unless necessary — debugging dual-s
 
 ### Test Router state, not SwiftUI internals
 
+<!-- typecheck -->
 ```swift
+import XCTest
+
 @MainActor
 final class AppRouterTests: XCTestCase {
     func test_push_appendsToPath() {
