@@ -213,6 +213,7 @@ class GetItemsUseCase: GetItemsUseCaseProtocol {
 
 Maps between external formats and Domain entities. DTOs are the same regardless of async approach.
 
+<!-- typecheck -->
 ```swift
 // Data/DTOs/ItemDTO.swift
 struct ItemDTO: Codable {
@@ -227,8 +228,6 @@ struct ItemDTO: Codable {
     let status: String
     let createdAt: String
 
-    private static let dateFormatter = ISO8601DateFormatter()
-
     enum CodingKeys: String, CodingKey {
         case id, title, description, status
         case createdAt = "created_at"
@@ -238,7 +237,7 @@ struct ItemDTO: Codable {
         guard let itemStatus = ItemStatus(rawValue: status) else {
             throw MappingError.invalidStatus(status)
         }
-        guard let date = Self.dateFormatter.date(from: createdAt) else {
+        guard let date = try? Date(createdAt, strategy: .iso8601) else {
             throw MappingError.invalidCreatedAt(createdAt)
         }
 
@@ -257,7 +256,7 @@ struct ItemDTO: Codable {
             title: item.title,
             description: item.description,
             status: item.status.rawValue,
-            createdAt: dateFormatter.string(from: item.createdAt)
+            createdAt: item.createdAt.formatted(.iso8601)
         )
     }
 }
@@ -266,6 +265,7 @@ struct ItemDTO: Codable {
 #### Data Sources
 
 **async/await**:
+<!-- typecheck -->
 ```swift
 protocol ItemRemoteDataSourceProtocol: Sendable {
     func fetchItems() async throws -> [ItemDTO]
@@ -314,6 +314,7 @@ protocol ItemLocalDataSourceProtocol {
 #### Repository Implementation
 
 **async/await**:
+<!-- typecheck -->
 ```swift
 final class ItemRepositoryImpl: ItemRepositoryProtocol {
     private let remote: ItemRemoteDataSourceProtocol
