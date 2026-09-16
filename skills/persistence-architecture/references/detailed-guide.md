@@ -864,7 +864,19 @@ final class PersistenceStack {
 }
 ```
 
-Under Pattern B the repository takes the facade, not the container:
+Under Pattern B the repository has the same shape as `CoreDataItemRepository` above, but its
+initializer takes the facade instead of the container, and its writes go through
+`stack.performBackgroundTask`:
+
+```swift
+final class CoreDataFacadeItemRepository: ItemRepository {
+    private let stack: PersistenceStack
+
+    init(stack: PersistenceStack) {
+        self.stack = stack
+    }
+}
+```
 
 ```swift
 container.register(PersistenceStack.self) { _ in
