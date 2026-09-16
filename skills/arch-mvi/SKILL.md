@@ -165,6 +165,7 @@ A list screen that loads items, supports retry on failure, and refresh-on-pull.
 
 ### Domain type
 
+<!-- typecheck -->
 ```swift
 import Foundation
 
@@ -176,6 +177,7 @@ struct Item: Equatable, Identifiable, Sendable {
 
 ### State
 
+<!-- typecheck -->
 ```swift
 struct ItemListState: Equatable, Sendable {
     enum Phase: Equatable { case idle, loading, loaded([Item]), failed(String) }
@@ -186,6 +188,7 @@ struct ItemListState: Equatable, Sendable {
 
 ### Intent
 
+<!-- typecheck -->
 ```swift
 enum ItemListIntent: Equatable, Sendable {
     // user events
@@ -195,12 +198,12 @@ enum ItemListIntent: Equatable, Sendable {
     // internal results
     case itemsLoaded([Item])
     case loadFailed(String)
-    case refreshFinished
 }
 ```
 
 ### Reducer + Effect
 
+<!-- typecheck -->
 ```swift
 struct ItemListEffect {
     let run: () async -> ItemListIntent
@@ -237,10 +240,6 @@ func reduceItemList(
 
     case .loadFailed(let message):
         state.phase = .failed(message)
-        state.isRefreshing = false
-        return nil
-
-    case .refreshFinished:
         state.isRefreshing = false
         return nil
     }
@@ -346,9 +345,6 @@ final class ItemListViewModel {
 
         case .loadFailed(let message):
             state.phase = .failed(message)
-            state.isRefreshing = false
-
-        case .refreshFinished:
             state.isRefreshing = false
         }
     }
