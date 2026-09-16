@@ -4,7 +4,6 @@ description: |
   Validates a completed implementation by building and testing it on a real simulator/device via XcodeBuildMCP and, when UI-bearing, by driving the app through whichever driver the project resolved. Captures full build/test logs to a Validation.md artifact and returns a structured digest. Never modifies production code or tests.
   Use when (en): "validate this build", "run the tests", "check the simulator", "did the fix work?", "verify on simulator"
   Use when (ru): "проверь сборку", "прогони тесты", "проверь на симуляторе", "багу починили?", "валидация сборки"
-model: sonnet
 color: green
 ---
 
