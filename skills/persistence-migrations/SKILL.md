@@ -20,7 +20,7 @@ SwiftData, GRDB, Realm, and Codable payloads stored as `Data`.
 | Need | Reference sections |
 |---|---|
 | Core Data lightweight/heavyweight migration | `Core Data — lightweight vs heavyweight` |
-| SwiftData migration plan | `SwiftData — VersionedSchema + MigrationPlan` |
+| SwiftData migration plan | `SwiftData — VersionedSchema + SchemaMigrationPlan` |
 | GRDB migrations | `GRDB — DatabaseMigrator` |
 | Realm migration block | `Realm — migration block` |
 | Evolve Codable blobs | `Migrating transformable Codable payloads` |
@@ -51,12 +51,9 @@ Migration rules for every framework:
 ## Core Data
 
 Lightweight migration handles additive/optional changes, relationship changes,
-and attribute or entity renames with a renaming identifier. Configure:
-
-```swift
-description.shouldMigrateStoreAutomatically = true
-description.shouldInferMappingModelAutomatically = true
-```
+and attribute or entity renames with a renaming identifier. It needs no flags:
+`NSPersistentStoreDescription` defaults `shouldMigrateStoreAutomatically` and
+`shouldInferMappingModelAutomatically` to `true`.
 
 Heavyweight migration is needed for splits, merges, type conversions, and
 computed defaults. For heavyweight migrations:
@@ -143,7 +140,7 @@ Never `try?` decode and silently default. That is data loss.
 Users can be on any previously shipped version. Migrate adjacent versions:
 
 - Core Data: mapping model per pair and a helper that walks the chain.
-- SwiftData: ordered adjacent stages in `MigrationPlan`.
+- SwiftData: ordered adjacent stages in `SchemaMigrationPlan.stages`.
 - GRDB: named migrations already run in order.
 - Realm: cumulative `if oldVersion < N` blocks.
 

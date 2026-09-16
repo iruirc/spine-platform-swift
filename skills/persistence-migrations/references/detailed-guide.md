@@ -3,7 +3,7 @@
 ## Contents
 
 - Core Data — lightweight vs heavyweight
-- SwiftData — VersionedSchema + MigrationPlan
+- SwiftData — VersionedSchema + SchemaMigrationPlan
 - GRDB — DatabaseMigrator
 - Realm — migration block
 - Migrating transformable Codable payloads
@@ -21,13 +21,7 @@
 - Adding/removing relationships
 - Changing optional ↔ default value
 
-Set both flags when constructing the container:
-
-```swift
-let description = container.persistentStoreDescriptions.first!
-description.shouldMigrateStoreAutomatically = true
-description.shouldInferMappingModelAutomatically = true
-```
+`addPersistentStore(type:configuration:at:options:)` has none of the description's defaults: with `nil` options a store of an older model fails to load with `NSPersistentStoreIncompatibleVersionHashError` (134100), so pass `NSMigratePersistentStoresAutomaticallyOption` and `NSInferMappingModelAutomaticallyOption`.
 
 **Heavyweight** is needed for any change lightweight inference can't figure out:
 
@@ -77,31 +71,47 @@ If you leave this `true` with a heavyweight change in the model, Core Data will 
 5. **Backup the store before migrating** (see *Long migrations* below).
 6. **Test against a fixture** (see *Testing / Migration tests*).
 
-## SwiftData — VersionedSchema + MigrationPlan
+## SwiftData — VersionedSchema + SchemaMigrationPlan
 
 Two stage types:
 
 - `.lightweight(fromVersion:toVersion:)` — additive changes, automatic.
 - `.custom(fromVersion:toVersion:willMigrate:didMigrate:)` — heavyweight: split, merge, value transform, computed defaults.
 
+<!-- typecheck -->
 ```swift
+import SwiftData
+
 enum SchemaV1: VersionedSchema {
-    static var versionIdentifier = Schema.Version(1, 0, 0)
+    static let versionIdentifier = Schema.Version(1, 0, 0)
     static var models: [any PersistentModel.Type] { [PersonV1.self] }
 
     @Model final class PersonV1 {
         var firstName: String = ""
         var lastName: String = ""
         var email: String = ""
+
+        init() {}
     }
 }
 
 enum SchemaV2: VersionedSchema {
-    static var versionIdentifier = Schema.Version(2, 0, 0)
+    static let versionIdentifier = Schema.Version(2, 0, 0)
     static var models: [any PersistentModel.Type] { [UserV2.self, ProfileV2.self] }
 
-    @Model final class UserV2 { ... }
-    @Model final class ProfileV2 { ... }
+    @Model final class UserV2 {
+        var email: String = ""
+
+        init() {}
+    }
+
+    @Model final class ProfileV2 {
+        var firstName: String = ""
+        var lastName: String = ""
+        var owner: UserV2?
+
+        init() {}
+    }
 }
 
 enum AppMigrationPlan: SchemaMigrationPlan {
@@ -112,12 +122,10 @@ enum AppMigrationPlan: SchemaMigrationPlan {
         fromVersion: SchemaV1.self,
         toVersion: SchemaV2.self,
         willMigrate: { ctx in
-            // Read old V1 instances; snapshot what you need.
-            // ctx here speaks SchemaV1 — old @Models are visible.
+            // SchemaV1 is active: snapshot the PersonV1 values that V2 needs.
         },
         didMigrate: { ctx in
-            // V2 schema is now active. Build V2 instances from the snapshot.
-            // For pure backfill of new fields, only didMigrate is needed.
+            // SchemaV2 is active: build UserV2 and ProfileV2 from the snapshot.
         }
     )
 }
@@ -314,7 +322,7 @@ Per framework:
 | Framework | Chain mechanics |
 |---|---|
 | Core Data | One mapping model per **adjacent** pair (v1→v2, v2→v3, …). Detect current store version via `NSPersistentStoreCoordinator.metadataForPersistentStore`, find the path, run each step manually with `NSMigrationManager`. Ship one helper that owns this loop. |
-| SwiftData | Add adjacent stages to `MigrationPlan.stages` in order. SwiftData walks them automatically when opening an old store. |
+| SwiftData | Add adjacent stages to `SchemaMigrationPlan.stages` in order. SwiftData walks them automatically when opening an old store. |
 | GRDB | Bread-and-butter case: `DatabaseMigrator` already tracks which named migrations have been applied; missing ones run in registration order. Free progressive migration. |
 | Realm | The migration block receives `oldVersion`; you write `if oldVersion < 2 { ... } if oldVersion < 3 { ... }` cumulatively. |
 
@@ -402,7 +410,7 @@ If a Core Data / SwiftData store lives in an App Group and is shared between the
 
 Rules:
 
-- **Migration logic must be idempotent** — running it again from the main app on the next launch must be a no-op (`DatabaseMigrator` and SwiftData `MigrationPlan` already are).
+- **Migration logic must be idempotent** — running it again from the main app on the next launch must be a no-op (`DatabaseMigrator` and SwiftData `SchemaMigrationPlan` already are).
 - **No Extension may write to the store before migration completes.** Wrap any Extension write in the same `warmUp()` call the main app uses.
 - **Persistent History Tracking is mandatory** if the store is shared — see `persistence-architecture` → "Sync, CloudKit, And Multi-Process". Otherwise the main app won't see writes the Extension made before/during migration.
 - **Test the «Extension launched first» path explicitly** — boot a fresh simulator, install, trigger the Extension before opening the app, observe the store on first app launch.
