@@ -33,7 +33,7 @@ Unidirectional, reducer-based state management for SwiftUI. State is a value typ
 
 **Rule of thumb:** TCA is worth its weight when the project lives for years, has a rich domain, and the team values exhaustive tests over implementation speed. For everything else, default to MVVM (`arch-mvvm`) or Clean (`arch-clean`).
 
-**Versions assumed:** TCA 1.7+ baseline (macro-based `@Reducer` + `@ObservableState`). `@Shared` examples require 1.10+. Toolkit examples target modern SwiftUI and read best on iOS 16+, but TCA's observation integration supports iOS 13-16 through the Perception backport. System Observation is native on iOS 17+.
+**Versions assumed:** TCA 1.7+ baseline (macro-based `@Reducer` + `@ObservableState`). `@Shared` examples require 1.17+ (swift-sharing). Toolkit examples target modern SwiftUI and read best on iOS 16+, but TCA's observation integration supports iOS 13-16 through the Perception backport. System Observation is native on iOS 17+.
 
 | OS | Observation property wrapper |
 |---|---|
@@ -88,11 +88,14 @@ struct FeatureFeature {
 
 ### Action
 
-Enum describing every event the feature reacts to. One enum, with cases grouped by intent. Conform to `Equatable` for tests.
+Enum describing every event the feature reacts to. One enum, with cases grouped by intent, declared inside the `@Reducer` struct: the macro makes only a member `Action` case-pathable, which `.sending(\.queryChanged)` and `receive(\.itemsLoaded.success)` need. Conform to `Equatable` for tests.
 
 ```swift
-extension FeatureFeature {
-    enum Action: Equatable {
+@Reducer
+struct FeatureFeature {
+    // State as above
+
+    enum Action: BindableAction, Equatable {
         // User actions
         case onAppear
         case queryChanged(String)
@@ -139,7 +142,10 @@ Historical note: TCA <1.5 shipped a built-in `TaskResult<Success>` for exactly t
 Pure function `(inout State, Action) -> Effect<Action>`. Macro-generated boilerplate via `@Reducer`. The body uses the `Reduce` builder.
 
 ```swift
-extension FeatureFeature {
+@Reducer
+struct FeatureFeature {
+    // State and Action as above
+
     @Dependency(\.itemsClient) var itemsClient
 
     var body: some ReducerOf<Self> {
@@ -163,7 +169,7 @@ extension FeatureFeature {
                 state.query = query
                 return .none
 
-            case let .itemTapped(id):
+            case .itemTapped:
                 // Navigation action — see Navigation section
                 return .none
 
@@ -194,6 +200,7 @@ Rules:
 - `state` is `inout` — mutate it directly; do not return a new state.
 - Return `.none` for "no effect", `.run { send in … }` for async work, `.send(.someAction)` to dispatch another action.
 - Never call services directly inside the reducer's switch — only through dependencies (`@Dependency`), and only inside `Effect`s.
+- `@Dependency` is a stored property of the `@Reducer` struct; an extension cannot hold one.
 
 ### Store
 
@@ -375,16 +382,22 @@ ForEach(store.scope(state: \.items, action: \.items)) { itemStore in
 
 `IdentifiedArray` (from `swift-identified-collections`) is required — it gives O(1) lookups by ID and is what `forEach` needs.
 
-## Shared State (TCA 1.10+)
+## Shared State (TCA 1.17+)
 
 `@Shared` is a property wrapper that lets a single piece of state live in multiple features at once and stay synchronized — without piping it through every `Scope`. It can also be persisted (UserDefaults, file, in-memory) so the same value survives app launches.
 
 ```swift
+extension SharedKey where Self == FileStorageKey<User?> {
+    static var currentUser: Self {
+        fileStorage(.applicationSupportDirectory.appending(component: "current-user.json"))
+    }
+}
+
 @Reducer
 struct ProfileFeature {
     @ObservableState
     struct State: Equatable {
-        @Shared(.appStorage("currentUser")) var user: User?
+        @Shared(.currentUser) var user: User?
         var isEditing = false
     }
     // ...
@@ -394,11 +407,13 @@ struct ProfileFeature {
 struct FeedFeature {
     @ObservableState
     struct State: Equatable {
-        @Shared(.appStorage("currentUser")) var user: User?  // same key → same value
+        @Shared(.currentUser) var user: User?  // same key → same value
         var posts: [Post] = []
     }
 }
 ```
+
+A codable struct goes to `.fileStorage`; the key, declared once, pins the file and the type for every feature.
 
 Built-in persistence strategies:
 
@@ -613,7 +628,7 @@ Toggle("Notifications", isOn: $store.notificationsEnabled)
 **Notes on `case .binding(\.someField)`:**
 - Works for top-level `State` fields. For nested fields use the full keypath (`\.someNested.field`).
 - The matched field must be `Equatable` (otherwise the keypath won't conform to the `Equatable`-keyed `BindingAction` pattern).
-- Don't perform expensive work directly in this branch — it fires on every keystroke/toggle. Debounce via `cancellable(id:, cancelInFlight: true)` for things like search or autosave.
+- Don't perform expensive work directly in this branch — it fires on every keystroke/toggle. For things like search or autosave, debounce: `clock.sleep` on `\.continuousClock` inside an effect marked `.cancellable(id: CancelID.search, cancelInFlight: true)` (see "Cancellation").
 
 ## Effects and Side Work
 
@@ -633,19 +648,45 @@ return .run { send in
 Tag effects with a cancellation ID, then cancel by the same ID:
 
 ```swift
-enum CancelID { case search }
-
-case let .queryChanged(query):
-    state.query = query
-    return .run { [query] send in
-        try await Task.sleep(for: .milliseconds(300))  // debounce
-        let results = try await searchClient.search(query)
-        await send(.searchCompleted(results))
+@Reducer
+struct SearchFeature {
+    @ObservableState
+    struct State: Equatable {
+        var query = ""
+        var results: [SearchResult] = []
     }
-    .cancellable(id: CancelID.search, cancelInFlight: true)
+
+    enum Action: Equatable {
+        case queryChanged(String)
+        case searchCompleted([SearchResult])
+    }
+
+    enum CancelID { case search }
+
+    @Dependency(\.continuousClock) var clock
+    @Dependency(\.searchClient) var searchClient
+
+    var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            switch action {
+            case let .queryChanged(query):
+                state.query = query
+                return .run { send in
+                    try await clock.sleep(for: .milliseconds(300))
+                    await send(.searchCompleted(try await searchClient.search(query)))
+                }
+                .cancellable(id: CancelID.search, cancelInFlight: true)
+
+            case let .searchCompleted(results):
+                state.results = results
+                return .none
+            }
+        }
+    }
+}
 ```
 
-`cancelInFlight: true` cancels any prior effect with the same ID before starting the new one — built-in debounce.
+`cancelInFlight: true` cancels any prior effect with the same ID before starting the new one. With `clock.sleep` in front of the request that is a debounce, and a test advances a `TestClock` through it (see Testing time).
 
 To cancel from another action:
 
@@ -701,14 +742,17 @@ struct ItemsClient: Sendable {
 }
 
 extension ItemsClient: DependencyKey {
-    static let liveValue = Self(
-        fetchAll: { try await APIClient.shared.fetchItems() },
-        save: { try await APIClient.shared.save($0) }
-    )
+    static var liveValue: Self {
+        let api = APIClient(session: URLSession(configuration: .default))
+        return Self(
+            fetchAll: { try await api.fetchItems() },
+            save: { try await api.save($0) }
+        )
+    }
 
     static let testValue = Self(
-        fetchAll: { unimplemented("ItemsClient.fetchAll") },
-        save: { _ in unimplemented("ItemsClient.save") }
+        fetchAll: unimplemented("ItemsClient.fetchAll"),
+        save: unimplemented("ItemsClient.save")
     )
 
     static let previewValue = Self(
@@ -773,6 +817,7 @@ See `di-composition-root` for what else belongs in CR. TCA dependencies are **ta
 ### Exhaustive test
 
 ```swift
+@MainActor
 final class FeatureFeatureTests: XCTestCase {
     func test_onAppear_loadsItems() async {
         let store = TestStore(initialState: FeatureFeature.State()) {
