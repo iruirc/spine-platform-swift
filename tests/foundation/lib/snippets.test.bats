@@ -60,7 +60,10 @@ setup() {
 @test "every marked block in the plugin compiles" {
   run "$TYPECHECK"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  # No floor on marked blocks yet. The file count proves the scan ran.
   n="$(ls "$ROOT"/skills/*/SKILL.md "$ROOT"/skills/*/references/detailed-guide.md 2>/dev/null | wc -l | tr -d ' ')"
-  grep -qE "^scanned $n files, " <<<"$output" || { echo "want $n files scanned: $output"; return 1; }
+  summary="$(grep -E "^scanned $n files, [0-9]+ units, [0-9]+ blocks, 0 failed$" <<<"$output")" \
+    || { echo "want $n files scanned: $output"; return 1; }
+  blocks="$(sed -E 's/.* ([0-9]+) blocks,.*/\1/' <<<"$summary")"
+  # Raise the floor when blocks are marked; lowering it needs a reason in the commit.
+  [ "$blocks" -ge 139 ] || { echo "found $blocks marked blocks, want at least 139"; return 1; }
 }
