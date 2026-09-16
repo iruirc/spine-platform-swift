@@ -60,9 +60,10 @@ Read the axes from the stack the task arrived with, else from `## Stack` of the 
 | `RxSwift` | any | any | 5 — RxSwift |
 | `Combine` | any | any | 2 — Combine + @Published |
 | `async/await` | `SwiftUI` | `iOS 17+` or `macOS 14+` | 4 — @Observable |
+| `async/await` | `SwiftUI` | any | 3 — async/await + @MainActor, SwiftUI variant |
 | `async/await` | any | any | 3 — async/await + @MainActor |
 
-Approach 1 (Closures) only when the task or the user names it. A UIKit screen never reaches row 4: `withObservationTracking` is one-shot and must be re-registered on every change (see "UIKit Integration with @Observable").
+Approach 1 (Closures) only when the task or the user names it. A UIKit screen never reaches approach 4: `withObservationTracking` is one-shot and must be re-registered on every change (see "UIKit Integration with @Observable").
 
 ### Comparison Table
 
@@ -70,7 +71,7 @@ Approach 1 (Closures) only when the task or the user names it. A UIKit screen ne
 |----------|---------|-------------|----------|
 | **Closures** | Any | None | Simple apps, small teams, beginners |
 | **Combine** | 13+ | None (Apple) | UIKit apps, stream composition needed |
-| **async/await + @MainActor** | 15+ | None | Modern UIKit apps, linear async flows |
+| **async/await + @MainActor** | 15+ | None | Modern UIKit apps, SwiftUI below iOS 17, linear async flows |
 | **@Observable** | 17+ | None | SwiftUI-first apps (avoid for UIKit-only — see Approach 4) |
 | **RxSwift** | 11+ | RxSwift | Complex reactive chains, existing Rx codebases |
 
@@ -638,6 +639,39 @@ class FeatureViewModelTests: XCTestCase {
 
         sut.didSelectItem(at: 0)
         XCTAssertEqual(selectedItem?.id, "42")
+    }
+}
+```
+
+### SwiftUI Variant
+
+A SwiftUI screen below iOS 17 / macOS 14 (the table's `SwiftUI` row for approach 3) cannot use `@Observable`, and closures do not redraw a `body`. The ViewModel publishes its state for `@StateObject` instead: `@Published` here is SwiftUI observation, not approach 2's Combine binding.
+
+<!-- typecheck -->
+```swift
+import SwiftUI
+
+@MainActor final class FeatureViewModel: ObservableObject {
+    @Published private(set) var items: [ItemCellModel] = []
+    @Published private(set) var errorMessage: String?
+    private let service: FeatureServiceProtocol
+    init(service: FeatureServiceProtocol) { self.service = service }
+
+    func loadData() async {
+        do {
+            items = try await service.fetchItems().map(ItemCellModel.init)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+struct FeatureView: View {
+    @StateObject var viewModel: FeatureViewModel
+    var body: some View {
+        List(viewModel.items) { Text($0.title) }
+            .overlay { if let message = viewModel.errorMessage { Text(message) } }
+            .task { await viewModel.loadData() }
     }
 }
 ```
