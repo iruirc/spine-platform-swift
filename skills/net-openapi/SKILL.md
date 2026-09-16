@@ -83,7 +83,7 @@ Sources/MyAPIClient/
 ├── openapi-generator-config.yaml
 ├── APIClient.swift         ← your wrapper (output of this skill)
 ├── Mappers/
-│   └── ItemMapper.swift    ← generated DTO → Domain
+│   └── ItemMapper.swift    ← generated schema → ItemDTO
 └── Errors/
     └── APIErrorMapper.swift
 ```
@@ -194,13 +194,13 @@ internal struct Client: APIProtocol {
 
 ## Wrapping the Generated Client
 
-**Rule: the rest of the app must not see generated types.** Wrap `Client` in your own protocol that returns Domain models or DTOs *you* defined.
+**Rule: the rest of the app must not see generated types.** Wrap `Client` in your own protocol that returns DTOs *you* defined; the Repository maps them to Domain types (`net-architecture` → "Core Shape").
 
 ```swift
 // Public surface — used by the rest of the app
 public protocol ItemsAPI: Sendable {
-    func fetchItem(id: String) async throws -> Item       // Domain type
-    func listItems() async throws -> [Item]
+    func fetchItem(id: String) async throws -> ItemDTO    // app-owned DTO, not a generated type
+    func listItems() async throws -> [ItemDTO]
 }
 
 // Internal adapter — sees both worlds
@@ -208,12 +208,12 @@ struct GeneratedItemsAPI: ItemsAPI {
     let client: APIProtocol
     let mapper: ItemMapper
 
-    func fetchItem(id: String) async throws -> Item {
+    func fetchItem(id: String) async throws -> ItemDTO {
         let response = try await client.getItem(.init(path: .init(id: id)))
         switch response {
         case .ok(let ok):
             switch ok.body {
-            case .json(let dto): return mapper.toDomain(dto)
+            case .json(let item): return mapper.toDTO(item)
             }
         case .notFound:
             throw ItemsAPIError.notFound
@@ -221,6 +221,8 @@ struct GeneratedItemsAPI: ItemsAPI {
             throw ItemsAPIError.unexpectedStatus(status)
         }
     }
+
+    // listItems() follows the same shape
 }
 ```
 
@@ -239,7 +241,7 @@ let transport = URLSessionTransport(
 )
 
 let middlewares: [any ClientMiddleware] = [
-    AuthMiddleware(refresher: tokenRefresher),
+    AuthMiddleware(refresher: tokenRefresher, publicOperations: ["login"]),
     LoggingMiddleware(logger: networkLogger),
     RetryMiddleware(policy: .default),
 ]
@@ -263,34 +265,39 @@ See `di-composition-root` and `net-architecture` for where this fits in the broa
 The generator defines `ClientMiddleware` (different protocol from the one in `net-architecture`'s `HTTPMiddleware` — they live in different layers):
 
 ```swift
-import OpenAPIRuntime
+import Foundation
 import HTTPTypes
+import Networking      // TokenRefresher from net-architecture
+import OpenAPIRuntime
 
 struct AuthMiddleware: ClientMiddleware {
     let refresher: TokenRefresher
+    let publicOperations: Set<String>      // operation IDs sent without a token, e.g. "login"
 
     func intercept(
-        _ request: HTTPRequest,
+        _ request: HTTPTypes.HTTPRequest,
         body: HTTPBody?,
         baseURL: URL,
         operationID: String,
-        next: (HTTPRequest, HTTPBody?, URL) async throws -> (HTTPResponse, HTTPBody?)
-    ) async throws -> (HTTPResponse, HTTPBody?) {
+        next: (HTTPTypes.HTTPRequest, HTTPBody?, URL) async throws
+            -> (HTTPTypes.HTTPResponse, HTTPBody?)
+    ) async throws -> (HTTPTypes.HTTPResponse, HTTPBody?) {
+        if publicOperations.contains(operationID) { return try await next(request, body, baseURL) }
         var req = request
-        let token = try await refresher.currentToken()
-        req.headerFields[.authorization] = "Bearer \(token.value)"
+        let sent = try await refresher.currentToken()
+        req.headerFields[.authorization] = "Bearer \(sent)"
 
-        let (response, body) = try await next(req, body, baseURL)
-        guard response.status.code == 401 else { return (response, body) }
+        let (response, responseBody) = try await next(req, body, baseURL)
+        guard response.status.code == 401 else { return (response, responseBody) }
 
-        let new = try await refresher.refresh()
-        req.headerFields[.authorization] = "Bearer \(new.value)"
+        let current = try await refresher.token(replacing: sent)
+        req.headerFields[.authorization] = "Bearer \(current)"
         return try await next(req, body, baseURL)
     }
 }
 ```
 
-**`HTTPRequest` / `HTTPResponse` here come from `swift-http-types`** (Apple's typed HTTP primitives), not Foundation. The generator standardises on these to be portable across transports (URLSession on Apple, AsyncHTTPClient on Linux).
+**`HTTPTypes.HTTPRequest` / `HTTPTypes.HTTPResponse` come from `swift-http-types`** (Apple's typed HTTP primitives), not Foundation. The generator standardises on these to be portable across transports (URLSession on Apple, AsyncHTTPClient on Linux). `Networking` stands for your module with the `net-architecture` types; it declares its own `HTTPRequest` and `HTTPResponse`, so a file that imports both modules names each with its module. The refresh and the 401 check follow `net-architecture`'s token refresher: a 401 refreshes only while the rejected token is still the stored one.
 
 **Architectural choice — middleware in `ClientMiddleware` vs in your own `HTTPMiddleware` (`net-architecture`):**
 
@@ -300,32 +307,52 @@ struct AuthMiddleware: ClientMiddleware {
 ## Custom Transport (bridging to your HTTPClient)
 
 ```swift
-import OpenAPIRuntime
+import Foundation
 import HTTPTypes
+import Networking      // HTTPClient, HTTPRequest, HTTPResponse from net-architecture
+import OpenAPIRuntime
 
 struct HTTPClientTransport: ClientTransport {
-    let http: HTTPClient    // your protocol from net-architecture skill
+    let http: any Networking.HTTPClient
+    let publicOperations: Set<String>      // sent with requiresAuth: false, e.g. "login"
 
     func send(
-        _ request: HTTPRequest,
+        _ request: HTTPTypes.HTTPRequest,
         body: HTTPBody?,
         baseURL: URL,
         operationID: String
-    ) async throws -> (HTTPResponse, HTTPBody?) {
-        let url = baseURL.appending(path: request.path ?? "")
-        let bodyData = try await body.map { try await Data(collecting: $0, upTo: .max) }
-        let myReq = HTTPRequest(
+    ) async throws -> (HTTPTypes.HTTPResponse, HTTPBody?) {
+        // request.path carries the encoded query; URL.appending(path:) would escape its "?".
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false),
+              let target = URLComponents(string: request.path ?? "") else {
+            throw URLError(.badURL)
+        }
+        components.percentEncodedPath += target.percentEncodedPath
+        components.percentEncodedQuery = target.percentEncodedQuery
+        guard let url = components.url,
+              let method = HTTPMethod(rawValue: request.method.rawValue) else {
+            throw URLError(.badURL)
+        }
+        var bodyData: Data?
+        if let body { bodyData = try await Data(collecting: body, upTo: .max) }
+        let fields = request.headerFields.map { ($0.name.rawName, $0.value) }
+        let myRes = try await http.send(Networking.HTTPRequest(
             url: url,
-            method: HTTPMethod(rawValue: request.method.rawValue) ?? .get,
-            headers: Dictionary(uniqueKeysWithValues: request.headerFields.map { ($0.name.rawName, $0.value) }),
-            body: bodyData
-        )
-        let myRes = try await http.send(myReq)
-        let response = HTTPResponse(
+            method: method,
+            headers: Dictionary(fields, uniquingKeysWith: { "\($0), \($1)" }),
+            body: bodyData,
+            requiresAuth: !publicOperations.contains(operationID)
+        ))
+        var responseFields = HTTPFields()
+        for (name, value) in myRes.headers {
+            guard let name = HTTPField.Name(name) else { continue }
+            responseFields.append(HTTPField(name: name, value: value))
+        }
+        let response = HTTPTypes.HTTPResponse(
             status: .init(code: myRes.status),
-            headerFields: HTTPFields(myRes.headers.map { HTTPField(name: HTTPField.Name($0.key)!, value: $0.value) })
+            headerFields: responseFields
         )
-        return (response, .init(myRes.body))
+        return (response, HTTPBody(myRes.body))
     }
 }
 ```
@@ -350,7 +377,8 @@ struct ItemsRepository {
 
     func fetchItem(id: String) async throws(ItemsRepositoryError) -> Item {
         do {
-            return try await api.fetchItem(id: id)
+            let dto = try await api.fetchItem(id: id)
+            return Item(dto: dto)
         } catch ItemsAPIError.notFound {
             throw .notFound
         } catch let error as URLError where error.code == .notConnectedToInternet {
@@ -402,8 +430,10 @@ func test_fetchItem_whenNotFound_throwsNotFound() async {
 
 ```swift
 struct MockItemsAPI: ItemsAPI {
-    var fetchItemHandler: (String) async throws -> Item
-    func fetchItem(id: String) async throws -> Item { try await fetchItemHandler(id) }
+    var fetchItemHandler: @Sendable (String) async throws -> ItemDTO
+    var listItemsHandler: @Sendable () async throws -> [ItemDTO] = { [] }
+    func fetchItem(id: String) async throws -> ItemDTO { try await fetchItemHandler(id) }
+    func listItems() async throws -> [ItemDTO] { try await listItemsHandler() }
 }
 ```
 
