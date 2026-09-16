@@ -67,12 +67,15 @@ Rules:
 
 Use a small, portable request/response protocol:
 
+<!-- typecheck -->
 ```swift
-public protocol HTTPClient {
+import Foundation
+
+public protocol HTTPClient: Sendable {
     func send(_ request: HTTPRequest) async throws -> HTTPResponse
 }
 
-public struct HTTPRequest {
+public struct HTTPRequest: Sendable {
     public var url: URL
     public var method: HTTPMethod
     public var queryItems: [URLQueryItem]
@@ -81,9 +84,10 @@ public struct HTTPRequest {
     public var timeout: TimeInterval?
     public var cachePolicy: URLRequest.CachePolicy?
     public var idempotencyKey: String?
+    public var requiresAuth: Bool
 }
 
-public struct HTTPResponse {
+public struct HTTPResponse: Sendable {
     public let status: Int
     public let headers: [String: String]
     public let body: Data
@@ -92,7 +96,8 @@ public struct HTTPResponse {
 
 Decoding belongs to the APIClient, not the transport. `idempotencyKey` is part of
 the model because retry policy must know whether a `POST` or `PATCH` is safe to
-retry.
+retry; `requiresAuth`, because login and public endpoints must pass the auth
+middleware untouched.
 
 ## Endpoint Design
 
@@ -115,14 +120,18 @@ Cross-cutting concerns belong in middleware/interceptors, not in every endpoint.
 Standard order:
 
 1. Logging: method/path/status/duration. Redact bodies and auth headers.
-2. Auth: inject bearer token; on 401 refresh and retry once.
+2. Auth: inject the bearer token into `requiresAuth` requests; on 401 refresh
+   and retry once.
 3. Retry: bounded exponential backoff with jitter and idempotency rules.
 4. Headers/telemetry: request ID, user agent, trace headers.
 5. Transport.
 
 Auth token refresh should be single-flight, usually an actor that stores the
-current refresh task. Multiple parallel 401s must wait for the same refresh
-instead of starting multiple refresh requests.
+current refresh task, so parallel 401s wait for the same refresh. A 401 can
+also arrive after that refresh finished, for a request sent with the old token:
+compare the token the request carried with the current one, and if they differ,
+retry with the current token without refreshing. The refresh request goes
+through its own `HTTPClient`, without the auth middleware.
 
 ## Retry And Cancellation
 

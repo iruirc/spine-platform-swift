@@ -15,20 +15,29 @@
 
 ## The HTTPClient Boundary
 
+<!-- typecheck -->
 ```swift
-public protocol HTTPClient {
+import Foundation
+
+public protocol HTTPClient: Sendable {
     func send(_ request: HTTPRequest) async throws -> HTTPResponse
 }
 
-public struct HTTPRequest {
+public enum HTTPMethod: String, Sendable {
+    case get = "GET", head = "HEAD", options = "OPTIONS", put = "PUT", delete = "DELETE"
+    case post = "POST", patch = "PATCH"
+}
+
+public struct HTTPRequest: Sendable {
     public var url: URL
-    public var method: HTTPMethod          // .get, .post, .put, .delete, .patch
+    public var method: HTTPMethod
     public var queryItems: [URLQueryItem]
     public var headers: [String: String]
     public var body: Data?
     public var timeout: TimeInterval?
     public var cachePolicy: URLRequest.CachePolicy?
     public var idempotencyKey: String?     // see retry section
+    public var requiresAuth: Bool          // see auth interceptor
 
     public init(
         url: URL,
@@ -38,7 +47,8 @@ public struct HTTPRequest {
         body: Data? = nil,
         timeout: TimeInterval? = nil,
         cachePolicy: URLRequest.CachePolicy? = nil,
-        idempotencyKey: String? = nil
+        idempotencyKey: String? = nil,
+        requiresAuth: Bool = true
     ) {
         self.url = url
         self.method = method
@@ -48,10 +58,11 @@ public struct HTTPRequest {
         self.timeout = timeout
         self.cachePolicy = cachePolicy
         self.idempotencyKey = idempotencyKey
+        self.requiresAuth = requiresAuth
     }
 }
 
-public struct HTTPResponse {
+public struct HTTPResponse: Sendable {
     public let status: Int
     public let headers: [String: String]
     public let body: Data
@@ -62,6 +73,8 @@ public struct HTTPResponse {
 
 - Returns raw `Data` + status — decoding belongs to `APIClient`, not transport.
 - `idempotencyKey` is a first-class field, not a magic header — retry policy uses it to decide what's safe to retry.
+- `requiresAuth` is a first-class field too — login and public endpoints set it to `false`, so the auth middleware leaves them alone instead of refreshing a token the user does not have.
+- `Sendable` throughout — actors (`TokenRefresher`, `ItemsPaginator`) hold the client and call it from their own isolation.
 - No `URLRequest` in the public surface — keeps the protocol portable to non-Foundation transports (e.g. `AsyncHTTPClient` on Linux for KMP/server-shared code).
 
 ## Endpoint Design
@@ -131,8 +144,9 @@ See `net-openapi` skill. Generated `Client` exposes `try await client.listItems(
 
 Cross-cutting concerns belong in composable middleware, not scattered through endpoints.
 
+<!-- typecheck -->
 ```swift
-public protocol HTTPMiddleware {
+public protocol HTTPMiddleware: Sendable {
     func intercept(
         _ request: HTTPRequest,
         next: (HTTPRequest) async throws -> HTTPResponse
@@ -142,6 +156,11 @@ public protocol HTTPMiddleware {
 final class MiddlewareHTTPClient: HTTPClient {
     let transport: HTTPClient
     let middlewares: [HTTPMiddleware]
+
+    init(transport: HTTPClient, middlewares: [HTTPMiddleware]) {
+        self.transport = transport
+        self.middlewares = middlewares
+    }
 
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
         var chain: (HTTPRequest) async throws -> HTTPResponse = transport.send
@@ -156,56 +175,83 @@ final class MiddlewareHTTPClient: HTTPClient {
 
 **Standard middleware stack (order matters — top to bottom):**
 
-1. **Logging** (outermost — sees everything including retries) — log method/path/status/duration; **never log body or auth headers without PII redaction** (see `error-architecture`).
-2. **Auth** — inject `Authorization` header; on 401 try refresh + retry once.
+1. **Logging** (outermost — one entry per call, with its final status and total duration; the attempts Retry makes below it are not logged one by one) — log method/path/status/duration; **never log body or auth headers without PII redaction** (see `error-architecture`).
+2. **Auth** — inject `Authorization` into `requiresAuth` requests; on 401 get the current token, refreshing only if it is still the rejected one, and retry once.
 3. **Retry** — exponential backoff with jitter; idempotency-aware (see below).
 4. **Headers / Telemetry** — `User-Agent`, request ID, trace headers.
 5. **Transport** (innermost) — actual `URLSession`/Alamofire/Moya.
 
 ### Auth interceptor with token refresh
 
-Naïve refresh has a race: 5 parallel requests all see 401, all 5 fire `/refresh`. Solution: **a single in-flight refresh, queued waiters.**
+Naïve refresh has two races. Five parallel requests all see 401 and all five fire `/refresh`. And a request sent with the old token can get its 401 after the refresh has finished: it fires a second refresh, which ends the session when the server rotates refresh tokens. Solution: **a single in-flight refresh, and every 401 judged by the token its request carried.**
 
+<!-- typecheck -->
 ```swift
-actor TokenRefresher {
-    private var refreshTask: Task<AccessToken, Error>?
-    private let storage: TokenStorage
-    private let api: AuthAPI
+struct Credentials: Codable, Equatable, Sendable {
+    let accessToken: String
+    let refreshToken: String
+}
 
-    func currentToken() async throws -> AccessToken {
-        if let task = refreshTask { return try await task.value }
-        if let token = storage.token, !token.isExpiringSoon { return token }
-        return try await refresh()
+protocol CredentialStore: Sendable {
+    func load() -> Credentials?
+    func save(_ credentials: Credentials?)
+}
+
+enum AuthError: Error {
+    case signedOut
+    case refreshFailed(status: Int)
+}
+
+actor TokenRefresher {
+    private let store: CredentialStore
+    private let refreshClient: HTTPClient
+    private let refreshURL: URL
+    private var refreshTask: Task<Credentials, Error>?
+
+    init(store: CredentialStore, refreshClient: HTTPClient, refreshURL: URL) {
+        self.store = store
+        self.refreshClient = refreshClient
+        self.refreshURL = refreshURL
     }
 
-    func refresh() async throws -> AccessToken {
-        if let task = refreshTask { return try await task.value }
-        let task = Task<AccessToken, Error> { [api, storage] in
-            guard let refreshToken = storage.refreshToken else {
-                storage.token = nil
-                throw AuthRefreshError.missingRefreshToken
-            }
+    func currentToken() async throws -> String {
+        if let refreshTask { return try await refreshTask.value.accessToken }
+        guard let credentials = store.load() else { throw AuthError.signedOut }
+        return credentials.accessToken
+    }
 
-            do {
-                let new = try await api.refresh(refreshToken: refreshToken)
-                storage.token = new
-                return new
-            } catch {
-                // Refresh failed: clear stale access token and let the app route to login.
-                storage.token = nil
-                throw error
-            }
-        }
+    /// The token to retry with after a 401 for a request sent with `rejected`.
+    func token(replacing rejected: String) async throws -> String {
+        if let refreshTask { return try await refreshTask.value.accessToken }
+        guard let credentials = store.load() else { throw AuthError.signedOut }
+        guard credentials.accessToken == rejected else { return credentials.accessToken }
+        let task = Task { try await refresh(credentials) }
         refreshTask = task
         defer { refreshTask = nil }
-        return try await task.value
+        return try await task.value.accessToken
+    }
+
+    private func refresh(_ credentials: Credentials) async throws -> Credentials {
+        let body = try JSONEncoder().encode(["refreshToken": credentials.refreshToken])
+        let request = HTTPRequest(url: refreshURL, method: .post, body: body, requiresAuth: false)
+        let response = try await refreshClient.send(request)
+        switch response.status {
+        case 200..<300:
+            let renewed = try JSONDecoder().decode(Credentials.self, from: response.body)
+            store.save(renewed)
+            return renewed
+        case 400, 401:
+            store.save(nil)
+            throw AuthError.signedOut
+        default:
+            throw AuthError.refreshFailed(status: response.status)
+        }
     }
 }
+```
 
-enum AuthRefreshError: Error {
-    case missingRefreshToken
-}
-
+<!-- typecheck -->
+```swift
 struct AuthMiddleware: HTTPMiddleware {
     let refresher: TokenRefresher
 
@@ -213,40 +259,80 @@ struct AuthMiddleware: HTTPMiddleware {
         _ request: HTTPRequest,
         next: (HTTPRequest) async throws -> HTTPResponse
     ) async throws -> HTTPResponse {
-        var req = request
-        let token = try await refresher.currentToken()
-        req.headers["Authorization"] = "Bearer \(token.value)"
-
-        let response = try await next(req)
+        guard request.requiresAuth else { return try await next(request) }
+        let sent = try await refresher.currentToken()
+        let response = try await next(request.bearer(sent))
         guard response.status == 401 else { return response }
-
-        let newToken = try await refresher.refresh()
-        req.headers["Authorization"] = "Bearer \(newToken.value)"
-        return try await next(req)
+        let current = try await refresher.token(replacing: sent)
+        try Task.checkCancellation()
+        return try await next(request.bearer(current))
     }
+}
+
+private extension HTTPRequest {
+    func bearer(_ token: String) -> HTTPRequest {
+        var request = self
+        request.headers["Authorization"] = "Bearer \(token)"
+        return request
+    }
+}
+
+// Composition root: the refresh request gets its own chain, without AuthMiddleware.
+func makeAPIHTTPClient(
+    transport: HTTPClient,
+    logging: HTTPMiddleware,
+    credentials: CredentialStore,
+    baseURL: URL
+) -> HTTPClient {
+    let refresher = TokenRefresher(
+        store: credentials,
+        refreshClient: MiddlewareHTTPClient(transport: transport, middlewares: [logging]),
+        refreshURL: baseURL.appending(path: "auth/refresh")
+    )
+    let middlewares: [HTTPMiddleware] = [
+        logging,
+        AuthMiddleware(refresher: refresher),
+        RetryMiddleware(policy: RetryPolicy()),
+    ]
+    return MiddlewareHTTPClient(transport: transport, middlewares: middlewares)
 }
 ```
 
 **Key invariants:**
 
-- `actor TokenRefresher` — only one refresh at a time, automatically.
-- 401 → refresh → retry **once.** If second attempt also returns 401, propagate — refresh token is dead, user must re-login.
-- Refresh failure → clear tokens, route to login screen via a separate `AuthEvents` stream (do NOT throw a UI message from the middleware).
+- `actor TokenRefresher` — one refresh at a time; a 401 that arrives while it runs waits for it.
+- A 401 is judged by the token its request carried. If the stored token is already a different one, a refresh has happened since: retry with it, and do not refresh again.
+- 401 → retry **once.** If the retry also returns 401, propagate it.
+- The refresh request travels through its own `HTTPClient` without `AuthMiddleware`. Sent through the same chain, it would wait for the refresh it is part of.
+- `requiresAuth: false` on login and public endpoints — a signed-out user's login never reaches the refresher.
+- Refresh rejected (400/401) → credentials cleared, `AuthError.signedOut`; route to the login screen via a separate `AuthEvents` stream (do NOT throw a UI message from the middleware). Any other failure keeps the credentials: a flaky network must not sign the user out.
 
 ### Retry policy
 
+<!-- typecheck -->
 ```swift
-struct RetryPolicy {
-    var maxAttempts: Int = 3
-    var baseDelay: TimeInterval = 0.3
-    var maxDelay: TimeInterval = 4.0
+struct RetryPolicy: Sendable {
+    var maxAttempts = 3
+    var baseDelay: Duration = .milliseconds(300)
+    var maxDelay: Duration = .seconds(4)
     var retryableStatuses: Set<Int> = [408, 429, 500, 502, 503, 504]
 
-    func shouldRetry(_ request: HTTPRequest, attempt: Int, response: HTTPResponse?) -> Bool {
-        guard attempt < maxAttempts else { return false }
-        guard isIdempotent(request) else { return false }
-        if let res = response { return retryableStatuses.contains(res.status) }
-        return true   // transport error (no response)
+    /// The wait before the next attempt, or nil to hand `outcome` to the caller.
+    func delay(
+        after attempt: Int,
+        of request: HTTPRequest,
+        outcome: Result<HTTPResponse, Error>
+    ) -> Duration? {
+        guard attempt < maxAttempts, isIdempotent(request), !Task.isCancelled else { return nil }
+        switch outcome {
+        case .success(let response):
+            guard retryableStatuses.contains(response.status) else { return nil }
+            guard let value = header("Retry-After", in: response) else { return backoff(attempt) }
+            guard let seconds = Int(value), .seconds(seconds) <= maxDelay else { return nil }
+            return .seconds(seconds)
+        case .failure(let error):
+            return isTransient(error) ? backoff(attempt) : nil
+        }
     }
 
     private func isIdempotent(_ request: HTTPRequest) -> Bool {
@@ -256,10 +342,38 @@ struct RetryPolicy {
         }
     }
 
-    func delay(for attempt: Int) -> TimeInterval {
-        let exp = baseDelay * pow(2, Double(attempt))
-        let jitter = Double.random(in: 0...(exp * 0.3))
-        return min(maxDelay, exp + jitter)
+    private func isTransient(_ error: Error) -> Bool {
+        guard let error = error as? URLError else { return false }    // CancellationError too
+        return [.timedOut, .networkConnectionLost, .cannotConnectToHost].contains(error.code)
+    }
+
+    private func header(_ name: String, in response: HTTPResponse) -> String? {
+        response.headers.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value
+    }
+
+    private func backoff(_ attempt: Int) -> Duration {
+        let exponential = baseDelay * (1 << (attempt - 1))
+        return min(maxDelay, exponential + exponential * Double.random(in: 0...0.3))
+    }
+}
+
+struct RetryMiddleware: HTTPMiddleware {
+    let policy: RetryPolicy
+
+    func intercept(
+        _ request: HTTPRequest,
+        next: (HTTPRequest) async throws -> HTTPResponse
+    ) async throws -> HTTPResponse {
+        var attempt = 1
+        while true {
+            let outcome: Result<HTTPResponse, Error>
+            do { outcome = .success(try await next(request)) } catch { outcome = .failure(error) }
+            guard let delay = policy.delay(after: attempt, of: request, outcome: outcome) else {
+                return try outcome.get()
+            }
+            try await Task.sleep(for: delay)
+            attempt += 1
+        }
     }
 }
 ```
@@ -267,7 +381,8 @@ struct RetryPolicy {
 **Hard rules:**
 
 - **Never auto-retry POST/PATCH without `Idempotency-Key`.** Double-charge bugs are real and ugly. See `error-architecture`.
-- **Honor `Retry-After` header** for 429/503 — overrides backoff.
+- **Honor `Retry-After`** for 429/503 — it replaces the backoff. A wait longer than `maxDelay`, or a `Retry-After` in HTTP-date form, returns the response to the caller rather than retrying early.
+- **Cancellation ends retrying** — `delay` returns `nil` in a cancelled task, `Task.sleep` throws `CancellationError`, and neither `CancellationError` nor `URLError.cancelled` counts as transient.
 - **Bounded attempts** — 3 is a sane default; 10 turns transient outages into thundering herds.
 - **Per-host circuit breaker** is the next step for production; out of scope for the skill.
 

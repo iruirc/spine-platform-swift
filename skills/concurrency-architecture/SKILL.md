@@ -81,20 +81,37 @@ actor (custom): Service with mutable state shared across callers
 
 **Concrete examples of legitimate actors:**
 
+<!-- typecheck: refresh -->
 ```swift
-// ✅ Token refresher — single-flight refresh across N concurrent 401s
+// ✅ Token refresher — one refresh for N concurrent 401s, none for a 401 on a replaced token
 actor TokenRefresher {
-    private var refreshTask: Task<AccessToken, Error>?
+    private let store: CredentialStore
+    private let authAPI: AuthAPI        // over an HTTPClient without the auth middleware
+    private var refreshTask: Task<Credentials, Error>?
 
-    func currentToken() async throws -> AccessToken {
-        if let task = refreshTask { return try await task.value }
-        let task = Task { try await self.performRefresh() }
+    init(store: CredentialStore, authAPI: AuthAPI) {
+        self.store = store
+        self.authAPI = authAPI
+    }
+
+    /// The token to retry with after a 401 for a request sent with `rejected`.
+    func token(replacing rejected: String) async throws -> String {
+        if let refreshTask { return try await refreshTask.value.accessToken }
+        guard let credentials = store.load() else { throw AuthError.signedOut }
+        guard credentials.accessToken == rejected else { return credentials.accessToken }
+        let task = Task {
+            let renewed = try await authAPI.refresh(credentials.refreshToken)
+            store.save(renewed)
+            return renewed
+        }
         refreshTask = task
         defer { refreshTask = nil }
-        return try await task.value
+        return try await task.value.accessToken
     }
 }
+```
 
+```swift
 // ✅ Image cache — many readers, occasional writers
 actor ImageCache {
     private var entries: [URL: UIImage] = [:]
