@@ -60,6 +60,7 @@ func fetchItems() async throws(ItemRepositoryError) -> [Item]
 - Glue code that mixes errors from many sources (network + DB + parsing + business)
 - Code calling third-party APIs that throw `any Error`
 - Top-level layers (ViewModel, Coordinator) that don't switch on error specifics
+- Any `async` chain that must pass `CancellationError` up — `throws(E)` can throw only `E`
 
 **Default:** untyped `throws` for app code, typed throws for SPM packages with a closed error vocabulary (see `pkg-spm-design`).
 
@@ -77,7 +78,10 @@ The boundary between layers is where the previous layer's error type dies and a 
 
 ### Infrastructure → Repository
 
+<!-- typecheck -->
 ```swift
+import Foundation
+
 enum ItemRepositoryError: Error {
     case notFound
     case unauthorized
@@ -87,24 +91,34 @@ enum ItemRepositoryError: Error {
     case unknown(underlying: Error)
 }
 
-final class ItemRepository {
-    func fetch(id: String) async throws(ItemRepositoryError) -> Item {
+final class ItemRepository: Sendable {
+    private let httpClient: any HTTPClient
+
+    init(httpClient: any HTTPClient) {
+        self.httpClient = httpClient
+    }
+
+    func fetch(id: String) async throws -> Item {
         do {
             let dto: ItemDTO = try await httpClient.get("/items/\(id)")
             return dto.toDomain()
+        } catch let error as CancellationError {
+            throw error
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()    // URLSession reports a cancelled Task as URLError
         } catch let error as URLError where error.code == .notConnectedToInternet {
-            throw .networkUnavailable
+            throw ItemRepositoryError.networkUnavailable
         } catch let error as HTTPError {
             switch error.statusCode {
-            case 401: throw .unauthorized
-            case 404: throw .notFound
-            case 500...599: throw .server(statusCode: error.statusCode)
-            default: throw .unknown(underlying: error)
+            case 401: throw ItemRepositoryError.unauthorized
+            case 404: throw ItemRepositoryError.notFound
+            case 500..<600: throw ItemRepositoryError.server(statusCode: error.statusCode)
+            default: throw ItemRepositoryError.unknown(underlying: error)
             }
         } catch is DecodingError {
-            throw .decoding
+            throw ItemRepositoryError.decoding
         } catch {
-            throw .unknown(underlying: error)
+            throw ItemRepositoryError.unknown(underlying: error)
         }
     }
 }
@@ -112,26 +126,31 @@ final class ItemRepository {
 
 ### Repository → UseCase (Domain)
 
+<!-- typecheck -->
 ```swift
-enum FetchItemDomainError: Error {
+enum FetchItemDomainError: Error, Equatable {
     case itemNotFound
     case notLoggedIn
     case temporary           // user can retry
     case permanent(message: String)
 }
 
-struct FetchItemUseCase {
+protocol FetchItemUseCaseProtocol: Sendable {
+    func execute(id: String) async throws -> Item
+}
+
+struct FetchItemUseCase: FetchItemUseCaseProtocol {
     let repository: ItemRepository
 
-    func execute(id: String) async throws(FetchItemDomainError) -> Item {
+    func execute(id: String) async throws -> Item {
         do {
             return try await repository.fetch(id: id)
-        } catch {
+        } catch let error as ItemRepositoryError {
             throw Self.mapError(error)
         }
     }
 
-    private static func mapError(_ error: ItemRepositoryError) -> FetchItemDomainError {
+    static func mapError(_ error: ItemRepositoryError) -> FetchItemDomainError {
         switch error {
         case .notFound: return .itemNotFound
         case .unauthorized: return .notLoggedIn
@@ -142,14 +161,17 @@ struct FetchItemUseCase {
 }
 ```
 
-The Domain layer **drops infrastructural detail** that the user can't act on. The UI doesn't need to know whether it was a 503 or a timeout — both map to "temporary, try again."
+The Domain layer **drops infrastructural detail** that the user can't act on. The UI doesn't need to know whether it was a 503 or a timeout — both map to "temporary, try again." Cancellation is not mapped: `CancellationError` matches no `catch` in `execute` and reaches the caller as is.
 
 ### UseCase → ViewModel (Presentation)
 
 ViewModel converts domain errors into a `UserMessage` value: localized, with a recommended UI affordance and a severity. **ViewModel never throws.**
 
+<!-- typecheck -->
 ```swift
-struct UserMessage: Equatable {
+import Observation
+
+struct UserMessage {
     let title: String
     let body: String
     let severity: Severity
@@ -163,19 +185,24 @@ struct UserMessage: Equatable {
 final class ItemDetailViewModel {
     private(set) var item: Item?
     private(set) var message: UserMessage?
-    private let useCase: FetchItemUseCase
+    private let useCase: any FetchItemUseCaseProtocol
+
+    init(useCase: any FetchItemUseCaseProtocol) {
+        self.useCase = useCase
+    }
 
     func load(id: String) async {
         do {
             item = try await useCase.execute(id: id)
-        } catch let error as FetchItemDomainError {
-            message = Self.userMessage(from: error, retryId: id)
+        } catch is CancellationError {
+            return
         } catch {
-            message = .unexpected
+            message = userMessage(from: error, retryId: id)
         }
     }
 
-    private static func userMessage(from error: FetchItemDomainError, retryId: String) -> UserMessage {
+    private func userMessage(from error: any Error, retryId: String) -> UserMessage {
+        guard let error = error as? FetchItemDomainError else { return .unexpected }
         switch error {
         case .itemNotFound:
             return UserMessage(
@@ -199,7 +226,12 @@ final class ItemDetailViewModel {
                 retryAction: { [weak self] in Task { await self?.load(id: retryId) } }
             )
         case .permanent(let msg):
-            return UserMessage(title: L10n.Common.errorTitle, body: msg, severity: .error, retryAction: nil)
+            return UserMessage(
+                title: L10n.Common.errorTitle,
+                body: msg,
+                severity: .error,
+                retryAction: nil
+            )
         }
     }
 }
@@ -233,6 +265,7 @@ Decide **once per project** which UI affordance fits which severity. The matrix 
 
 ### Recoverable vs non-recoverable vs fatal
 
+<!-- typecheck -->
 ```swift
 enum ErrorSeverity {
     case recoverable    // user retries → success likely
@@ -252,8 +285,8 @@ do {
     item = try await useCase.execute(id: id)
 } catch is CancellationError {
     return  // silent — user cancelled or screen closed
-} catch let error as FetchItemDomainError {
-    message = Self.userMessage(from: error, retryId: id)
+} catch {
+    message = userMessage(from: error, retryId: id)
 }
 ```
 
@@ -261,6 +294,7 @@ do {
 
 User-facing strings come from `L10n.*` (or `String(localized:)` / `NSLocalizedString`). Technical strings stay in code.
 
+<!-- typecheck -->
 ```swift
 extension FetchItemDomainError: LocalizedError {
     var errorDescription: String? {
@@ -285,7 +319,7 @@ Logging happens at the **Repository layer and above** — Infrastructure throws,
 ```swift
 do {
     return try await repository.fetch(id: id)
-} catch {
+} catch let error as ItemRepositoryError {
     logger.error("Failed to fetch item \(id, privacy: .public): \(error.localizedDescription, privacy: .private)")
     throw Self.mapError(error)
 }
@@ -350,13 +384,14 @@ func load(id: String) async {
     } catch is CancellationError {
         return  // silent
     } catch {
-        message = Self.userMessage(from: error, retryId: id)
+        message = userMessage(from: error, retryId: id)
     }
 }
 ```
 
 For long-running tasks, wrap in `Task { ... }` and store handle in ViewModel; cancel on `deinit` or when the screen disappears:
 
+<!-- typecheck -->
 ```swift
 @MainActor
 @Observable
@@ -379,7 +414,7 @@ final class FeedViewModel {
 | Use `throws` | Use `Result` |
 |---|---|
 | async/await call site | Storing past outcome (`var lastResult: Result<...>`) |
-| Single happy/error path | Combine/RxSwift bridges (`.publisher(for: Result<...>)`) |
+| Single happy/error path | Combine/RxSwift bridges (`result.publisher`, a `Result.Publisher`) |
 | Layer boundaries (UseCase, Repository) | Returning from completion-handler-style callbacks (legacy) |
 
 Mixing both in the same module is fine — each at its right place. Do not unconditionally convert `throws → Result` "to be safe" — you lose call-site clarity.
@@ -398,7 +433,7 @@ useCasePublisher(id: id)
     .sink { [weak self] result in
         switch result {
         case .success(let item): self?.item = item
-        case .failure(let error): self?.message = Self.userMessage(from: error, retryId: id)
+        case .failure(let error): self?.message = self?.userMessage(from: error, retryId: id)
         }
     }
     .store(in: &cancellables)
@@ -423,9 +458,12 @@ See `reactive-combine` and `reactive-rxswift` skills for operator-level detail.
 
 Three things to test:
 
-1. **Mappers are pure functions** — golden-test `RepositoryError → DomainError` matrix:
+1. **Mappers are pure functions** — golden-test the `RepositoryError → DomainError` matrix, one test per case:
 
+<!-- typecheck -->
 ```swift
+import XCTest
+
 final class FetchItemUseCaseMappingTests: XCTestCase {
     func test_mapError_notFound_mapsTo_itemNotFound() {
         XCTAssertEqual(FetchItemUseCase.mapError(.notFound), .itemNotFound)
@@ -433,17 +471,25 @@ final class FetchItemUseCaseMappingTests: XCTestCase {
     func test_mapError_networkUnavailable_mapsTo_temporary() {
         XCTAssertEqual(FetchItemUseCase.mapError(.networkUnavailable), .temporary)
     }
-    // ... one test per case
 }
 ```
 
 2. **ViewModel translates domain errors to UserMessage** — mock UseCase to throw, assert published `message`:
 
+<!-- typecheck -->
 ```swift
+struct MockFetchItemUseCase: FetchItemUseCaseProtocol {
+    let error: any Error
+
+    func execute(id: String) async throws -> Item {
+        throw error
+    }
+}
+
 @MainActor
 final class ItemDetailViewModelErrorTests: XCTestCase {
     func test_load_whenUseCaseThrowsItemNotFound_setsWarningMessage() async {
-        let useCase = MockFetchItemUseCase(error: .itemNotFound)
+        let useCase = MockFetchItemUseCase(error: FetchItemDomainError.itemNotFound)
         let sut = ItemDetailViewModel(useCase: useCase)
 
         await sut.load(id: "42")
@@ -456,14 +502,17 @@ final class ItemDetailViewModelErrorTests: XCTestCase {
 
 3. **Cancellation is silent** — assert no message is shown when cancelled:
 
+<!-- typecheck -->
 ```swift
-func test_load_whenCancelled_doesNotSetMessage() async {
-    let useCase = MockFetchItemUseCase(error: CancellationError())
-    let sut = ItemDetailViewModel(useCase: useCase)
+extension ItemDetailViewModelErrorTests {
+    func test_load_whenCancelled_doesNotSetMessage() async {
+        let useCase = MockFetchItemUseCase(error: CancellationError())
+        let sut = ItemDetailViewModel(useCase: useCase)
 
-    await sut.load(id: "42")
+        await sut.load(id: "42")
 
-    XCTAssertNil(sut.message)
+        XCTAssertNil(sut.message)
+    }
 }
 ```
 
