@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Typecheck the Swift blocks marked for it in skills/*/SKILL.md and
-# skills/*/references/detailed-guide.md, under Swift 6 against the iOS simulator SDK.
+# skills/*/references/detailed-guide.md, under Swift 6 against the iOS simulator SDK,
+# through the SIL passes that report data races: -typecheck stops before them.
 # Usage: scripts/typecheck-snippets.sh [root]    (root defaults to this plugin)
 # A marker, <!-- typecheck --> or <!-- typecheck: <group> -->, sits on the line above a swift
 # fence. A file's blocks of one group compile as one unit, after the stubs in
@@ -85,7 +86,7 @@ platform="$(xcrun --sdk iphonesimulator --show-sdk-platform-path)" || die "no ip
 swiftc_path="$(xcrun -f swiftc)" || die "no swiftc found: install Xcode or run xcode-select -s"
 toolchain="$(dirname "$(dirname "$swiftc_path")")"
 compile() {
-  xcrun --sdk iphonesimulator swiftc -typecheck -parse-as-library -swift-version 6 \
+  xcrun --sdk iphonesimulator swiftc -emit-sil -wmo -o /dev/null -parse-as-library -swift-version 6 \
     -target arm64-apple-ios17.0-simulator \
     -F "$platform/Developer/Library/Frameworks" -I "$platform/Developer/usr/lib" \
     -plugin-path "$toolchain/lib/swift/host/plugins/testing" "$@" 2>&1

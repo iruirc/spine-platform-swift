@@ -66,7 +66,7 @@ protocol FeaturePresenterProtocol: AnyObject {
 }
 
 // MARK: - Interactor (async/await default — see "Choosing an Async Approach")
-protocol FeatureInteractorProtocol {
+protocol FeatureInteractorProtocol: Sendable {
     func fetchItems() async throws -> [FeatureEntity]
 }
 
