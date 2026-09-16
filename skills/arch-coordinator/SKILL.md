@@ -344,8 +344,10 @@ func start() async -> AuthResult {
 
 Prefer form (2) when you own the ViewModel — the continuation in (1) exists only
 to adapt a callback-style VM, and is the only form that can crash on a second
-resume. Under Swift 6 strict concurrency the coordinator is `@MainActor`, so the
-continuation resumes on the main actor and the result needs no `Sendable` work.
+resume. It is also the only form that needs a `Sendable` result: even in a
+`@MainActor` coordinator, `resume(returning:)` takes the value as `sending`, and
+a non-`Sendable` result fails with `sending 'result' risks causing data races`.
+A non-public enum whose payloads are all `Sendable` conforms implicitly.
 
 **Pick the child→parent channel by signal shape:**
 
