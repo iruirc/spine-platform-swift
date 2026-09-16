@@ -33,7 +33,7 @@ Classic VIPER literature shows callback-based Interactors with an `InteractorOut
 
 | Approach | Interactor signature | When |
 |---|---|---|
-| **async/await** | `func fetchItems() async throws -> [FeatureEntity]` | iOS 15+, no reactive deps. Default for new VIPER modules. |
+| **async/await** | `func fetchItems() async throws -> [FeatureEntity]` | No reactive deps. Default for new VIPER modules. |
 | **Combine** | `func fetchItems() -> AnyPublisher<[FeatureEntity], Error>` | Existing Combine codebase, need stream operators (debounce, combineLatest) |
 | **Callback + Output protocol** | `func fetchItems()` + `didFetchItems` / `didFailFetchingItems` | Legacy projects with strict classical-VIPER convention. No reason to introduce in greenfield code. |
 
