@@ -46,7 +46,7 @@ import FactoryTesting        // test files: the `.container` trait for Swift Tes
 
 ### Container
 
-Registrations live as **computed properties in extension Container**. Each such property returns a `Factory<T>` that knows how to resolve an instance. The `Container` itself is a final class with `static let shared`, but you can (and should) **subclass / have your own** for modularity — see "Modular Containers" below.
+Registrations live as **computed properties in extension Container**. Each such property returns a `Factory<T>` that knows how to resolve an instance. `Container` itself is a `final` class with `@TaskLocal static var shared`, so it cannot be subclassed; a separate namespace is a class of your own that adopts `SharedContainer` — see "Modular Containers" below.
 
 ```swift
 import FactoryKit
@@ -86,11 +86,18 @@ Creating a `Factory` is cheap; the actual instance only appears on call.
 Factory **does not replace the Composition Root** — it implements it via a `Container`. CR logic (where the `Container` is created, what's registered in it, when bootstrap runs) lives in the `di-composition-root` skill.
 
 ```swift
+// The app's own warm-up, in an app-target extension: Factory has no bootstrap()
+extension Container {
+    func bootstrap() {
+        _ = database()          // eager work that does not belong in autoRegister()
+    }
+}
+
 // SceneDelegate / @main App
 @main
 struct MyApp: App {
     init() {
-        Container.shared.bootstrap()    // see AutoRegistering below
+        Container.shared.bootstrap()    // autoRegister() needs no call: the first resolve runs it
     }
     var body: some Scene { … }
 }
@@ -543,7 +550,7 @@ extension Container: @retroactive AutoRegistering {
             .onDebug { VerboseAnalytics() }
             .onSimulator { SimulatorOnlyAnalytics() }
 
-        // Launch arguments: -mockMode 1
+        // Launch argument: mockMode
         networkClient.onArg("mockMode") { MockHTTPClient() }
     }
 }
@@ -556,7 +563,7 @@ extension Container: @retroactive AutoRegistering {
 | `.onDebug { … }` | DEBUG build, tests and previews included |
 | `.onSimulator { … }` | iOS Simulator |
 | `.onDevice { … }` | Real device |
-| `.onArg("name") { … }` | Launch argument `-name 1` |
+| `.onArg("name") { … }` | A launch argument equal to `name` — the whole argv element, so `-name 1` does not match |
 
 Contexts are **additive** — several can be chained. When more than one applies, Factory takes the first of arg, preview, test, simulator, device, debug; then a `register` override; then the production closure (the one inside `self { … }`). An active context therefore wins over `register`: a test cannot register over a factory that has `.onTest` or `.onDebug`, nor a preview over one that has `.onPreview`. The preview, test and debug contexts take effect only in DEBUG builds.
 
@@ -853,7 +860,7 @@ extension Container {
 | SPM package | DI framework **forbidden** in main target → `init(dependencies:)` | Same restriction → `init(dependencies:)` |
 | Test isolation | Fresh `Container()` per test OR manual Assembly reset | `Container.shared.reset()` plus `Scope.singleton.reset()` OR `@Suite(.container)` (FactoryTesting) for parallel Swift Testing |
 | Mock overrides | `container.register(Foo.self) { _ in Mock() }` (on top) | `Container.shared.foo.register { Mock() }` |
-| Performance | Runtime dictionary lookup + reflection | Static dispatch via property + closure |
+| Performance | Dictionary lookup by type, argument types and name | Dictionary lookup by type and property name under a global recursive lock, on every resolve |
 | Async / Sendable | Not Sendable out of the box, manual synchronization | Container is Sendable, register/resolve thread-safe |
 | Maturity | Older, more boilerplate, native to the UIKit era | Newer, tailored for SwiftUI/Observation/Swift 6 |
 
@@ -871,9 +878,9 @@ extension Container {
 |---|---|
 | `container.register(Foo.self) { _ in Foo() }` | `extension Container { var foo: Factory<Foo> { self { Foo() } } }` |
 | `.inObjectScope(.container)` | `.cached` |
-| `.inObjectScope(.transient)` (default) | `.unique` (default) |
+| `.inObjectScope(.transient)` | `.unique` (Factory's default) |
 | `.inObjectScope(.weak)` | `.shared` |
-| `.inObjectScope(.graph)` | `.graph` |
+| `.inObjectScope(.graph)` (Swinject's default) | `.graph` |
 | `container.resolve(Foo.self)!` | `Container.shared.foo()` |
 | `r.resolve(Foo.self, name: "x")` | A custom key via KeyPath or a separate `var fooX: Factory<Foo>` |
 | `Assembly.assemble(container:)` | `extension Container` per feature + `AutoRegistering` |
@@ -886,18 +893,18 @@ extension Container {
 
 ## Debugging Tips
 
-> **API version:** the examples below rely on the internal `ContainerManager` API from Factory 2.5+. Names/signatures may change between minor releases — check the repository README if something stops compiling.
+Factory keeps its registration table internal, so there is no list of keys to print. Trace the resolutions instead, or decorate them:
 
 ```swift
-// List of registered factory keys (debug only)
+// Trace every resolution cycle as a dependency tree (DEBUG builds, all containers)
 #if DEBUG
-Container.shared.manager.registrations.keys.forEach { print($0) }
+Container.shared.manager.trace = true
 #endif
 
-// Decorator — log every resolve
-Container.shared.manager.decorator { resolved in
+// Decorator — sees every instance this container resolves
+Container.shared.decorator { resolved in
     print("Resolved: \(type(of: resolved))")
 }
 ```
 
-The decorator is invoked on EVERY resolve — turn it off in production.
+The decorator is invoked on EVERY resolve, cached instances included — keep it out of release builds; `decorator(nil)` removes it. A single factory takes a `.decorator { … }` modifier of its own.
