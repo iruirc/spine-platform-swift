@@ -15,3 +15,7 @@ final class MockFeatureService: FeatureServiceProtocol {
         completion(stubbedResult)
     }
 }
+extension FeatureViewController {
+    func setupUI() {}
+    func showErrorAlert(_ message: String) {}
+}

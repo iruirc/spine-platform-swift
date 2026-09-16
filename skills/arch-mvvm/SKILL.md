@@ -149,7 +149,10 @@ class FeatureViewModel: FeatureViewModelProtocol {
 
 ### ViewController
 
+<!-- typecheck: closures -->
 ```swift
+import UIKit
+
 class FeatureViewController: UIViewController {
     private var viewModel: FeatureViewModelProtocol
     private let tableView = UITableView()
@@ -160,6 +163,8 @@ class FeatureViewController: UIViewController {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
+
+    required init?(coder: NSCoder) { fatalError("Use init(viewModel:)") }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -263,8 +268,10 @@ Uses Apple's Combine framework. See `reactive-combine` skill for framework detai
 
 ### ViewModel
 
+<!-- typecheck: combine -->
 ```swift
 import Combine
+import Foundation
 
 protocol FeatureViewModelProtocol: AnyObject {
     var itemsPublisher: AnyPublisher<[ItemCellModel], Never> { get }
@@ -336,7 +343,11 @@ class FeatureViewModel: FeatureViewModelProtocol {
 
 ### ViewController
 
+<!-- typecheck: combine -->
 ```swift
+import Combine
+import UIKit
+
 class FeatureViewController: UIViewController {
     private let viewModel: FeatureViewModelProtocol
     private var cancellables = Set<AnyCancellable>()
@@ -348,6 +359,8 @@ class FeatureViewController: UIViewController {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
+
+    required init?(coder: NSCoder) { fatalError("Use init(viewModel:)") }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -388,7 +401,11 @@ class FeatureViewController: UIViewController {
 
 ### Testing (Combine)
 
+<!-- typecheck: combine -->
 ```swift
+import Combine
+import XCTest
+
 class FeatureViewModelTests: XCTestCase {
     var sut: FeatureViewModel!
     var mockService: MockFeatureService!
@@ -400,6 +417,7 @@ class FeatureViewModelTests: XCTestCase {
         cancellables = []
     }
 
+    @MainActor
     func testViewDidLoad_fetchesItems() {
         let expectation = expectation(description: "items received")
         mockService.stubbedResult = Just([Item(id: "1")])
@@ -418,6 +436,7 @@ class FeatureViewModelTests: XCTestCase {
         waitForExpectations(timeout: 1)
     }
 
+    @MainActor
     func testViewDidLoad_showsAndHidesLoading() {
         let expectation = expectation(description: "loading states")
         var states: [Bool] = []
@@ -439,6 +458,7 @@ class FeatureViewModelTests: XCTestCase {
         XCTAssertEqual(states, [false, true, false])
     }
 
+    @MainActor
     func testDidSelectItem_signalsNavigation() {
         let expectation = expectation(description: "items loaded")
         var selectedItem: Item?
@@ -469,7 +489,10 @@ Modern Swift concurrency. No dependencies, clean linear code.
 
 ### ViewModel
 
+<!-- typecheck: async -->
 ```swift
+import Foundation
+
 @MainActor
 protocol FeatureViewModelProtocol: AnyObject {
     var items: [ItemCellModel] { get }
@@ -545,7 +568,10 @@ class FeatureViewModel: FeatureViewModelProtocol {
 
 ### ViewController
 
+<!-- typecheck: async -->
 ```swift
+import UIKit
+
 class FeatureViewController: UIViewController {
     private let viewModel: FeatureViewModelProtocol
     private let tableView = UITableView()
@@ -555,6 +581,8 @@ class FeatureViewController: UIViewController {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
+
+    required init?(coder: NSCoder) { fatalError("Use init(viewModel:)") }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -585,7 +613,10 @@ class FeatureViewController: UIViewController {
 
 ### Testing (async/await)
 
+<!-- typecheck: async -->
 ```swift
+import XCTest
+
 class FeatureViewModelTests: XCTestCase {
     var mockService: MockFeatureService!
 
@@ -684,6 +715,7 @@ Apple's Observation framework. Minimal boilerplate, fine-grained updates. Best w
 
 ### ViewModel (SwiftUI)
 
+<!-- typecheck: observable -->
 ```swift
 import Observation
 
@@ -726,7 +758,10 @@ class FeatureViewModel {
 
 ### SwiftUI View
 
+<!-- typecheck: observable -->
 ```swift
+import SwiftUI
+
 struct FeatureView: View {
     @State var viewModel: FeatureViewModel
 
@@ -802,7 +837,10 @@ class FeatureViewController: UIViewController {
 
 ### Testing (@Observable)
 
+<!-- typecheck: observable -->
 ```swift
+import XCTest
+
 class FeatureViewModelTests: XCTestCase {
     var mockService: MockFeatureService!
 
@@ -810,6 +848,7 @@ class FeatureViewModelTests: XCTestCase {
         mockService = MockFeatureService()
     }
 
+    @MainActor
     func testLoadData_populatesItems() async {
         mockService.stubbedItems = [Item(id: "1")]
         let sut = FeatureViewModel(service: mockService)
@@ -820,6 +859,7 @@ class FeatureViewModelTests: XCTestCase {
         XCTAssertFalse(sut.isLoading)
     }
 
+    @MainActor
     func testLoadData_setsErrorOnFailure() async {
         mockService.shouldFail = true
         let sut = FeatureViewModel(service: mockService)
@@ -830,6 +870,7 @@ class FeatureViewModelTests: XCTestCase {
         XCTAssertTrue(sut.items.isEmpty)
     }
 
+    @MainActor
     func testSelectItem_signalsNavigation() async {
         mockService.stubbedItems = [Item(id: "42")]
         let sut = FeatureViewModel(service: mockService)
