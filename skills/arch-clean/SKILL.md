@@ -121,7 +121,10 @@ protocol ItemRepositoryProtocol {
 ```
 
 **Combine**:
+<!-- typecheck: combine -->
 ```swift
+import Combine
+
 protocol ItemRepositoryProtocol {
     func getItems() -> AnyPublisher<[Item], Error>
     func getItem(id: String) -> AnyPublisher<Item, Error>
@@ -293,6 +296,7 @@ protocol ItemLocalDataSourceProtocol {
 ```
 
 **Combine**:
+<!-- typecheck: combine -->
 ```swift
 protocol ItemRemoteDataSourceProtocol {
     func fetchItems() -> AnyPublisher<[ItemDTO], Error>
@@ -384,11 +388,11 @@ class ItemRepositoryImpl: ItemRepositoryProtocol {
 ```
 
 **Combine**:
+<!-- typecheck: combine -->
 ```swift
 class ItemRepositoryImpl: ItemRepositoryProtocol {
     private let remote: ItemRemoteDataSourceProtocol
     private let local: ItemLocalDataSourceProtocol
-    private var cancellables = Set<AnyCancellable>()
 
     init(remote: ItemRemoteDataSourceProtocol, local: ItemLocalDataSourceProtocol) {
         self.remote = remote
@@ -397,10 +401,11 @@ class ItemRepositoryImpl: ItemRepositoryProtocol {
 
     func getItems() -> AnyPublisher<[Item], Error> {
         remote.fetchItems()
-            .handleEvents(receiveOutput: { [local] dtos in
-                local.cache(dtos).sink(receiveCompletion: { _ in }, receiveValue: {})
-                    .store(in: &self.cancellables)
-            })
+            .flatMap { [local] dtos in
+                local.cache(dtos)
+                    .map { _ in dtos }
+                    .replaceError(with: dtos)
+            }
             .catch { [local] _ in
                 local.getCachedItems()
             }
