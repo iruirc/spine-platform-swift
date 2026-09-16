@@ -125,7 +125,7 @@ ticks() { tr -d '`'; }
     in_axis async "$(cell 1 <<<"$row" | ticks)" || { echo "arch-clean: $row"; return 1; }
   done <<<"$rows"
   rows="$(table_rows '| `async` | `ui` | `baseline` | Approach |' "$ROOT/skills/arch-mvvm/SKILL.md")"
-  [ "$(grep -c . <<<"$rows")" -eq 4 ] || { echo "arch-mvvm: $(grep -c . <<<"$rows") rows, want 4"; return 1; }
+  [ "$(grep -c . <<<"$rows")" -eq 5 ] || { echo "arch-mvvm: $(grep -c . <<<"$rows") rows, want 5"; return 1; }
   while IFS= read -r row; do
     for pair in "1 async" "2 ui" "3 baseline"; do
       c="$(cell "${pair%% *}" <<<"$row")"; axis="${pair#* }"
