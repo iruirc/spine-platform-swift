@@ -59,14 +59,14 @@ final class PersonToUserAndProfilePolicy: NSEntityMigrationPolicy {
 
 Other override hooks: `endInstanceCreation` (after all create-passes complete), `endRelationshipCreation` (relationships in place), `performCustomValidation` (final sanity check). `manager.userInfo` carries state between hooks.
 
-4. **CRITICAL: turn off automatic inference for heavyweight stores**:
+4. **Turn off inference for stores that need your mapping model**:
 
 ```swift
 description.shouldMigrateStoreAutomatically = true
 description.shouldInferMappingModelAutomatically = false   // ← false, not true
 ```
 
-If you leave this `true` with a heavyweight change in the model, Core Data will *attempt* to infer, fail silently or produce broken data, and won't pick up your mapping model. This is one of the most common ways heavyweight migrations «just don't run».
+Inference does not override your mapping model: Core Data looks for a mapping model in the app's bundles first and infers one only when none matches the source and destination versions. The flag guards the other case, a mapping model missing from the target: with inference on, Core Data migrates without your policy whenever the change happens to be inferable; with it off, the load fails with `NSMigrationMissingMappingModelError` (134140).
 
 5. **Backup the store before migrating** (see *Long migrations* below).
 6. **Test against a fixture** (see *Testing / Migration tests*).

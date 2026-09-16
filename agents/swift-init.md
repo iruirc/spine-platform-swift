@@ -306,7 +306,7 @@ Consult the relevant skill when scaffolding. The skill body defines the folder s
 - `net-architecture` — HTTP client choice (URLSession default / Alamofire / Moya / Get), starter `HTTPClient` protocol, baseline middleware chain
 - `net-openapi` — if the API has an OpenAPI spec, scaffold for `swift-openapi-generator` + adapter wrapper for domain types
 - `persistence-architecture` — storage stack choice (Core Data / SwiftData / GRDB / Realm / UserDefaults+files only), starter Repository protocol, bootstrap of `ModelContainer` / `NSPersistentContainer` / `DatabasePool` in the Composition Root
-- `persistence-migrations` — day-1 migration discipline setup: schema versioned in git, `DatabaseMigrator` / `SchemaMigrationPlan` / lightweight migration flags in the first commit, a `Tests/Fixtures/` directory for snapshot tests, an atomic backup-and-replace template, a Migration UI screen template in the startup flow
+- `persistence-migrations` — day-1 migration discipline setup: schema versioned in git, `DatabaseMigrator` / `SchemaMigrationPlan` / a versioned `.xcdatamodeld` in the first commit, a `Tests/Fixtures/` directory for snapshot tests, an atomic backup-and-replace template, a Migration UI screen template in the startup flow
 
 If the user's chosen architecture is ambiguous or missing, ASK before scaffolding; do not invent structure.
 

@@ -61,7 +61,8 @@ computed defaults. For heavyweight migrations:
 - Add a new `.xcdatamodeld` version.
 - Create a mapping model for the adjacent source/destination pair.
 - Use `NSEntityMigrationPolicy` only where custom transformation is needed.
-- Set inference to false so Core Data uses your mapping:
+- Set inference to false. Core Data uses a bundled mapping model either way;
+  with inference off, a missing one fails the load instead of being inferred:
 
 ```swift
 description.shouldMigrateStoreAutomatically = true
@@ -187,7 +188,7 @@ For App Group stores shared with extensions/widgets:
 
 - No migration plan until the first breaking schema change.
 - Editing a shipped migration.
-- Leaving Core Data inference enabled for a heavyweight migration.
+- Inference left on can hide a missing heavyweight mapping model.
 - Shipping heavyweight migration without a fixture test.
 - Running long migrations during background launch.
 - Auto-deleting a user's database on migration failure.
