@@ -20,8 +20,9 @@ storage" and "platform fragmentation" when the platform is Apple's.
   Transparency (ATT) prompt bypass, no payment flow outside In-App Purchase for digital goods.
 - Calendar buffer: **+1–3 calendar days** typical for an established app with no guideline changes;
   **+3–7 calendar days** for a first submission, a guideline-adjacent feature (payments, health
-  data, ATT), or a resubmission after rejection. Enterprise / internal (Apple Business Manager)
-  distribution skips review entirely — 0 days.
+  data, ATT), or a resubmission after rejection. A custom app distributed through Apple Business
+  (Apple Business Manager until April 2026) goes through the same App Review; only an in-house app
+  under the Apple Developer Enterprise Program skips review — 0 days.
 - TestFlight builds are not store-reviewed for internal testing; external TestFlight groups get a
   lightweight review (usually same-day to 24h).
 
@@ -69,8 +70,9 @@ without its symbols produces unsymbolicated, useless crash reports.
 
 ## Accessibility specifics
 
-- VoiceOver: `accessibilityLabel` / `accessibilityHint` on every interactive element; group
-  decorative elements out of the VoiceOver rotor with `accessibilityElementsHidden`.
+- VoiceOver: `accessibilityLabel` / `accessibilityHint` on every interactive element; hide a
+  decorative element with `isAccessibilityElement = false` (UIKit) or `.accessibilityHidden(true)`
+  (SwiftUI). `accessibilityElementsHidden` hides the elements a container holds, not the container.
 - Dynamic Type: support at minimum up to `.accessibility3`; test with
   `UIContentSizeCategory.accessibilityExtraExtraExtraLarge` — a layout that only handles `.large`
   is not Dynamic Type support.
