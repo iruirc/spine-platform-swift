@@ -189,12 +189,18 @@ Best when applicable. Design Codable so **new versions read old payloads without
 - Embed `version: Int` inside the payload as a safety net.
 - **Snapshot-test the JSON form** of every released version — see *Testing / Snapshot tests for transformable Codable payloads*.
 
+<!-- typecheck -->
 ```swift
-struct Payload: Codable {
+import Foundation
+
+struct Payload: Codable, Equatable {
     var a: String
     var b: Int
     var c: String        // ← added in v2
+}
 
+// In an extension, so the memberwise init(a:b:c:) survives.
+extension Payload {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         a = try c.decode(String.self, forKey: .a)
@@ -213,17 +219,22 @@ When a real breaking change is already in flight (rename, restructure, derive a 
 - Custom `init(from:)` recognises **both** old and new shapes, converts on decode.
 - On the next save, the entity's payload is written in the new shape («lazy backfill»).
 
+<!-- typecheck -->
 ```swift
 struct PayloadV2: Codable {
     var fullName: String       // was: firstName + lastName
+
+    // Old keys stay out of CodingKeys, so encode(to:) writes only the new shape.
+    private enum LegacyKeys: String, CodingKey { case firstName, lastName }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         if let combined = try c.decodeIfPresent(String.self, forKey: .fullName) {
             fullName = combined
         } else {
-            let first = try c.decode(String.self, forKey: .firstName)
-            let last  = try c.decode(String.self, forKey: .lastName)
+            let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+            let first = try legacy.decode(String.self, forKey: .firstName)
+            let last  = try legacy.decode(String.self, forKey: .lastName)
             fullName = "\(first) \(last)"
         }
     }
@@ -444,7 +455,10 @@ Generate fixtures **once from the old code** and freeze. Once a fixture is commi
 
 For any Codable struct stored in a `Data` attribute, freeze the JSON form and assert decode + round-trip on every CI run. This is the only thing that catches accidental schema drift inside blobs (see *Migrating transformable Codable payloads*).
 
+<!-- typecheck -->
 ```swift
+import XCTest
+
 final class PayloadSnapshotTests: XCTestCase {
     func test_payloadV2_decodesFrozenJSON() throws {
         let json = """
