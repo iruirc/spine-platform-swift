@@ -317,6 +317,7 @@ Reuse `ItemListState` and `ItemListIntent` from Flavor A — they are framework-
 
 ### ViewModel
 
+<!-- typecheck -->
 ```swift
 import Observation
 
@@ -325,7 +326,7 @@ import Observation
 final class ItemListViewModel {
     private(set) var state = ItemListState()
     private let load: @Sendable () async throws -> [Item]
-    private var inFlight: Task<Void, Never>?
+    @ObservationIgnored private(set) var inFlight: Task<Void, Never>?
 
     init(load: @Sendable @escaping () async throws -> [Item]) {
         self.load = load
@@ -370,20 +371,21 @@ final class ItemListViewModel {
 }
 ```
 
-### Async-`send` variant (when callers prefer to await)
+### Awaiting an intent in tests
 
-If callers want to await the completion of an intent (e.g. in tests), expose an async overload:
+A test has to wait for the work an intent starts. Do not overload `send` with an `async` version: an async context prefers the async overload, so the overload's own `send(intent)` resolves to itself, and in the ViewModel's module so does `self.send(…)` in `startLoad`'s `Task`, which then fails to compile without `await`. Give the helper its own name and keep it in the test target; `inFlight` is `private(set)` so `@testable import` reaches it, and `@ObservationIgnored` so `deinit` can read it.
 
+<!-- typecheck -->
 ```swift
 extension ItemListViewModel {
-    func send(_ intent: ItemListIntent) async {
+    func sendAndWait(_ intent: ItemListIntent) async {
         send(intent)
         await inFlight?.value
     }
 }
 ```
 
-Pick **one** style per project; do not mix sync `send` and `async send` for the same ViewModel in production code (only the test extension above is OK).
+Production callers use `send(_:)` only.
 
 ### View
 
@@ -551,14 +553,17 @@ final class ItemListReducerTests: XCTestCase {
 
 The reducer is a pure function — tests are synchronous, deterministic, and exhaustive over the `Intent` enum.
 
-### Flavor B — ViewModel test via async `send`
+### Flavor B — ViewModel test via `sendAndWait`
 
+<!-- typecheck -->
 ```swift
+import XCTest
+
 @MainActor
 final class ItemListViewModelTests: XCTestCase {
     func test_viewAppeared_loadsItems() async {
         let vm = ItemListViewModel(load: { [Item(id: 1, title: "A")] })
-        await vm.send(.viewAppeared)
+        await vm.sendAndWait(.viewAppeared)
         XCTAssertEqual(vm.state.phase, .loaded([Item(id: 1, title: "A")]))
     }
 }
@@ -590,7 +595,7 @@ Inject closures (`@Sendable () async throws -> [Item]`) rather than protocol-con
 
 8. **Sync reducer that schedules async work via `DispatchQueue` instead of returning an `Effect`.** Looks like it works; breaks tests, breaks cancellation, breaks reasoning.
 
-9. **Two `send` styles in production.** Sync `send(_:)` and async `send(_:) async` for the same ViewModel — callers don't know which to use. Keep async overloads in test targets only.
+9. **An `async` overload of `send`.** Next to `send(_:)`, a `send(_:) async` captures every call made from an async context: `Task` bodies need `await`, and the overload's own `send(intent)` resolves to itself. Give the awaiting helper its own name (`sendAndWait`) and keep it in the test target.
 
 10. **MVI on a 3-field form.** State is `(name: String, email: String, isSubmitting: Bool)`; reducer is 5 lines of boilerplate. Use plain MVVM with `@Published` properties; revisit MVI if the screen actually grows a state machine.
 
