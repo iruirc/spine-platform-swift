@@ -13,7 +13,6 @@ This skill provides guidelines for using Apple's Combine framework effectively i
 ## When to Use Combine
 
 **Good fit**:
-- New projects targeting iOS 13+
 - Want first-party Apple framework (no dependencies)
 - SwiftUI projects (native integration)
 - Simple to moderate async flows
@@ -21,9 +20,10 @@ This skill provides guidelines for using Apple's Combine framework effectively i
 
 **Consider alternatives**:
 - Complex operators needed → RxSwift (more operators)
-- iOS 12 support required → RxSwift
 - One-shot async calls → async/await
 - Simple callbacks → closures/delegates
+
+Every `baseline` value (`iOS 16+`, `macOS 13+` and newer) ships Combine, so the deployment target never decides between Combine and RxSwift.
 
 ## Core Concepts Quick Reference
 
@@ -205,13 +205,13 @@ func testItemsLoad() {
 | RxSwift | Combine |
 |---------|---------|
 | `Observable` | `AnyPublisher` |
-| `Single` | `Future` |
+| `Single` | `Deferred { Future { … } }` — a bare `Future` runs at creation |
 | `PublishSubject` | `PassthroughSubject` |
 | `BehaviorSubject` | `CurrentValueSubject` |
 | `DisposeBag` | `Set<AnyCancellable>` |
 | `disposed(by:)` | `store(in:)` |
 | `subscribe` | `sink` |
-| `bind(to:)` | `assign(to:on:)` |
+| `bind(to:)` | `assign(to: &$property)` into `@Published`, `subscribe(_:)` into a subject; `assign(to:on:)` retains its object |
 | `Driver` | `AnyPublisher` + `.receive(on: DispatchQueue.main)` |
 | `distinctUntilChanged()` | `removeDuplicates()` |
 | `do(onNext:)` | `handleEvents(receiveOutput:)` |
