@@ -46,3 +46,12 @@ extension SwiftDataItemRepository {
     func upsert(_ item: Item) async throws {}
     func delete(id: Item.ID) async throws {}
 }
+
+extension ItemEntity {
+    convenience init(from item: Item) {
+        self.init(
+            id: item.id, title: item.title, createdAt: item.createdAt, updatedAt: item.updatedAt,
+            isArchived: item.isArchived, version: item.version
+        )
+    }
+}
