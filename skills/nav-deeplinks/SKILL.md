@@ -80,8 +80,10 @@ NavigationLayer.route(Route)        <- arch-coordinator / arch-swiftui-navigatio
 - **Validate, don't trust.** A URL is untrusted input. Validate host/path,
   bounds-check IDs, never `try!`-decode, never perform a destructive or
   authenticated action purely from a link without an in-app confirmation step.
-- **macOS:** Universal Links via `NSUserActivity` apply; custom scheme via
-  `application(_:open:)` / `NSAppleEventManager`. App Links is Android-only.
+- **macOS:** SwiftUI wires links as on iOS. An AppKit app gets custom-scheme
+  URLs in `application(_:open:)`, as `[URL]`, and a Universal Link in
+  `application(_:continue:restorationHandler:)`; no Apple-event handler is
+  needed. App Links is Android-only.
 
 ## Link Type Decision
 
@@ -180,7 +182,7 @@ crashes from cold start because navigation graph / auth isn't ready.
   in-app confirmation.
 - Custom scheme only, no Universal Links → links are dead when app not
   installed and are hijackable.
-- AASA served with wrong `Content-Type`, behind a redirect, or with `appID`
+- AASA served with wrong `Content-Type`, behind a redirect, or with `appIDs`
   not matching `TeamID.BundleID`.
 - One giant `if url.path == ...` ladder instead of a tested parser.
 - No tests for malformed input — the exact thing attackers and old clients

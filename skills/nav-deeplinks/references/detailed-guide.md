@@ -64,8 +64,12 @@ application/json`, **no redirect**, reachable without auth:
 }
 ```
 
-3. Apple's CDN caches AASA — bump it on deploy; verify via
-`https://app-site-association.cdn-apple.com/a/v1/example.com`.
+3. Devices fetch the AASA from Apple's CDN, not from your server. The CDN picks
+up a changed file within 24 hours and devices check for updates about once a
+week; nothing on your side purges it. See what the CDN holds at
+`https://app-site-association.cdn-apple.com/a/v1/example.com`. While
+developing, `applinks:example.com?mode=developer` in the entitlement skips the
+CDN on a device in developer mode running a development-signed build.
 
 Common AASA failures: wrong `Content-Type`, served behind a 301/302,
 `appIDs` not `TeamID.BundleID`, file not at `.well-known`, JSON invalid.
@@ -331,6 +335,30 @@ struct ExampleApp: App {
 }
 ```
 
+macOS. The SwiftUI wiring above applies unchanged. An AppKit delegate receives
+custom-scheme URLs as an array and every activity through one method:
+
+```swift
+import AppKit
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    let dependencies = AppDependencyContainer()
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { dependencies.deepLinks.handle(url) }
+    }
+
+    func application(_ application: NSApplication,
+                     continue userActivity: NSUserActivity,
+                     restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void)
+        -> Bool {
+        dependencies.deepLinks.handle(userActivity)
+        return true
+    }
+}
+```
+
 ## Cold Start & Pending Route
 
 Sequence for a link from a *killed* app:
@@ -359,10 +387,16 @@ the original link is lost (App Store does not pass it through). Options:
 
 - **Universal Link first** — if the app *is* installed there is no deferral
   problem; this only matters for the not-installed path.
-- Attribution SDK (Branch, AppsFlyer, Adjust) stores the click server-side
-  keyed by a fingerprint / paste of a clipboard token, then returns the
-  intended `Route` on first launch via its callback → feed into the same
-  `DeepLinkParser` / `Route`.
+- **Match on something the user brings** — an account, an emailed or texted
+  sign-in link, a short code the web page shows. The server keeps the click
+  against it and returns the intended link after sign-in or code entry → feed
+  it into the same `DeepLinkParser` / `Route`. A code copied on the web page
+  is read through `UIPasteControl`: a programmatic pasteboard read raises a
+  permission alert since iOS 16.
+- **No fingerprinting.** Matching an install to a click by device, browser,
+  network or location signals is not allowed, with or without tracking
+  consent, and an app that bundles an attribution SDK doing it may be
+  rejected. Check the matching mode of any SDK you ship.
 - Apple Ads Attribution / `AdServices` token for campaign attribution only —
   not a content router.
 
