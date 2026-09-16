@@ -395,6 +395,7 @@ Identical to Flavor A's `ItemListView`, replace `ItemListStore` with `ItemListVi
 
 `@Observable` is iOS 17+. On an iOS 13–16 SwiftUI target the Store/ViewModel backing is the only thing that changes — `State`, `Intent`, `Reducer`, `Effect` and the reduce loop are identical. Swap `@Observable` for `ObservableObject` + a single `@Published private(set) var state`:
 
+<!-- typecheck: observable-object -->
 ```swift
 import Combine
 
@@ -525,9 +526,9 @@ A fresh `State` per intent must not mean repainting the whole screen. Diff at th
 
 ### Flavor A — pure reducer test (no `XCTestExpectation`, no async)
 
+<!-- typecheck -->
 ```swift
 import XCTest
-@testable import Feature
 
 final class ItemListReducerTests: XCTestCase {
     func test_viewAppeared_setsLoading_andReturnsLoadEffect() async {
