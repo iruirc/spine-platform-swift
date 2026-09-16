@@ -23,7 +23,7 @@ Swift Package Manager:
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/hmlongco/Factory.git", from: "2.5.0")
+.package(url: "https://github.com/hmlongco/Factory.git", from: "3.0.0")
 
 // Targets
 .product(name: "FactoryKit", package: "Factory"),               // app target
@@ -31,19 +31,16 @@ Swift Package Manager:
 ```
 
 ```swift
-import FactoryKit            // in production code (NOT `import Factory` — that's the deprecated name)
-import FactoryTesting        // in test targets (provides the `.container` Suite trait for Swift Testing)
+import FactoryKit            // every file that names Container, Factory or a property wrapper
+import FactoryTesting        // test files: the `.container` trait for Swift Testing
 ```
 
-### Importing `Factory` instead of `FactoryKit`
+### Migrating from 2.x
 
-```swift
-// ❌ Old name, deprecation warnings
-import Factory
-
-// ✅
-import FactoryKit
-```
+- **Toolchain.** Factory 3 declares `swift-tools-version: 6.1` (Xcode 16.3 or later) and ships through Swift Package Manager only; a CocoaPods project stays on 2.5.3.
+- **Module.** The `Factory` library is gone. Link `FactoryKit` and replace `import Factory` with `import FactoryKit`: 2.5 still built the old name, 3.0 fails with `no such module 'Factory'`.
+- **Main-actor factories.** 2.x built them with `self { @MainActor in … }`. Factory 3 wants `@MainActor` on the factory variable and a plain closure, and rejects the 2.x closure on an unannotated variable — see Concurrency.
+- **Circular-dependency check.** `manager.dependencyChainTestMax` became the `manager.circularDependencyTesting` flag.
 
 ## Core Concepts
 
@@ -185,7 +182,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 ```
 
-### `@InjectedObservable` — for @Observable view models (Factory 2.4+)
+### `@InjectedObservable` — for @Observable view models
 
 ```swift
 @MainActor
@@ -269,8 +266,9 @@ extension Container {
     var imageCache: Factory<ImageCache> {
         self { ImageCache() }.shared                   // weak
     }
+    @MainActor
     var profileViewModel: Factory<ProfileViewModel> {
-        self { ProfileViewModel() }                    // .unique by default
+        self { ProfileViewModel(userService: self.userService()) }   // .unique by default
     }
 }
 ```
@@ -286,15 +284,17 @@ extension Container {
 ```swift
 // ❌ All screens see the same state
 extension Container {
+    @MainActor
     var profileViewModel: Factory<ProfileViewModel> {
-        self { ProfileViewModel() }.singleton
+        self { ProfileViewModel(userService: self.userService()) }.singleton
     }
 }
 
 // ✅ ViewModel = .unique (default)
 extension Container {
+    @MainActor
     var profileViewModel: Factory<ProfileViewModel> {
-        self { ProfileViewModel() }
+        self { ProfileViewModel(userService: self.userService()) }
     }
 }
 ```
@@ -305,6 +305,7 @@ When the instance requires a runtime parameter (screen id, flow config):
 
 ```swift
 extension Container {
+    @MainActor
     var detailViewModel: ParameterFactory<String, DetailViewModel> {
         self { itemId in
             DetailViewModel(itemId: itemId, service: self.itemService())
@@ -320,6 +321,7 @@ let vm = Container.shared.detailViewModel("item-123")
 
 ```swift
 extension Container {
+    @MainActor
     var chatViewModel: ParameterFactory<(String, String), ChatViewModel> {
         self { (roomId, userId) in
             ChatViewModel(roomId: roomId, userId: userId, chat: self.chatService())
@@ -332,7 +334,7 @@ let vm = Container.shared.chatViewModel(("room-1", "user-42"))
 
 **Limitations:**
 - `@Injected` does NOT work with `ParameterFactory` — there's no way to pass parameters before the wrapper is initialized. Use `Container.shared.foo(arg)` directly or pass the dependency explicitly through init.
-- Caching (`.cached`/`.singleton`) by default **ignores parameters** — the same instance is returned for different ids. For key-by-parameters use `scopeOnParameters` (Factory 2.5+).
+- Caching (`.cached`/`.singleton`) by default **ignores parameters** — the same instance is returned for different ids. For key-by-parameters use `scopeOnParameters`.
 
 ### ParameterFactory vs factory function
 
@@ -343,6 +345,7 @@ A plain factory function — only when **none of the above is needed** and you w
 ```swift
 // Acceptable ONLY when: no need for .cached/.shared, no .onTest override, no register-based mocks
 extension Container {
+    @MainActor
     func chatViewModel(roomId: String, userId: String) -> ChatViewModel {
         ChatViewModel(roomId: roomId, userId: userId, chat: self.chatService())
     }
@@ -364,6 +367,7 @@ extension Container {
 ```swift
 // ❌ Same instance for different itemIds
 extension Container {
+    @MainActor
     var detailViewModel: ParameterFactory<String, DetailViewModel> {
         self { DetailViewModel(itemId: $0) }.cached
     }
@@ -757,23 +761,27 @@ Better — Swift Testing with `@Suite(.container)`, then no reset is needed.
 
 ### `@MainActor` view models
 
-Isolate the **ViewModel class itself**, not the property in `Container`. The factory closure is annotated `@MainActor in` so initialization runs on the main queue:
+A main-actor type is registered by a `@MainActor` factory variable; the closure inside needs no annotation of its own:
 
 ```swift
 @MainActor
 @Observable
-final class ContentViewModel { /* ... */ }
+final class ContentViewModel {
+    private let repository: RepositoryProtocol
+    init(repository: RepositoryProtocol) { self.repository = repository }
+}
 
 extension Container {
+    @MainActor
     var contentViewModel: Factory<ContentViewModel> {
-        self { @MainActor in ContentViewModel() }
+        self { ContentViewModel(repository: self.repository()) }
     }
 }
 ```
 
-**Why NOT `@MainActor` on the `var` itself:** if you mark the property `@MainActor`, accessing it (including `Container.shared.contentViewModel`) requires a MainActor context — that breaks resolution from background tasks, migrations, `URLSession.delegate`. Isolation should live **on the type that requires it** (the ViewModel), not on the registration.
+Without `@MainActor` on the variable the registration does not compile in any mode of `concurrency-architecture` → "Toolchain modes": the plain closure calls a main actor-isolated initializer from a nonisolated context, and 2.x's `self { @MainActor in … }` loses its global actor when Factory 3 stores it. Default main-actor isolation does not help: `Container` is declared `nonisolated`, and so are the members of its extensions.
 
-If Swift 6 complains about resolving from nonisolated code — that means you're resolving a MainActor-bound type in the wrong place. Move the resolve into a MainActor zone (e.g. `View.task`/`onAppear`) instead of annotating the registration.
+Only main-actor code can resolve such a factory — the `@main` App, the scene delegate, the root view, `AppDependencyContainer` — and that composition edge is the only place that resolves at all. Work that runs off the main actor (a detached task, a `BGTaskScheduler` handler, a background `URLSession` delegate) never reaches into `Container.shared`: the edge resolves the nonisolated services it needs and passes them in through `init`.
 
 ### `@Injected` in an `@Observable` ViewModel
 

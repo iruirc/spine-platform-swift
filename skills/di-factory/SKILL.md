@@ -5,7 +5,7 @@ description: "Use when working with the Factory DI library by hmlongco (FactoryK
 
 # Factory DI Patterns
 
-Factory-specific guidance for `FactoryKit` 2.5+: `Container` /
+Factory-specific guidance for `FactoryKit` 3.x: `Container` /
 `SharedContainer`, computed-property registrations, property-wrapper injection,
 scopes, parameterized factories, contexts, modular organization, and tests.
 
@@ -20,7 +20,7 @@ scopes, parameterized factories, contexts, modular organization, and tests.
 
 | Need | Reference sections |
 |---|---|
-| Install/import Factory correctly | `Installation` |
+| Install Factory 3 or migrate from 2.x | `Installation` |
 | Register services and resolve them | `Core Concepts`, `Resolution: Property Wrappers` |
 | Pick `.unique`, `.cached`, `.singleton`, `.graph` | `Scopes` |
 | Build ViewModels with runtime IDs | `Parameterized Factories` |
@@ -54,8 +54,8 @@ Prefer alternatives when:
 
 ## Core Rules
 
-- Import `FactoryKit` in production code. `import Factory` is the old module
-  name.
+- Import `FactoryKit` in production code. Factory 3 ships no `Factory` module,
+  so `import Factory` is 2.x code that no longer builds.
 - Add `FactoryTesting` only to test targets.
 - Factory implements the DI container; it does not remove the need for a
   Composition Root. Bootstrap decisions still live in `di-composition-root`.
@@ -129,6 +129,7 @@ Factory scopes, contexts, and test overrides:
 
 ```swift
 extension Container {
+    @MainActor
     var detailViewModel: ParameterFactory<String, DetailViewModel> {
         self { itemId in
             DetailViewModel(itemId: itemId, service: self.itemService())
@@ -202,9 +203,13 @@ Composition Root bootstrap.
 Factory's container operations are thread-safe, but the resolved objects still
 need correct isolation.
 
-- Put `@MainActor` on ViewModel types, not on the `Container` property.
-- Use `self { @MainActor in ContentViewModel() }` when constructing a
-  main-actor ViewModel.
+- Put `@MainActor` on a main-actor type and on its factory variable:
+  `@MainActor var contentViewModel: Factory<ContentViewModel>`. The closure
+  needs no `@MainActor in`. Without the variable annotation the registration
+  does not compile in any mode of
+  `concurrency-architecture` → "Toolchain modes".
+- Only main-actor code can resolve that factory, and the composition edge
+  already runs there.
 - Keep non-UI registrations nonisolated. Background work still receives its
   services through initializers and does not resolve.
 - Factory does not make non-Sendable services safe. The instance returned by the
@@ -224,3 +229,4 @@ need correct isolation.
 - Putting services directly into SwiftUI Views instead of ViewModels.
 - Allowing registration-name collisions in large modular apps.
 - Importing `Factory` instead of `FactoryKit`.
+- Registering a `@MainActor` type without `@MainActor` on its factory variable.
