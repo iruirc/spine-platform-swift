@@ -273,6 +273,7 @@ Uses Apple's Combine framework. See `reactive-combine` skill for framework detai
 import Combine
 import Foundation
 
+@MainActor
 protocol FeatureViewModelProtocol: AnyObject {
     var itemsPublisher: AnyPublisher<[ItemCellModel], Never> { get }
     var isLoadingPublisher: AnyPublisher<Bool, Never> { get }
@@ -284,6 +285,7 @@ protocol FeatureViewModelProtocol: AnyObject {
     func didTapRetry()
 }
 
+@MainActor
 class FeatureViewModel: FeatureViewModelProtocol {
     private let service: FeatureServiceProtocol
     private var cancellables = Set<AnyCancellable>()
@@ -371,7 +373,6 @@ class FeatureViewController: UIViewController {
 
     private func bindViewModel() {
         viewModel.itemsPublisher
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] items in
                 self?.cellModels = items
                 self?.tableView.reloadData()
@@ -379,7 +380,6 @@ class FeatureViewController: UIViewController {
             .store(in: &cancellables)
 
         viewModel.isLoadingPublisher
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] isLoading in
                 if isLoading {
                     self?.loadingIndicator.startAnimating()
@@ -390,7 +390,6 @@ class FeatureViewController: UIViewController {
             .store(in: &cancellables)
 
         viewModel.errorPublisher
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] message in
                 self?.showErrorAlert(message)
             }
@@ -407,19 +406,18 @@ import Combine
 import XCTest
 
 class FeatureViewModelTests: XCTestCase {
-    var sut: FeatureViewModel!
     var mockService: MockFeatureService!
     var cancellables: Set<AnyCancellable>!
 
     override func setUp() {
         mockService = MockFeatureService()
-        sut = FeatureViewModel(service: mockService)
         cancellables = []
     }
 
     @MainActor
     func testViewDidLoad_fetchesItems() {
         let expectation = expectation(description: "items received")
+        let sut = FeatureViewModel(service: mockService)
         mockService.stubbedResult = Just([Item(id: "1")])
             .setFailureType(to: Error.self)
             .eraseToAnyPublisher()
@@ -439,6 +437,7 @@ class FeatureViewModelTests: XCTestCase {
     @MainActor
     func testViewDidLoad_showsAndHidesLoading() {
         let expectation = expectation(description: "loading states")
+        let sut = FeatureViewModel(service: mockService)
         var states: [Bool] = []
         mockService.stubbedResult = Just([Item]())
             .setFailureType(to: Error.self)
@@ -461,6 +460,7 @@ class FeatureViewModelTests: XCTestCase {
     @MainActor
     func testDidSelectItem_signalsNavigation() {
         let expectation = expectation(description: "items loaded")
+        let sut = FeatureViewModel(service: mockService)
         var selectedItem: Item?
         sut.onItemSelected = { selectedItem = $0 }
         mockService.stubbedResult = Just([Item(id: "42")])
@@ -488,6 +488,8 @@ class FeatureViewModelTests: XCTestCase {
 Modern Swift concurrency. No dependencies, clean linear code.
 
 ### ViewModel
+
+`FeatureServiceProtocol` (not shown) is `Sendable`: the main-actor ViewModel awaits it, and unless `SWIFT_APPROACHABLE_CONCURRENCY` is on, that call runs off the main actor — `concurrency-architecture` → "Toolchain modes".
 
 <!-- typecheck: async -->
 ```swift
