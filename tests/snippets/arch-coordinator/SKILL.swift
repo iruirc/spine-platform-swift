@@ -28,6 +28,8 @@ final class AuthCoordinator: BaseCoordinator {
     func makeDetailCoordinator(router: Router, item: Item) -> DetailCoordinator
     func makeAuthCoordinator(router: Router) -> AuthCoordinator
     func makeTabBarCoordinator(router: Router) -> Coordinator
+    func makeHomeCoordinator(router: Router) -> Coordinator
+    func makeProfileCoordinator(router: Router) -> Coordinator
 }
 extension AppCoordinator {
     var userIsLoggedIn: Bool { false }
@@ -47,4 +49,6 @@ final class MockCoordinatorFactory: CoordinatorFactory {
     }
     func makeAuthCoordinator(router: Router) -> AuthCoordinator { AuthCoordinator() }
     func makeTabBarCoordinator(router: Router) -> Coordinator { BaseCoordinator() }
+    func makeHomeCoordinator(router: Router) -> Coordinator { BaseCoordinator() }
+    func makeProfileCoordinator(router: Router) -> Coordinator { BaseCoordinator() }
 }

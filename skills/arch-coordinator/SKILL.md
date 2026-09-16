@@ -385,6 +385,7 @@ child.onFinish = { [weak self] in
 
 ## Tab Bar Coordinator
 
+<!-- typecheck -->
 ```swift
 class MainTabCoordinator: BaseCoordinator {
     private let tabBarController = UITabBarController()
@@ -405,8 +406,12 @@ class MainTabCoordinator: BaseCoordinator {
         let profileRouter = AppRouter(navigationController: profileNav)
         let profileCoordinator = coordinatorFactory.makeProfileCoordinator(router: profileRouter)
 
-        homeNav.tabBarItem = UITabBarItem(title: "Home", image: R.image.tabHome(), tag: 0)
-        profileNav.tabBarItem = UITabBarItem(title: "Profile", image: R.image.tabProfile(), tag: 1)
+        homeNav.tabBarItem = UITabBarItem(
+            title: "Home", image: UIImage(systemName: "house"), tag: 0
+        )
+        profileNav.tabBarItem = UITabBarItem(
+            title: "Profile", image: UIImage(systemName: "person"), tag: 1
+        )
 
         tabBarController.viewControllers = [homeNav, profileNav]
 
