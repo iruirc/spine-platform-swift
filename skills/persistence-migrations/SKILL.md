@@ -153,9 +153,10 @@ For heavyweight/chained migrations:
 
 - Show a foreground migration UI when the operation can take visible time.
 - Defer if launched in the background.
-- Copy a backup before touching the store.
+- Copy a backup through `NSPersistentStoreCoordinator` before touching the
+  store: a file copy of the `.sqlite` alone misses commits still in its `-wal`.
 - Replace atomically on success.
-- Restore or preserve the backup on failure.
+- Restore the store from the backup on failure.
 - Keep the backup available for support even when the user chooses "Start fresh".
 
 User-facing recovery should usually offer retry, send report, and start fresh.

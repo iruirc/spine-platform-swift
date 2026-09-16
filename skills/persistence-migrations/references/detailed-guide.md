@@ -339,31 +339,46 @@ Per framework:
 
 Core Data «manual chain» pattern:
 
+<!-- typecheck -->
 ```swift
-func migrateStoreIfNeeded(at storeURL: URL) throws {
+import CoreData
+
+enum MigrationError: Error {
+    case unknownSourceVersion
+    case failed(underlying: any Error, backupURL: URL, storeRestored: Bool)
+}
+
+/// `models` lists every shipped model version, oldest first.
+func sourceModelIndex(of storeURL: URL, in models: [NSManagedObjectModel]) throws -> Int {
     let metadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(
         type: .sqlite, at: storeURL)
-
-    let modelVersions: [NSManagedObjectModel] = [.v1, .v2, .v3, .v4]   // ordered
-    guard let startIndex = modelVersions.firstIndex(where: { $0.isConfiguration(withName: nil, compatibleWith: metadata) }) else {
+    guard let index = models.firstIndex(where: {
+        $0.isConfiguration(withName: nil, compatibleWithStoreMetadata: metadata)
+    }) else {
         throw MigrationError.unknownSourceVersion
     }
-    guard startIndex < modelVersions.count - 1 else { return }   // already current
+    return index
+}
+
+func migrateStore(at storeURL: URL, from start: Int, in models: [NSManagedObjectModel]) throws {
+    let workDir = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: workDir) }
 
     var currentURL = storeURL
-    for i in startIndex..<(modelVersions.count - 1) {
-        let from = modelVersions[i]
-        let to = modelVersions[i + 1]
-        let mapping = try mappingModel(from: from, to: to)        // adjacent pair
-        let intermediateURL = tmpDir.appendingPathComponent("step-\(i).sqlite")
-
+    for i in start..<(models.count - 1) {
+        let (from, to) = (models[i], models[i + 1])
+        let mapping = try NSMappingModel(from: [.main], forSourceModel: from, destinationModel: to)
+            ?? NSMappingModel.inferredMappingModel(forSourceModel: from, destinationModel: to)
+        let stepURL = workDir.appendingPathComponent("step-\(i).sqlite")
         let manager = NSMigrationManager(sourceModel: from, destinationModel: to)
-        try manager.migrateStore(from: currentURL, type: .sqlite, mapping: mapping,
-                                 to: intermediateURL, type: .sqlite)
-        currentURL = intermediateURL
+        try manager.migrateStore(
+            from: currentURL, type: .sqlite, mapping: mapping, to: stepURL, type: .sqlite)
+        currentURL = stepURL
     }
-
-    try FileManager.default.replaceItem(at: storeURL, withItemAt: currentURL, ...)
+    try NSPersistentStoreCoordinator(managedObjectModel: models[models.count - 1])
+        .replacePersistentStore(at: storeURL, withPersistentStoreFrom: currentURL, type: .sqlite)
 }
 ```
 
@@ -383,24 +398,38 @@ What to do:
 
 - **Show a migration UI.** A dedicated launch screen («Updating your library… N of M»). KVO-observe `NSMigrationManager.migrationProgress` (0.0–1.0) for Core Data; for SwiftData/GRDB you wrap the call yourself with progress reporting.
 - **Run on the foreground launch path, not background.** Detect `UIApplication.shared.applicationState == .background` and **defer migration to the next foreground launch** — back out cleanly, don't risk the process kill.
-- **Backup first, atomically replace on success:**
-
-  ```swift
-  let backup = storeURL.appendingPathExtension("bak.\(Int(Date().timeIntervalSince1970))")
-  try FileManager.default.copyItem(at: storeURL, to: backup)
-  do {
-      try migrateStoreIfNeeded(at: storeURL)
-      try FileManager.default.removeItem(at: backup)
-  } catch {
-      // store is still partially migrated — restore from backup
-      try? FileManager.default.removeItem(at: storeURL)
-      try FileManager.default.moveItem(at: backup, to: storeURL)
-      throw MigrationError.failed(underlying: error, backupRestoredAt: storeURL)
-  }
-  ```
-
 - **Set `description.shouldAddStoreAsynchronously = true`** for Core Data when you need to keep the launch responsive (the `loadPersistentStores` callback fires on a background queue). The migration itself still runs serially — but the main thread isn't blocked while it does.
 - **Dual-schema option for very large stores:** if the migration is too long to be reasonable, ship the new app with the **old schema still readable** for a release or two, and migrate lazily (one row per access) or in background batches. Cost: complexity in repository code that handles both schemas.
+
+**Back up first, restore from the copy on failure, keep the copy.** `replacePersistentStore(at:withPersistentStoreFrom:type:)` copies a store together with the commits still in its `-wal` sidecar; `FileManager.copyItem` on the `.sqlite` file alone loses them. The copy outlives a failure — «Send report» packages it, «Start fresh» keeps it (*Failure recovery*) — and only a successful migration removes it. It gets a directory of its own because `destroyPersistentStore(at:type:)` truncates a SQLite store and leaves its files in place.
+
+<!-- typecheck -->
+```swift
+func migrateStoreIfNeeded(at storeURL: URL, models: [NSManagedObjectModel]) throws {
+    guard FileManager.default.fileExists(atPath: storeURL.path(percentEncoded: false)) else {
+        return
+    }
+    let start = try sourceModelIndex(of: storeURL, in: models)
+    guard start < models.count - 1 else { return }
+
+    let backupDir = storeURL.deletingLastPathComponent()
+        .appendingPathComponent("backup-\(Int(Date().timeIntervalSince1970))", isDirectory: true)
+    try FileManager.default.createDirectory(at: backupDir, withIntermediateDirectories: true)
+    let backupURL = backupDir.appendingPathComponent(storeURL.lastPathComponent)
+    let coordinator = NSPersistentStoreCoordinator(managedObjectModel: models[start])
+    try coordinator.replacePersistentStore(
+        at: backupURL, withPersistentStoreFrom: storeURL, type: .sqlite)
+    do {
+        try migrateStore(at: storeURL, from: start, in: models)
+    } catch {
+        let storeRestored = (try? coordinator.replacePersistentStore(
+            at: storeURL, withPersistentStoreFrom: backupURL, type: .sqlite)) != nil
+        throw MigrationError.failed(
+            underlying: error, backupURL: backupURL, storeRestored: storeRestored)
+    }
+    try FileManager.default.removeItem(at: backupDir)
+}
+```
 
 ## Failure recovery
 
