@@ -133,6 +133,7 @@ class AppRouter: Router {
 
 Coordinator receives factories — never the DI container. See `di-module-assembly` skill for Factory details.
 
+<!-- typecheck -->
 ```swift
 class FeatureCoordinator: BaseCoordinator {
     private let router: Router
@@ -186,6 +187,7 @@ class FeatureCoordinator: BaseCoordinator {
 
 ## App Coordinator (Root)
 
+<!-- typecheck -->
 ```swift
 class AppCoordinator: BaseCoordinator {
     private let router: Router
@@ -246,7 +248,9 @@ viewModel.onItemSelected = { [weak self] item in
 
 For complex flows with many navigation signals:
 
+<!-- typecheck: delegate -->
 ```swift
+@MainActor
 protocol FeatureNavigationDelegate: AnyObject {
     func didSelectItem(_ item: Item)
     func didTapSettings()
@@ -460,7 +464,10 @@ Coordinators are created by `CoordinatorFactory`, not resolved from Swinject con
 
 With Factory pattern, coordinators are testable without DI container:
 
+<!-- typecheck -->
 ```swift
+import XCTest
+
 class FeatureCoordinatorTests: XCTestCase {
     var sut: FeatureCoordinator!
     var mockRouter: MockRouter!
@@ -468,7 +475,7 @@ class FeatureCoordinatorTests: XCTestCase {
     var mockModuleFactory: MockFeatureModuleFactory!
 
     @MainActor
-    override func setUp() {
+    override func setUp() async throws {
         mockRouter = MockRouter()
         mockCoordinatorFactory = MockCoordinatorFactory()
         mockModuleFactory = MockFeatureModuleFactory()
