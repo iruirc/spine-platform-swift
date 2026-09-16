@@ -397,12 +397,21 @@ struct RetryMiddleware: HTTPMiddleware {
 
 Cancellation must propagate from the View layer all the way down to `URLSession.dataTask`.
 
+<!-- typecheck -->
 ```swift
+@MainActor
 final class ItemListViewModel {
+    private(set) var items: [Item] = []
+    private(set) var message: String?
+    private let repository: ItemsRepository
     private var loadTask: Task<Void, Never>?
 
+    init(repository: ItemsRepository) {
+        self.repository = repository
+    }
+
     func onAppear() {
-        loadTask = Task { @MainActor in
+        loadTask = Task {
             do {
                 items = try await repository.fetchItems()
             } catch is CancellationError {
@@ -516,6 +525,7 @@ public protocol DownloadClient {
 
 Native iOS has `URLSessionWebSocketTask`. Wrap it in an `AsyncStream` for the consumer:
 
+<!-- typecheck -->
 ```swift
 public protocol RealtimeChannel {
     func messages() -> AsyncThrowingStream<RealtimeEvent, Error>
@@ -676,6 +686,7 @@ Mock at the **HTTPClient** boundary, not at `URLSession`. Two approaches:
 
 ### URLProtocol stub (transport-level, integration-style)
 
+<!-- typecheck -->
 ```swift
 final class StubURLProtocol: URLProtocol {
     nonisolated(unsafe) static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
