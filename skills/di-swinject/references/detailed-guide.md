@@ -219,19 +219,30 @@ let connection = container.resolve(
 
 ### Circular Dependencies
 
+A needs B and B needs A. If each factory resolves the other — through an initializer, or by setting a property before it returns — resolving either recurses until Swinject traps: "Infinite recursive call for circular dependency has been detected".
+
 ```swift
-// A needs B, B needs A → crash
 container.register(A.self) { r in A(b: r.resolve(B.self)!) }
 container.register(B.self) { r in B(a: r.resolve(A.self)!) }
-
-// Break cycle with property injection
-container.register(A.self) { r in
-    let a = A()
-    a.b = r.resolve(B.self)!
-    return a
-}
-container.register(B.self) { r in B(a: r.resolve(A.self)!) }
 ```
+
+Break the cycle on one side. `AnalyticsService` is built without its user service and receives it through a `weak` property in `initCompleted`. Swinject calls `initCompleted` after it stores the new instance, so the resolve inside finds that `AnalyticsService` instead of building another:
+
+```swift
+container.register(UserServiceProtocol.self) { r in
+    UserService(analytics: r.resolve(AnalyticsServiceProtocol.self)!)
+}.inObjectScope(.container)
+
+container.register(AnalyticsServiceProtocol.self) { _ in AnalyticsService() }
+    .inObjectScope(.container)
+    .initCompleted { r, analytics in
+        (analytics as! AnalyticsService).userService = r.resolve(UserServiceProtocol.self)
+    }
+```
+
+- Both sides are `.container`. `.transient` keeps no instance, so the cycle traps again; `.graph` keeps it for one resolve only, so the `weak` back reference can be `nil` afterwards.
+- Resolving `UserService` first runs its factory twice and keeps one instance: keep that factory free of side effects.
+- A cycle usually hides a third type both sides need; extracting it removes the cycle.
 
 ### Resolving in Initializers
 
