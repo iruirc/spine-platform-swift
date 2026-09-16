@@ -74,9 +74,14 @@ Common AASA failures: wrong `Content-Type`, served behind a 301/302,
 
 Pure, `Sendable`, no UI, no navigation, no singletons. The `Route` enum is
 owned by the navigation layer's public contract; the parser only produces it.
+`Route` is `Hashable`, which `NavigationPath.append`, `NavigationStack(path:)`
+and `navigationDestination(for:)` require.
 
+<!-- typecheck -->
 ```swift
-enum Route: Equatable, Sendable {
+import Foundation
+
+enum Route: Hashable, Sendable {
     case item(id: String)
     case profile(userId: String)
     case promo(code: String)
@@ -141,90 +146,188 @@ untrusted input; `nil` is a normal, tested outcome.
 
 ## Entry Points
 
-One router, every source funnels in. The router owns timing/auth; it forwards
-the `Route` to the navigation layer via an injected closure/protocol so this
-skill stays navigation-agnostic.
+One router, every source funnels in. The router owns timing and the auth gate;
+the navigation layer hands it a closure once it exists, so this skill stays
+navigation-agnostic.
 
+<!-- typecheck -->
 ```swift
+import CoreSpotlight
+
 @MainActor
 final class DeepLinkRouter {
     private var pending: Route?
-    private var isReady = false
+    private var navigate: ((Route) -> Void)?   // -> arch-coordinator / SwiftUI Router
     private let isAuthed: () -> Bool
     private let requiresAuth: (Route) -> Bool
-    private let navigate: (Route) -> Void   // -> arch-coordinator / SwiftUI Router
 
     init(isAuthed: @escaping () -> Bool,
-         requiresAuth: @escaping (Route) -> Bool,
-         navigate: @escaping (Route) -> Void) {
+         requiresAuth: @escaping (Route) -> Bool) {
         self.isAuthed = isAuthed
         self.requiresAuth = requiresAuth
-        self.navigate = navigate
     }
 
-    // Custom scheme
+    // Custom scheme; in SwiftUI a Universal Link too
     func handle(_ url: URL) {
         // unknown link: stay where the app is
         guard let route = DeepLinkParser.parse(url) else { return }
         dispatch(route)
     }
 
-    // Universal Link
+    // Universal Link in UIKit, Handoff, Spotlight
     func handle(_ activity: NSUserActivity) {
-        guard activity.activityType == NSUserActivityTypeBrowsingWeb,
-              let url = activity.webpageURL else { return }
-        handle(url)
-    }
-
-    // Push / notification tap
-    func handle(userInfo: [AnyHashable: Any]) {
-        guard let s = userInfo["deeplink"] as? String,
-              let url = URL(string: s) else { return }
-        handle(url)
-    }
-
-    // Quick action / widget — already an intent
-    func handle(shortcut type: String) {
-        switch type {
-        case "com.example.app.newItem": dispatch(.item(id: "new"))
-        default: break
+        if activity.activityType == CSSearchableItemActionType {
+            // the app indexes each item with its link URL as uniqueIdentifier
+            guard let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+                  let url = URL(string: id) else { return }
+            handle(url)
+        } else if let url = activity.webpageURL {
+            handle(url)
         }
     }
 
-    func appBecameReady() {
-        isReady = true
-        if let p = pending { pending = nil; dispatch(p) }
+    // Quick action — already an intent
+    @discardableResult
+    func handle(shortcut type: String) -> Bool {
+        switch type {
+        case "com.example.app.newItem": dispatch(.item(id: "new")); return true
+        default: return false
+        }
     }
 
-    func authDidChange() {
-        if isAuthed(), let p = pending { pending = nil; dispatch(p) }
+    func appBecameReady(navigate: @escaping (Route) -> Void) {
+        self.navigate = navigate
+        replayPending()
+    }
+
+    func userDidLogIn() {
+        replayPending()
+    }
+
+    func userDidLogOut() {
+        pending = nil   // a link buffered for one session must not open in the next
+    }
+
+    private func replayPending() {
+        guard let route = pending else { return }
+        pending = nil
+        dispatch(route)
     }
 
     private func dispatch(_ route: Route) {
-        guard isReady else { pending = route; return }
+        guard let navigate else { pending = route; return }
         if requiresAuth(route) && !isAuthed() { pending = route; return }
         navigate(route)
     }
 }
 ```
 
-SwiftUI wiring:
+The app delegate owns the app-scope graph and takes notification taps, a cold
+start's included. Its delegate method is `nonisolated` because
+`UNNotificationResponse` is not `Sendable`; it hands the router a `URL`:
 
+<!-- typecheck -->
 ```swift
-.onOpenURL { router.handle($0) }
-.onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { router.handle($0) }
+import UIKit
+import UserNotifications
+
+final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    let dependencies = AppDependencyContainer()
+
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // before launch ends, or the tap that launched the app is lost
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse) async {
+        let userInfo = response.notification.request.content.userInfo
+        guard let s = userInfo["deeplink"] as? String, let url = URL(string: s) else { return }
+        await dependencies.deepLinks.handle(url)
+    }
+}
 ```
 
-`AppDelegate` / `SceneDelegate`:
+UIKit scene. A cold start's URL, activity or shortcut arrives only in
+`connectionOptions`; the other three methods fire for a scene that is already
+connected. The router buffers what arrives before the coordinator is attached:
 
+<!-- typecheck -->
 ```swift
-func application(_ app: UIApplication, open url: URL,
-                 options: [UIApplication.OpenURLOptionsKey: Any]) -> Bool {
-    router.handle(url); return true
-}
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+    private var coordinator: AppCoordinator?
 
-func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-    router.handle(userActivity)
+    private var dependencies: AppDependencyContainer {
+        (UIApplication.shared.delegate as! AppDelegate).dependencies
+    }
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession,
+               options connectionOptions: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+        let deepLinks = dependencies.deepLinks
+        if let url = connectionOptions.urlContexts.first?.url { deepLinks.handle(url) }
+        if let activity = connectionOptions.userActivities.first { deepLinks.handle(activity) }
+        if let item = connectionOptions.shortcutItem { deepLinks.handle(shortcut: item.type) }
+        // connectionOptions.notificationResponse: the app delegate receives the same tap
+
+        let window = UIWindow(windowScene: windowScene)
+        let coordinator = dependencies.makeAppCoordinator(window: window)
+        self.window = window
+        self.coordinator = coordinator
+        coordinator.start()
+        deepLinks.appBecameReady { [weak coordinator] in coordinator?.handleDeepLink($0) }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        if let url = URLContexts.first?.url { dependencies.deepLinks.handle(url) }
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        dependencies.deepLinks.handle(userActivity)
+    }
+
+    func windowScene(_ windowScene: UIWindowScene,
+                     performActionFor shortcutItem: UIApplicationShortcutItem,
+                     completionHandler: @escaping (Bool) -> Void) {
+        completionHandler(dependencies.deepLinks.handle(shortcut: shortcutItem.type))
+    }
+}
+```
+
+SwiftUI. `onOpenURL` receives custom-scheme URLs and Universal Links alike,
+`onContinueUserActivity` receives Spotlight and Handoff activities, and the app
+delegate above takes notification taps. `path` stands in for the navigation
+layer. `@main` goes on this `App`, or on `AppDelegate` in a UIKit app:
+
+<!-- typecheck -->
+```swift
+import SwiftUI
+import CoreSpotlight
+
+struct ExampleApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @State private var path: [Route] = []
+
+    var body: some Scene {
+        WindowGroup {
+            NavigationStack(path: $path) {
+                HomeView()
+                    .navigationDestination(for: Route.self) { RouteView(route: $0) }
+            }
+            .onOpenURL { appDelegate.dependencies.deepLinks.handle($0) }
+            .onContinueUserActivity(CSSearchableItemActionType) {
+                appDelegate.dependencies.deepLinks.handle($0)
+            }
+            .onAppear {
+                appDelegate.dependencies.deepLinks.appBecameReady { path.append($0) }
+            }
+        }
+    }
 }
 ```
 
@@ -232,12 +335,17 @@ func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
 
 Sequence for a link from a *killed* app:
 
-1. OS launches app, delivers URL/activity before the object graph exists.
-2. `router.handle` parses → `isReady == false` → store `pending`.
-3. Composition Root finishes building graph + restores auth → calls
-   `router.appBecameReady()` → `pending` replays once.
+1. OS launches the app and hands over the link: in `connectionOptions` of
+   `scene(_:willConnectTo:options:)` for a UIKit scene, to `onOpenURL` /
+   `onContinueUserActivity` in SwiftUI, to
+   `userNotificationCenter(_:didReceive:)` for a notification tap.
+2. `router.handle` parses; with no navigation layer attached yet it stores
+   `pending`.
+3. The scene builds its root + restores auth → calls
+   `router.appBecameReady(navigate:)` → `pending` replays once.
 4. If the route needs auth and the user is logged out, it stays buffered;
-   `router.authDidChange()` after a successful login replays it.
+   `router.userDidLogIn()` after a successful login replays it.
+5. `router.userDidLogOut()` drops whatever is still buffered.
 
 Reset-vs-preserve: per route decide whether arrival resets the nav stack
 (e.g. promo → fresh) or pushes onto the current stack (e.g. item from a list).
@@ -266,56 +374,76 @@ own navigation.
 
 Parser table test:
 
+<!-- typecheck -->
 ```swift
-func test_parse() {
-    let cases: [(String, Route?)] = [
-        ("myapp://item/42",                       .item(id: "42")),
-        ("https://example.com/item/42",           .item(id: "42")),
-        ("https://evil.example/item/42",          nil),
-        ("ftp://example.com/item/42",             nil),
-        ("https://example.com/item/",             nil),
-        ("https://example.com/unknown",           nil),
-        ("https://example.com/promo?code=ABC",    .promo(code: "ABC")),
-        ("myapp://item/" + String(repeating: "x", count: 999), nil),
-    ]
-    for (s, expected) in cases {
-        XCTAssertEqual(DeepLinkParser.parse(URL(string: s)!), expected, s)
+import XCTest
+
+final class DeepLinkParserTests: XCTestCase {
+    func test_parse() {
+        let cases: [(String, Route?)] = [
+            ("myapp://item/42",                       .item(id: "42")),
+            ("https://example.com/item/42",           .item(id: "42")),
+            ("https://evil.example/item/42",          nil),
+            ("ftp://example.com/item/42",             nil),
+            ("https://example.com/item/",             nil),
+            ("https://example.com/unknown",           nil),
+            ("https://example.com/promo?code=ABC",    .promo(code: "ABC")),
+            ("myapp://item/" + String(repeating: "x", count: 999), nil),
+        ]
+        for (s, expected) in cases {
+            XCTAssertEqual(DeepLinkParser.parse(URL(string: s)!), expected, s)
+        }
     }
 }
 ```
 
-Cold-start replay:
+Cold-start replay. The router is `@MainActor`, so its test class is too:
 
+<!-- typecheck -->
 ```swift
-func test_coldStart_replaysOnce() {
-    var routed: [Route] = []
-    let r = DeepLinkRouter(isAuthed: { true },
-                           requiresAuth: { _ in false },
-                           navigate: { routed.append($0) })
-    r.handle(URL(string: "myapp://item/7")!)   // not ready -> buffered
-    XCTAssertTrue(routed.isEmpty)
-    r.appBecameReady()
-    XCTAssertEqual(routed, [.item(id: "7")])
-    r.appBecameReady()                          // no duplicate
-    XCTAssertEqual(routed, [.item(id: "7")])
+@MainActor
+final class DeepLinkRouterTests: XCTestCase {
+    func test_coldStart_replaysOnce() {
+        var routed: [Route] = []
+        let router = DeepLinkRouter(isAuthed: { true }, requiresAuth: { _ in false })
+        router.handle(URL(string: "myapp://item/7")!)   // not ready -> buffered
+        XCTAssertTrue(routed.isEmpty)
+        router.appBecameReady { routed.append($0) }
+        XCTAssertEqual(routed, [.item(id: "7")])
+        router.appBecameReady { routed.append($0) }     // no duplicate
+        XCTAssertEqual(routed, [.item(id: "7")])
+    }
 }
 ```
 
-Auth gate:
+Auth gate and logout:
 
+<!-- typecheck -->
 ```swift
-func test_authGate_buffersUntilLogin() {
-    var routed: [Route] = []
-    var loggedIn = false
-    let r = DeepLinkRouter(isAuthed: { loggedIn },
-                           requiresAuth: { _ in true },
-                           navigate: { routed.append($0) })
-    r.appBecameReady()
-    r.handle(URL(string: "myapp://profile/me")!)   // logged out -> buffered
-    XCTAssertTrue(routed.isEmpty)
-    loggedIn = true
-    r.authDidChange()
-    XCTAssertEqual(routed, [.profile(userId: "me")])
+extension DeepLinkRouterTests {
+    func test_authGate_buffersUntilLogin() {
+        var routed: [Route] = []
+        var loggedIn = false
+        let router = DeepLinkRouter(isAuthed: { loggedIn }, requiresAuth: { _ in true })
+        router.appBecameReady { routed.append($0) }
+        router.handle(URL(string: "myapp://profile/me")!)   // logged out -> buffered
+        XCTAssertTrue(routed.isEmpty)
+        loggedIn = true
+        router.userDidLogIn()
+        XCTAssertEqual(routed, [.profile(userId: "me")])
+    }
+
+    func test_logout_dropsPending() {
+        var routed: [Route] = []
+        var loggedIn = false
+        let router = DeepLinkRouter(isAuthed: { loggedIn }, requiresAuth: { _ in true })
+        router.appBecameReady { routed.append($0) }
+        router.handle(URL(string: "myapp://profile/me")!)
+        router.userDidLogOut()
+        loggedIn = true
+        router.userDidLogIn()
+        XCTAssertTrue(routed.isEmpty)
+    }
 }
 ```
 

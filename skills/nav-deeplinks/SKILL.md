@@ -38,13 +38,14 @@ Router) or `arch-tca` (state mutation).
 
 ```
 OS entry point                          (many sources, one funnel)
-  onOpenURL / application(_:open:)
-  NSUserActivity (Universal Link)
-  push userInfo / UNNotificationResponse
+  scene(_:willConnectTo:options:)       (UIKit cold start)
+  onOpenURL / scene(_:openURLContexts:)
+  onContinueUserActivity / scene(_:continue:)
+  userNotificationCenter(_:didReceive:)
   UIApplicationShortcutItem / widget / Spotlight
         |
         v
-DeepLinkRouter.handle(URL | NSUserActivity | userInfo)   <- this skill
+DeepLinkRouter.handle(URL | NSUserActivity | shortcut)   <- this skill
         |
         v
 DeepLinkParser.parse(...) -> Route?                       <- this skill (pure)
@@ -97,18 +98,27 @@ URL shapes to the same `Route`.
 
 ## Entry Points — all funnel to one router
 
-- Custom scheme, app foreground/background: `onOpenURL` (SwiftUI) /
-  `scene(_:openURLContexts:)` / `application(_:open:options:)`.
-- Universal Link: `onContinueUserActivity(NSUserActivityTypeBrowsingWeb)` /
-  `scene(_:continue:)` / `application(_:continue:restorationHandler:)` —
-  extract `userActivity.webpageURL`.
-- Notification tap: parse a `deeplink`/`url` key from `UNNotificationResponse`
-  in `userNotificationCenter(_:didReceive:)` → same parser. Silent/background
-  push may prefetch or update local state, but should not drive UI navigation
-  without a user action.
-- Quick Action: `UIApplicationShortcutItem.type` → `Route`.
+- **Cold start, UIKit scene:** the link arrives only in
+  `scene(_:willConnectTo:options:)`, as `connectionOptions.urlContexts`,
+  `.userActivities` or `.shortcutItem`; the warm-start callbacks below do not
+  fire for it. `connectionOptions.notificationResponse` is a tap that
+  `userNotificationCenter(_:didReceive:)` receives too: route it there only.
+- Custom scheme: `onOpenURL` (SwiftUI) / `scene(_:openURLContexts:)`.
+- Universal Link: `onOpenURL` in SwiftUI, which delivers it as a `URL`;
+  `scene(_:continue:)` in UIKit — extract `userActivity.webpageURL`.
+- Notification tap: `userNotificationCenter(_:didReceive:)`, cold start
+  included, with the delegate set before
+  `application(_:didFinishLaunchingWithOptions:)` returns. Parse a
+  `deeplink`/`url` key → same parser. Silent/background push may prefetch or
+  update local state, but should not drive UI navigation without a user action.
+- Quick Action: `UIApplicationShortcutItem.type` → `Route`, from
+  `connectionOptions.shortcutItem` or
+  `windowScene(_:performActionFor:completionHandler:)`.
 - Widget: `Link`/`widgetURL` → custom scheme → same funnel.
-- Spotlight / Handoff: `NSUserActivity` with your activity type → `Route`.
+- Spotlight: `NSUserActivity` of type `CSSearchableItemActionType`, whose
+  `userInfo[CSSearchableItemActivityIdentifier]` is the indexed item's
+  `uniqueIdentifier` → `Route`. Handoff: your activity type → `Route`. SwiftUI
+  receives both in `onContinueUserActivity`.
 
 All of these reduce to: build/extract a `URL` (or a direct intent enum) and call
 `DeepLinkRouter.handle`. See `references/detailed-guide.md` → `Entry Points`.
@@ -123,6 +133,8 @@ crashes from cold start because navigation graph / auth isn't ready.
   logged out **or** onboarding incomplete → store `pending`, return.
 - When graph signals ready and gate resolves (login finishes, onboarding
   completes) → replay `pending` once, then clear it.
+- Logout clears `pending`: a link buffered in one session must not open in the
+  next.
 - Decide per route: **reset vs preserve** existing nav stack on arrival
   (mid-flow deep link). This is a product decision — capture it in
   `spine-toolkit:feature-requirements`.
@@ -135,8 +147,10 @@ crashes from cold start because navigation graph / auth isn't ready.
 - Router: cold-start test — `handle` before "ready" then signal ready →
   asserts the route replays exactly once.
 - Auth gate: deep link while logged out → buffered → replays after login.
+- Logout: a buffered link is dropped, not replayed after the next login.
 - Manual: `xcrun simctl openurl booted "myapp://item/42"` and
-  `xcrun simctl openurl booted "https://example.com/item/42"`.
+  `xcrun simctl openurl booted "https://example.com/item/42"`; repeat after
+  `xcrun simctl terminate booted com.example.app` for the cold start.
 - Universal Links: validate AASA with
   `https://app-site-association.cdn-apple.com/a/v1/example.com` and the
   device "Diagnostics" (long-press the link in Notes).
@@ -148,8 +162,17 @@ crashes from cold start because navigation graph / auth isn't ready.
   enum.
 - Router that navigates directly — duplicates the navigation layer.
 - No cold-start buffer → link from a killed app silently lands on root.
+- Reading links only in `scene(_:openURLContexts:)` / `scene(_:continue:)` —
+  a cold-start link waits in `connectionOptions` and is lost.
+- Waiting for a Universal Link in
+  `onContinueUserActivity(NSUserActivityTypeBrowsingWeb)` — SwiftUI delivers
+  it to `onOpenURL`.
+- Routing a notification tap from both `connectionOptions.notificationResponse`
+  and `userNotificationCenter(_:didReceive:)` — it navigates twice.
 - Ignoring the auth/onboarding gate → deep link drops the user into a screen
   behind the login wall, or crashes.
+- Keeping `pending` across logout — the next session opens the previous
+  session's link.
 - Treating an unknown/old link as fatal, or navigating to the root on it,
   instead of ignoring it.
 - `try!` / force-unwrapping IDs from an untrusted URL.
