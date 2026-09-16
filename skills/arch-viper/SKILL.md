@@ -192,6 +192,7 @@ final class FeaturePresenter: FeaturePresenterProtocol {
 
 Pure business logic. Calls services/repositories, returns results to the Presenter.
 
+<!-- typecheck -->
 ```swift
 final class FeatureInteractor: FeatureInteractorProtocol {
     private let service: FeatureServiceProtocol
@@ -206,11 +207,14 @@ final class FeatureInteractor: FeatureInteractorProtocol {
 }
 ```
 
-The Interactor has no back-reference to the Presenter — results flow back through `await`. The Interactor is `nonisolated` unless it touches mutable state that needs protection (use an `actor` then); where its body runs is the toolchain mode's call — `concurrency-architecture` → "Toolchain modes".
+The Interactor has no back-reference to the Presenter — results flow back through `await`. The Interactor is `nonisolated` unless it touches mutable state that needs protection (use an `actor` then); where its body runs is the toolchain mode's call — `concurrency-architecture` → "Toolchain modes". Its protocol is `Sendable` because the `@MainActor` Presenter awaits it, so whatever the Interactor stores is `Sendable` too; a test double with mutable stubs gets `@MainActor`.
 
 #### Combine variant
 
+<!-- typecheck: combine -->
 ```swift
+import Combine
+
 protocol FeatureInteractorProtocol {
     func fetchItems() -> AnyPublisher<[FeatureEntity], Error>
 }
@@ -231,13 +235,17 @@ The Presenter holds an `AnyCancellable` instead of a `Task`, subscribes via `sin
 
 The classical VIPER form keeps separate Input and Output protocols. **Use only when continuing an existing classical-VIPER codebase** — for greenfield modules pick async/await.
 
+<!-- typecheck: callback -->
 ```swift
+import Foundation
+
 protocol FeatureInteractorInputProtocol: AnyObject {
     var presenter: FeatureInteractorOutputProtocol? { get set }
     func fetchItems()
 }
 
-protocol FeatureInteractorOutputProtocol: AnyObject {
+@MainActor
+protocol FeatureInteractorOutputProtocol: AnyObject, Sendable {
     func didFetchItems(_ items: [FeatureEntity])
     func didFailFetchingItems(_ error: Error)
 }
@@ -249,11 +257,12 @@ final class FeatureInteractor: FeatureInteractorInputProtocol {
     init(service: FeatureServiceProtocol) { self.service = service }
 
     func fetchItems() {
-        service.fetchItems { [weak self] result in
+        // Capture the presenter, not self: the Interactor is not Sendable
+        service.fetchItems { [weak presenter] result in
             DispatchQueue.main.async {
                 switch result {
-                case .success(let items): self?.presenter?.didFetchItems(items)
-                case .failure(let error): self?.presenter?.didFailFetchingItems(error)
+                case .success(let items): presenter?.didFetchItems(items)
+                case .failure(let error): presenter?.didFailFetchingItems(error)
                 }
             }
         }
@@ -267,6 +276,7 @@ In this variant the Presenter conforms to `FeatureInteractorOutputProtocol` and 
 
 Plain data structures. No logic, no dependencies.
 
+<!-- typecheck -->
 ```swift
 struct FeatureEntity {
     let id: String
@@ -316,6 +326,7 @@ class FeatureRouter: FeatureRouterProtocol {
 
 Creates and connects all components:
 
+<!-- typecheck -->
 ```swift
 enum FeatureAssembly {
     @MainActor
@@ -362,7 +373,10 @@ User taps → View → Presenter → Router → Creates next module
 
 Each component is independently testable:
 
+<!-- typecheck -->
 ```swift
+import XCTest
+
 // Presenter test (async/await)
 @MainActor
 final class FeaturePresenterTests: XCTestCase {
@@ -371,8 +385,8 @@ final class FeaturePresenterTests: XCTestCase {
     var mockInteractor: MockFeatureInteractor!
     var mockRouter: MockFeatureRouter!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         mockView = MockFeatureView()
         mockInteractor = MockFeatureInteractor()
         mockRouter = MockFeatureRouter()
@@ -418,6 +432,7 @@ final class FeaturePresenterTests: XCTestCase {
 }
 
 // Mock returns async throws to match the modern Interactor protocol
+@MainActor
 final class MockFeatureInteractor: FeatureInteractorProtocol {
     var stubbedItems: [FeatureEntity] = []
     var stubbedError: Error?
@@ -429,6 +444,7 @@ final class MockFeatureInteractor: FeatureInteractorProtocol {
 }
 
 // Interactor test (async/await)
+@MainActor
 final class FeatureInteractorTests: XCTestCase {
     func testFetchItems_returnsServiceItems() async throws {
         let mockService = MockFeatureService()
