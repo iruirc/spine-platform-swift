@@ -69,7 +69,7 @@ container.autoregister(
 
 ## Object Scopes
 
-### `.transient` (Default)
+### `.transient`
 
 New instance every time. Use for stateful objects.
 
@@ -119,9 +119,9 @@ container.register(CacheProtocol.self) { _ in
 - Resources that can be recreated
 - Memory-sensitive singletons
 
-### `.graph` (Default for auto-registration)
+### `.graph` (Default)
 
-Same instance within single resolution graph, new for each top-level resolve.
+Same instance within single resolution graph, new for each top-level resolve. A `Container()` gives it to every registration without `inObjectScope`, `autoregister` included.
 
 ```swift
 container.autoregister(SharedState.self, initializer: SharedState.init)
@@ -145,7 +145,7 @@ container.register(FormDraft.self) { ... }
 
 // Form draft as transient - fresh state each time
 container.register(FormDraft.self) { ... }
-    .inObjectScope(.transient)  // or omit (default)
+    .inObjectScope(.transient)  // without it the scope is .graph
 ```
 
 ## Registration Patterns
@@ -477,19 +477,20 @@ class ProfileViewModelTests: XCTestCase {
 
 ### Integration Tests — Test Container
 
-When testing the DI graph itself or integration between components:
+When testing the DI graph itself or integration between components, apply the production Assembly under test and register mocks for what it depends on:
 
 ```swift
 class TestDIContainer {
     static func makeContainer() -> Container {
         let container = Container()
+        ProfileServicesAssembly().assemble(container: container)
 
-        container.register(NetworkServiceProtocol.self) { _ in
-            MockNetworkService()
+        container.register(APIClientProtocol.self) { _ in
+            MockAPIClient()
         }
 
-        container.register(DatabaseServiceProtocol.self) { _ in
-            InMemoryDatabase()
+        container.register(CacheProtocol.self) { _ in
+            InMemoryCache()
         }
 
         return container
@@ -499,15 +500,17 @@ class TestDIContainer {
 
 ### Override Specific Dependencies
 
+A later `register` of the same type and name replaces the earlier one. The test resolves a service: the container holds no ViewModels.
+
 ```swift
 func testWithCustomMock() {
     let container = TestDIContainer.makeContainer()
 
-    container.register(NetworkServiceProtocol.self) { _ in
-        MockNetworkService(shouldFail: true)
+    container.register(APIClientProtocol.self) { _ in
+        MockAPIClient(shouldFail: true)
     }
 
-    let viewModel = container.resolve(ProfileViewModel.self)!
+    let repository = container.resolve(ProfileRepositoryProtocol.self)!
     // Test error handling path
 }
 ```
@@ -516,20 +519,20 @@ func testWithCustomMock() {
 
 ### Check Registration
 
+`hasAnyRegistration(of:)` checks a registration without running its factory. Pass each type through a generic function: in the Swift 5 language mode, neither it nor `resolve` accepts an `Any.Type`.
+
 ```swift
 #if DEBUG
-func validateRegistrations() {
-    let requiredTypes: [Any.Type] = [
-        NetworkServiceProtocol.self,
-        DatabaseServiceProtocol.self,
-        ProfileViewModelProtocol.self,
-    ]
-
-    for type in requiredTypes {
-        if container.resolve(type) == nil {
+func validateRegistrations(in container: Container) {
+    func require<Service>(_ type: Service.Type) {
+        if !container.hasAnyRegistration(of: type) {
             print("Missing registration: \(type)")
         }
     }
+
+    require(NetworkServiceProtocol.self)
+    require(DatabaseServiceProtocol.self)
+    require(ProfileRepositoryProtocol.self)
 }
 #endif
 ```
@@ -573,19 +576,18 @@ Swinject and Factory (see `di-factory`) solve the same problem in different ways
 | Compile-time safety | ❌ Resolve crash at runtime | ✅ Won't compile without a factory |
 | Injection style | Constructor via `r.resolve(...)` | Property wrapper `@Injected` or `Container.shared.foo()` |
 | Registrations | `register` / `autoregister` inside an Assembly | Computed property `var foo: Factory<Foo> { self { Foo() } }` |
-| Runtime parameters | `register { (r, arg) in ... }` + `name:` | `ParameterFactory` (one parameter type per key) |
+| Runtime parameters | `register { (r, arg) in ... }` + `resolve(_:argument:)` | `ParameterFactory` (one parameter type per key) |
 | Multiple impls of one type | `name:` parameter | Separate computed properties or modular containers |
 | Autoregister (auto-resolve init args) | ✅ Via `SwinjectAutoregistration` | ❌ No (deps must be wired explicitly in the closure) |
 | Inside an SPM package | ❌ Forbidden | ❌ Forbidden in the main target. Modular `extension Container` per feature — in the app target |
 | Preview/Test context overrides | Manual (separate test Assembly) | ✅ `.onPreview` / `.onTest` modifier out of the box |
 | Parallel tests | Manual reset between tests | ✅ Swift Testing `@Suite(.container)` via `@TaskLocal` |
-| Maturity | 10+ years in production, de facto standard | Modern library (2.x since 2023), actively developed |
+| Maturity | 10+ years in production, de facto standard | Modern library, actively developed |
 | SwiftUI specifics | Neutral | Tailored for SwiftUI/Observation |
-| Size | ~3000 LOC + SwinjectAutoregistration | <1000 LOC, single dependency |
 
 **When Swinject is better:**
 - Multi-module legacy is already on it — rewriting is more expensive
-- Need autoregister (`r.autoregister(...)` without spelling out the constructor)
+- Need autoregister (`container.autoregister(ProfileRepository.self, initializer: ProfileRepository.init)` without spelling out the constructor's arguments)
 - Need **multiple** bindings keyed by `name:` with different arguments
 - UIKit-first project, SwiftUI is used rarely
 
