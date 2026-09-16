@@ -301,6 +301,7 @@ func configureViewContext(of container: NSPersistentContainer) {
 - **`ModelContext`** — one per actor. The main-actor context is `container.mainContext`; create others with `ModelContext(container)` inside an actor.
 - **`@ModelActor`** — the modern way to do background writes:
 
+<!-- typecheck: swiftdata -->
 ```swift
 @ModelActor
 actor ItemBackgroundStore {
@@ -469,6 +470,7 @@ A common shortcut in Core Data / Realm code: when saving a parent, delete all ch
 
 Diff by stable ID instead:
 
+<!-- typecheck -->
 ```swift
 func upsertOrder(_ model: OrderSnapshot, in entity: CDOrder, ctx: NSManagedObjectContext) {
     let existing = Dictionary(uniqueKeysWithValues:
@@ -476,9 +478,9 @@ func upsertOrder(_ model: OrderSnapshot, in entity: CDOrder, ctx: NSManagedObjec
     )
     let incoming = Dictionary(uniqueKeysWithValues: model.lines.map { ($0.uuid, $0) })
 
-    let toDelete = existing.keys.subtracting(incoming.keys)
-    let toInsert = incoming.keys.subtracting(existing.keys)
-    let toUpdate = existing.keys.intersection(incoming.keys)
+    let toDelete = Set(existing.keys).subtracting(incoming.keys)
+    let toInsert = Set(incoming.keys).subtracting(existing.keys)
+    let toUpdate = Set(existing.keys).intersection(incoming.keys)
 
     for id in toDelete { ctx.delete(existing[id]!) }
     for id in toInsert { fillNewLineItem(ctx: ctx, parent: entity, model: incoming[id]!) }
@@ -886,6 +888,7 @@ The facade owns lifecycle and startup configuration. The container still surface
 
 The temptation to hide the framework completely:
 
+<!-- typecheck -->
 ```swift
 // ❌
 protocol Storage {
@@ -956,10 +959,12 @@ A recurring question on any project with 10+ entity pairs: *can we write the map
 
 One protocol describing «a mapper» in general:
 
+<!-- typecheck -->
 ```swift
 protocol EntityMapping {
     associatedtype Domain
     associatedtype Entity
+    associatedtype Context
     func toDomain(_ entity: Entity) throws -> Domain
     func toEntity(_ model: Domain, in context: Context) throws -> Entity
     func update(_ entity: Entity, from model: Domain, in context: Context) throws
@@ -980,6 +985,7 @@ This is correct and recommended. It gives you:
 
 `KeyPath`-based copy machinery for plain fields:
 
+<!-- typecheck -->
 ```swift
 struct FieldCopy<Domain, Entity, Value> {
     let domainKeyPath: WritableKeyPath<Domain, Value>
