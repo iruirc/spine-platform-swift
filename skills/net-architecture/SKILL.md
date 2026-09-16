@@ -141,7 +141,8 @@ through its own `HTTPClient`, without the auth middleware.
 - Retry 408, 429, 500, 502, 503, 504 by default; honor `Retry-After`.
 - Keep attempts bounded, usually 3.
 - Check cancellation before retrying. `URLSession.data(for:)` already propagates
-  task cancellation; custom bridges must cancel the underlying task.
+  task cancellation but throws `URLError(.cancelled)`; the transport rethrows it
+  as `CancellationError`. Custom bridges must cancel the underlying task.
 - `CancellationError` is not user-facing and should not be logged as an error.
 
 ## Pagination
