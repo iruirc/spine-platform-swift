@@ -301,7 +301,7 @@ A Swinject `Assembly` registers services. It is not the module's `*Assembly` enu
 
 ## @MainActor UI types + Swinject
 
-Swinject's `Container.register(_:factory:)` takes a **nonisolated** `(Resolver) -> Service` closure. Calling a `@MainActor`-isolated initializer (any `UIViewController`/`NSViewController` subclass on iOS 13+/macOS, or any `@MainActor` ViewModel) from inside that closure is a Swift 6 error:
+Swinject's `Container.register(_:factory:)` takes a **nonisolated** `(Resolver) -> Service` closure. Calling a `@MainActor`-isolated initializer (any `UIViewController`/`NSViewController` subclass, or any `@MainActor` ViewModel) from inside that closure is a Swift 6 error:
 
 ```
 error: call to main actor-isolated initializer 'init(...)' in a synchronous nonisolated context
