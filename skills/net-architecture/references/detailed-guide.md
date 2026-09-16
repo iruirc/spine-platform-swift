@@ -414,7 +414,7 @@ final class ItemListViewModel {
 
 **Rules:**
 
-- `URLSession` async methods (`data(for:)`) **already** propagate cancellation to the underlying task — no extra wiring needed.
+- `URLSession` async methods (`data(for:)`) **already** propagate cancellation to the underlying task — no extra wiring needed. They report it as `URLError(.cancelled)`, not `CancellationError`, so the transport rethrows it as `CancellationError` (`URLSessionHTTPClient` and `AlamofireHTTPClient` below) and every layer above filters one type.
 - Custom `HTTPClient` implementations **must** check `Task.isCancelled` before retry attempts and call `URLSessionDataTask.cancel()` if you maintain your own bridge.
 - **`CancellationError` is not a user error** — never show it; never log at error level. Filter at the boundary that knows the user's intent (typically the ViewModel).
 - Combine: use `.handleEvents(receiveCancel:)` to stop side effects; do NOT call `cancel()` on a publisher inside `sink` — store the `AnyCancellable` and drop it.
@@ -549,14 +549,24 @@ Persistent storage strategies (Core Data, SwiftData, SQLite) — see `persistenc
 
 ### URLSession integration
 
+<!-- typecheck -->
 ```swift
 final class URLSessionHTTPClient: HTTPClient {
     let session: URLSession
-    let baseURL: URL
+
+    init(session: URLSession) {
+        self.session = session
+    }
 
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
         let urlRequest = try toURLRequest(request)
-        let (data, response) = try await session.data(for: urlRequest)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: urlRequest)
+        } catch let error as URLError where error.code == .cancelled && Task.isCancelled {
+            throw CancellationError()      // URLSession's form of task cancellation
+        }
         guard let http = response as? HTTPURLResponse else {
             throw HTTPClientError.invalidResponse
         }
@@ -579,9 +589,14 @@ import Alamofire
 final class AlamofireHTTPClient: HTTPClient {
     let session: Session
 
+    init(session: Session) {
+        self.session = session
+    }
+
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
         let af = try toAFRequest(request)
         let response = await session.request(af).serializingData().response
+        if response.error?.isExplicitlyCancelledError == true { throw CancellationError() }
         guard let http = response.response, let data = response.data else {
             throw response.error ?? HTTPClientError.invalidResponse
         }
