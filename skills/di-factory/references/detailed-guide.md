@@ -275,7 +275,7 @@ extension Container {
 
 **`.cached` vs `.singleton`:**
 - `.cached` — the instance lives in `Container.shared` (or another `Container`), cleared via `reset()`. **This is what you usually want** for testability.
-- `.singleton` — the instance **survives** `Container.reset()`. Use only for system resources whose destruction is dangerous (Keychain handle, OSLog subsystem).
+- `.singleton` — the instance **survives** `Container.reset()`: it lives in the global `Scope.singleton`, which only `Scope.singleton.reset()` clears. Use only for system resources whose destruction is dangerous (Keychain handle, OSLog subsystem).
 
 **Time-to-live:** `self { … }.singleton.timeToLive(60 * 5)` — recreates the instance after N seconds. Useful for tokens / short-lived caches.
 
@@ -386,21 +386,21 @@ self { DetailViewModel(itemId: $0) }.cached.scopeOnParameters
 If you need to run code **once before the first resolution** (register defaults, read config, hook up contexts):
 
 ```swift
-extension Container: AutoRegistering {
+extension Container: @retroactive AutoRegistering {
     public func autoRegister() {
         // Conditional defaults
         #if DEBUG
         analyticsService.register { NoOpAnalytics() }
         #endif
 
-        // Context-bound overrides
+        // Context-bound overrides: while a context is active, it wins over `register`
         networkClient.onPreview { MockHTTPClient(scenario: .happy) }
-        userService.onTest { InMemoryUserService() }
+        crashReporter.onTest { NoOpCrashReporter() }
     }
 }
 ```
 
-`autoRegister()` is called lazily on the first resolve and only once per `Container` instance.
+`@retroactive` silences the compiler's warning about conforming an imported type to an imported protocol. `autoRegister()` runs lazily before the first resolve on each `Container` instance, and again after every reset that drops registrations — `reset()` (whose default is `.all`) or `reset(options: .registration)`.
 
 **Use it for:**
 - Default overrides in DEBUG/Test/Preview
@@ -482,7 +482,7 @@ When the monorepo grows to dozens of features and the name-collision risk is rea
 ```swift
 // App/Composition/ProfileContainer.swift
 public final class ProfileContainer: SharedContainer {
-    public static let shared = ProfileContainer()
+    @TaskLocal public static var shared = ProfileContainer()
     public let manager = ContainerManager()
     public init() {}
 }
@@ -503,6 +503,19 @@ let svc = ProfileContainer.shared.service()
 
 `@Injected(\KeyPath)` supports any `SharedContainer`, not just the base `Container`. This file also lives **in the app target**, not in a package.
 
+`@TaskLocal` on `shared` is what lets a test swap in a fresh container. The `.container` trait scopes only `Container`, so the test target declares a trait for `ProfileContainer`; a `static let shared` has no `$shared` to scope, and parallel tests share one instance:
+
+```swift
+extension Trait where Self == ContainerTrait<ProfileContainer> {
+    static var profileContainer: ContainerTrait<ProfileContainer> {
+        .init(shared: ProfileContainer.$shared, container: .init())
+    }
+}
+
+@Suite(.container, .profileContainer)
+struct ProfileFeatureTests { … }
+```
+
 ### When to pick which
 
 | Situation | Pick |
@@ -522,7 +535,7 @@ Two registration files in the app target declare `extension Container { var apiC
 Factory can override registrations **based on the launch context** without modifying production code:
 
 ```swift
-extension Container: AutoRegistering {
+extension Container: @retroactive AutoRegistering {
     public func autoRegister() {
         analyticsService
             .onTest { NoOpAnalytics() }
@@ -540,12 +553,12 @@ extension Container: AutoRegistering {
 |---|---|
 | `.onTest { … }` | XCTest / Swift Testing process |
 | `.onPreview { … }` | SwiftUI Preview (`XCODE_RUNNING_FOR_PREVIEWS == 1`) |
-| `.onDebug { … }` | DEBUG build |
+| `.onDebug { … }` | DEBUG build, tests and previews included |
 | `.onSimulator { … }` | iOS Simulator |
 | `.onDevice { … }` | Real device |
 | `.onArg("name") { … }` | Launch argument `-name 1` |
 
-Contexts are **additive** — several can be chained. The production closure (the one inside `self { … }`) is the fallback if no context is active.
+Contexts are **additive** — several can be chained. When more than one applies, Factory takes the first of arg, preview, test, simulator, device, debug; then a `register` override; then the production closure (the one inside `self { … }`). An active context therefore wins over `register`: a test cannot register over a factory that has `.onTest` or `.onDebug`, nor a preview over one that has `.onPreview`. The preview, test and debug contexts take effect only in DEBUG builds.
 
 ## Coordinator and Module Assembly
 
@@ -614,9 +627,13 @@ final class AppCoordinator {
 
 As with Swinject — for ViewModels, a direct `init(...)` with mocks is best:
 
+<!-- typecheck -->
 ```swift
+import XCTest
+
+@MainActor
 final class ProfileViewModelTests: XCTestCase {
-    func test_load_success() async throws {
+    func test_load_success() async {
         let mock = MockUserService(result: .success(.fixture))
         let sut = ProfileViewModel(userService: mock)
 
@@ -627,20 +644,17 @@ final class ProfileViewModelTests: XCTestCase {
 }
 ```
 
-ViewModels take their dependencies through init, so this is the default. To test the registered graph — see below.
+ViewModels take their dependencies through init, so this is the default; the test class is `@MainActor` because the ViewModel is. To test the registered graph — see below.
 
 ### Override via `register` — the registered graph
 
 ```swift
+@MainActor
 final class ProfileViewModelTests: XCTestCase {
     override func setUp() {
         super.setUp()
-        Container.shared.reset()        // CRITICAL: otherwise an override from a previous test leaks in
-    }
-
-    override func tearDown() {
-        Container.shared.reset()
-        super.tearDown()
+        Container.shared.reset()        // otherwise a previous test's override leaks in
+        Scope.singleton.reset()         // a container reset leaves singletons cached
     }
 
     func test_load_success() async {
@@ -656,15 +670,17 @@ final class ProfileViewModelTests: XCTestCase {
 }
 ```
 
-### Swift Testing — `.container` trait (Factory 2.5+)
+### Swift Testing — `.container` trait
 
 `FactoryTesting` provides a Suite trait that automatically scopes a Container per test. No manual `reset()` calls are needed:
 
 ```swift
 import Testing
+import FactoryKit
 import FactoryTesting
 @testable import App
 
+@MainActor
 @Suite(.container)
 struct ProfileViewModelTests {
 
@@ -688,47 +704,50 @@ struct ProfileViewModelTests {
 }
 ```
 
-Each `@Test` gets a fresh `Container.shared` (via `@TaskLocal`). Tests can run **in parallel** without interference — that's the main argument for moving Factory projects to Swift Testing.
+Each `@Test` gets a fresh `Container.shared` and its own copy of `Scope.singleton`, both through `@TaskLocal`, so a registration or a singleton one test creates never reaches another. Tests can run **in parallel** without interference — that's the main argument for moving Factory projects to Swift Testing. A custom `SharedContainer` needs a trait of its own — see Modular Containers.
 
 ### Reset gotchas
+
+`Container.shared.reset()` takes `options: .all` by default.
 
 | Scenario | Behavior |
 |---|---|
 | `.unique` | No caches — `reset()` doesn't affect anything |
-| `.cached` | Cleared via `Container.shared.reset()` |
-| `.singleton` | NOT cleared by a plain `reset()`. Use `reset(options: .all)` |
-| Override via `register` | Cleared by a plain `reset()` |
+| `.cached`, `.shared` | Cleared by `Container.shared.reset()` |
+| `.singleton` | Survives every container reset: the cache is the global `Scope.singleton`. Clear it with `Scope.singleton.reset()`, or one factory with `Container.shared.foo.reset()` |
+| Override via `register` | Cleared by `Container.shared.reset()` |
+| Contexts set in `autoRegister()` | Cleared, then set again: `autoRegister()` runs on the next resolve |
 
-**Rule:** in `setUp` always call `Container.shared.reset(options: .all)`, in `tearDown` — the same. Otherwise test leaks are guaranteed.
+**Rule:** in XCTest `setUp` call `Container.shared.reset()`, and `Scope.singleton.reset()` when the graph holds singletons. Otherwise test leaks are guaranteed. `@Suite(.container)` needs neither.
 
 ### Preview overrides
 
-**Preferred — centralized** via `.onPreview` inside `autoRegister()`. One source of truth for all `#Preview`s, doesn't pollute the View files themselves:
+**Centralized** — `.onPreview` inside `autoRegister()` for the dependencies no preview varies. One source of truth for all `#Preview`s, doesn't pollute the View files themselves:
 
 ```swift
-extension Container: AutoRegistering {
+extension Container: @retroactive AutoRegistering {
     public func autoRegister() {
-        userService.onPreview { MockUserService(result: .success(.fixture)) }
         analytics.onPreview { NoOpAnalytics() }
+        imageLoader.onPreview { PlaceholderImageLoader() }
     }
 }
+```
 
+**Local override** — the factory's `.preview` modifier, for the dependency a `#Preview` is about. It registers the mock and returns an `EmptyView`, so the body stays a view builder and needs no `return`:
+
+```swift
 #Preview {
-    // mock is picked up automatically
+    Container.shared.userService.preview { MockUserService(result: .success(.fixture)) }
+    ProfileView(viewModel: Container.shared.profileViewModel())
+}
+
+#Preview("Loading state") {
+    Container.shared.userService.preview { MockUserService(result: .pending) }
     ProfileView(viewModel: Container.shared.profileViewModel())
 }
 ```
 
-**Local override** (a one-off variation in a specific `#Preview`) — via the `.preview` modifier (Factory 2.4+) or `register`:
-
-```swift
-#Preview("Loading state") {
-    Container.shared.userService.register { MockUserService(result: .pending) }
-    return ProfileView(viewModel: Container.shared.profileViewModel())
-}
-```
-
-`return` is required because there's now a statement before the View in the `#Preview` body.
+Keep the two apart: while `.onPreview` is active it wins over any registration, so a factory that has `.onPreview` ignores `.preview`. Several registrations at once go through `Container.preview { $0.userService.register { … } }`.
 
 ### Forgot `reset()` in setUp
 
@@ -748,7 +767,7 @@ final class Tests: XCTestCase {
 final class Tests: XCTestCase {
     override func setUp() {
         super.setUp()
-        Container.shared.reset(options: .all)
+        Container.shared.reset()
     }
 }
 ```
@@ -832,7 +851,7 @@ extension Container {
 | Bootstrap hook | Configure Assembly + assembler in the CR | `AutoRegistering.autoRegister()` lazily on first resolve |
 | Modular setup | `Assembly` per module + `assembler.apply([...])` | `extension Container` per file, optionally a custom `SharedContainer` |
 | SPM package | DI framework **forbidden** in main target → `init(dependencies:)` | Same restriction → `init(dependencies:)` |
-| Test isolation | Fresh `Container()` per test OR manual Assembly reset | `Container.shared.reset(options: .all)` OR `@Suite(.container)` (FactoryTesting) for parallel Swift Testing |
+| Test isolation | Fresh `Container()` per test OR manual Assembly reset | `Container.shared.reset()` plus `Scope.singleton.reset()` OR `@Suite(.container)` (FactoryTesting) for parallel Swift Testing |
 | Mock overrides | `container.register(Foo.self) { _ in Mock() }` (on top) | `Container.shared.foo.register { Mock() }` |
 | Performance | Runtime dictionary lookup + reflection | Static dispatch via property + closure |
 | Async / Sendable | Not Sendable out of the box, manual synchronization | Container is Sendable, register/resolve thread-safe |

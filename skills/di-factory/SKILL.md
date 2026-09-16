@@ -119,8 +119,10 @@ causes unnecessary UI updates.
 | `.graph` | One instance within a single top-level resolve |
 
 Default to `.cached` for app-wide stateless services and repositories. Avoid
-`.singleton` unless destroying/recreating the instance is unsafe; plain
-`reset()` does not clear singletons.
+`.singleton` unless destroying/recreating the instance is unsafe. Singletons
+live in the global `Scope.singleton`, not in the container:
+`Container.shared.reset()` leaves them cached, and only
+`Scope.singleton.reset()` clears them.
 
 ## Parameterized Factories
 
@@ -184,6 +186,10 @@ Use `AutoRegistering.autoRegister()` for context-bound overrides:
 - `.onSimulator { ... }`
 - `.onArg("name") { ... }`
 
+While a context is active it wins over `register`: a test or preview cannot
+replace a factory that carries one, so keep contexts off the factories tests
+and previews replace.
+
 Use contexts for mocks, preview scenarios, and debug defaults. Do not put heavy
 startup work or business logic in `autoRegister()`; that belongs in the
 Composition Root bootstrap.
@@ -192,11 +198,15 @@ Composition Root bootstrap.
 
 - Prefer direct initializer injection for ViewModel and service unit tests.
 - To test the registered graph, register mocks before resolving the SUT.
-- Reset `Container.shared.reset(options: .all)` in XCTest `setUp` and
-  `tearDown`.
-- In Swift Testing with Factory 2.5+, prefer `@Suite(.container)` from
-  `FactoryTesting` for task-local container isolation and parallel tests.
-- Avoid `.singleton` in tests unless you explicitly reset with `.all`.
+- In XCTest `setUp`, call `Container.shared.reset()`. Its default, `.all`, drops
+  registrations, contexts, and the container's caches; `autoRegister()` runs
+  again on the next resolve. Add `Scope.singleton.reset()` when the graph has
+  singletons.
+- In Swift Testing, prefer `@Suite(.container)` from `FactoryTesting`: each test
+  gets a fresh `Container.shared` and its own copy of the singleton cache, so
+  tests run in parallel.
+- A custom `SharedContainer` joins that isolation only through
+  `@TaskLocal static var shared` and a `ContainerTrait` of its own.
 
 ## Concurrency
 
@@ -220,7 +230,10 @@ need correct isolation.
 - Resolving from `Container.shared` inside Domain/services/repositories.
 - Resolving from `Container.shared` inside a Factory closure instead of `self`.
 - Registering ViewModels as `.singleton`.
-- Forgetting `reset(options: .all)` in tests.
+- Forgetting `Container.shared.reset()` in XCTest `setUp`, or expecting it to
+  clear singletons.
+- Registering a test or preview mock on a factory whose `.onTest`, `.onPreview`,
+  or `.onDebug` context is active.
 - Using `@Injected` in a ViewModel, Coordinator, or service instead of an
   initializer.
 - Using `.cached` on `ParameterFactory` without `scopeOnParameters` when args
