@@ -99,14 +99,14 @@ The healthy answer is **a deliberate hybrid**: separate entities for things with
 
 ### Where the database file lives
 
-iOS gives you four directories with very different semantics. Pick the wrong one and you get backed-up gigabytes, mid-session deletions, or broken iCloud quota.
+iOS gives you four directories with very different semantics. Pick the wrong one and you get re-fetchable gigabytes in the user's backup, a database the user can see in the Files app, or a store the system deletes while the app is not running.
 
 | Directory | Backed up to iCloud / iTunes? | iOS may delete? | Use for |
 |---|---|---|---|
-| `Documents/` | ✅ Yes, **visible to user via Files** | No | User-owned content (exported videos, downloaded attachments) — **NOT** the app's primary DB |
+| `Documents/` | ✅ Yes; shown in the Files app only when `Info.plist` sets `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` | No | User-owned content (exported videos, downloaded attachments) — **NOT** the app's primary DB |
 | `Library/Application Support/<bundle-id>/` | ✅ Yes, hidden from user | No | **Main DB location.** Core Data / GRDB / Realm files belong here. |
-| `Library/Caches/` | ❌ No | ✅ Under memory pressure | Caches that can be re-fetched (image thumbnails, derived assets) |
-| `tmp/` | ❌ No | ✅ Anytime | Truly ephemeral (download in progress) |
+| `Library/Caches/` | ❌ No | ✅ When the device runs low on disk space | Caches that can be re-fetched (image thumbnails, derived assets) |
+| `tmp/` | ❌ No | ✅ While the app is not running | Truly ephemeral (download in progress) |
 
 ```swift
 let supportURL = try FileManager.default.url(
@@ -118,7 +118,7 @@ let supportURL = try FileManager.default.url(
 let storeURL = supportURL.appendingPathComponent("Model.sqlite")
 ```
 
-**Common bug:** Xcode's Core Data template puts the store in `Documents` by default. For an app with sizeable local data, this means the user's iCloud quota gets eaten by your DB and the file shows up in the Files app. Move to `Application Support` from day one.
+**Common bug:** a store URL built by hand under `Documents`. That directory is for content the user may see: once the app turns on file sharing, the database and its `-wal` / `-shm` files show up in the Files app, where the user can move or delete them. `NSPersistentContainer` puts the store in `Library/Application Support` by default; keep it there from day one.
 
 ### Sharing data with App Extensions, Widgets, Watch app
 
@@ -323,18 +323,21 @@ The Domain layer here leans on Sendable `struct`s, but the framework side does n
 
 Repository methods cross actor isolation (`fetch` from `@MainActor` ViewModel into a background actor and back). Domain types must be Sendable, otherwise Swift 6 / strict concurrency rejects the call.
 
+<!-- typecheck: sendable -->
 ```swift
+import Foundation
+
 public struct Item: Identifiable, Sendable, Equatable {
     public let id: UUID
     public var title: String
-    public var createdAt: Date           // ✅ Sendable
-    public var url: URL                  // ✅ Sendable
-    public var attributes: [String: String]  // ✅ Sendable element type
-    public var image: UIImage            // ❌ NOT Sendable — store as Data / URL instead
+    public var createdAt: Date
+    public var url: URL
+    public var attributes: [String: String]
+    public var summary: AttributedString    // not NSAttributedString, which is not Sendable
 }
 ```
 
-**Rule:** no UIKit / AppKit reference types in Domain models. If you have an image preview, store `Data` or `URL` and convert to `UIImage` at the UI layer.
+**Rule:** no UIKit / AppKit types in Domain models, even `Sendable` ones such as `UIImage`: Domain does not import a UI framework. If you have an image preview, store `Data` or `URL` and convert to `UIImage` at the UI layer.
 
 ### NSManagedObject is NOT Sendable
 
@@ -536,7 +539,7 @@ func importManyInBatches(_ items: [Item], batchSize: Int = 200) async throws {
 }
 ```
 
-GRDB has `try Item.insertMany(db, ...)`. Core Data has `NSBatchInsertRequest` / `NSBatchUpdateRequest` — fast, but they bypass the validation/derived-attribute path; use only for cold imports.
+GRDB has no bulk-insert call: `try record.insert(db)` for each record inside one `dbPool.write` commits them as one transaction. Core Data has `NSBatchInsertRequest` / `NSBatchUpdateRequest` — fast, but they bypass the validation/derived-attribute path; use only for cold imports.
 
 ### `delete` and cascade
 
@@ -733,18 +736,23 @@ See `net-architecture` for HTTP-level caching (`Cache-Control`, `ETag`) — that
 
 ## Encryption and File Protection
 
-By default, iOS encrypts files when the device is locked (`NSFileProtectionCompleteUntilFirstUserAuthentication`). For sensitive data, raise the bar:
+Files an app creates default to `NSFileProtectionCompleteUntilFirstUserAuthentication`: encrypted from boot until the user first unlocks the device, readable after that even while it is locked. A Core Data store gets the same class unless its store options say otherwise. For sensitive data, raise the bar:
 
-- **`NSFileProtectionComplete`** — file unreadable when device is locked. Set on the persistent store file:
+- **`NSFileProtectionComplete`** — while the device is locked nothing reads the store, the app's own background work included. Set it as a store option before loading: a resource value on the store URL fails while the file does not exist yet and never reaches the `-wal` and `-shm` files beside it.
 
-  ```swift
-  try (storeURL as NSURL).setResourceValue(
-      URLFileProtection.complete,
-      forKey: .fileProtectionKey
-  )
-  ```
+<!-- typecheck -->
+```swift
+import CoreData
 
-- **Keychain for keys, encryption library for data** — if you need at-rest encryption above iOS defaults, use SQLCipher (with GRDB) or a Realm encryption key stored in Keychain.
+func protectStoreWhileLocked(_ container: NSPersistentContainer) {
+    container.persistentStoreDescriptions[0].setOption(
+        FileProtectionType.complete as NSObject,
+        forKey: NSPersistentStoreFileProtectionKey
+    )
+}
+```
+
+- **Keychain for keys, encryption library for data** — if you need at-rest encryption above iOS defaults, use SQLCipher with GRDB; an existing Realm project keeps its Realm encryption key in Keychain.
 - **Never store secrets in Core Data / SwiftData / SQLite without encryption** — the file is readable by anyone with filesystem access (jailbroken device, backup).
 - **Keychain access control** — `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` prevents iCloud sync of the key. See the `@spine-platform-swift:swift-security` agent.
 
@@ -1022,14 +1030,14 @@ Test the Repository implementation against a real DB but in-memory:
 |---|---|
 | Core Data | `NSPersistentStoreDescription(url: URL(fileURLWithPath: "/dev/null"))` + `NSInMemoryStoreType` |
 | SwiftData | `ModelConfiguration(isStoredInMemoryOnly: true)` |
-| GRDB | `DatabasePool(path: ":memory:")` or `DatabaseQueue()` (no path) |
+| GRDB | `DatabaseQueue()`, or `DatabaseQueue(named:)` for several connections to one in-memory database; `DatabasePool` needs a file, because it switches the database to WAL |
 | Realm | `Realm.Configuration(inMemoryIdentifier: "test-\(UUID())")` |
 
 Each test gets a fresh store — no inter-test pollution.
 
 #### SwiftData testing under @MainActor
 
-SwiftData's `ModelContainer` and `mainContext` are `@MainActor`. Tests that interact with them must be:
+SwiftData's `mainContext` is `@MainActor`; `ModelContainer` itself is `Sendable` and can be created on any actor. Tests that interact with `mainContext` must be:
 
 ```swift
 @MainActor
