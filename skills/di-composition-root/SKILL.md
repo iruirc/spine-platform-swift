@@ -58,18 +58,18 @@ For multi-scene UIKit: **AppDelegate** = bootstrap of shared app-scope resources
 
 ## DI: container vs manual graph
 
-The CR can be implemented in three ways — through a runtime DI framework (Swinject), a compile-time DI framework (Factory), or manually (`lazy let` fields). The external contract (`AppDependencies`, per-feature `*FeatureDependencies`, `CoordinatorFactory`, `ModuleFactory`, `Assembly`) is **identical across all variants** — only the internal implementation of `AppDependencyContainer` changes.
+The CR can be implemented in three ways — through a runtime DI framework (Swinject), a compile-time DI framework (Factory), or manually (`lazy var` fields). The external contract (`AppDependencies`, per-feature `*FeatureDependencies`, `CoordinatorFactory`, `ModuleFactory`, `Assembly`) is **identical across all variants** — only the internal implementation of `AppDependencyContainer` changes.
 
-| Aspect | Swinject (runtime) | Factory (compile-time) | Manual DI (`lazy let`) |
+| Aspect | Swinject (runtime) | Factory (compile-time) | Manual DI (`lazy var`) |
 |---|---|---|---|
 | Graph < 10 services | Overkill | Workable, but overkill | ✅ Best choice |
 | Graph 10–30 services | Overkill | ✅ Good fit | ✅ Good fit |
 | Graph 30–100 services | ✅ Pays off | ✅ Pays off | Workable, but bulky |
 | Graph > 100 services | ✅ Standard | ✅ Standard | Hard to maintain |
 | Compile-time safety of registrations | No (resolve crash at runtime) | ✅ Won't compile without a factory | ✅ The compiler points to the missing piece immediately |
-| Circular dependencies | Property injection out of the box | `@WeakLazyInjected` or property injection | Manually (see below) |
+| Circular dependencies | Property injection in `initCompleted` | `@WeakLazyInjected` or property injection | Manually (see below) |
 | Multi-binding / conditional bind | Branching inside `register` | Contexts (`onTest`/`onPreview`/`onDebug`) + `register` override | `if`/`switch` in the getter |
-| Runtime parameters in registrations | `Container` API with `name:` | `ParameterFactory` (one parameter type per key) | Computed getter with arguments |
+| Runtime parameters in registrations | Factory closure arguments, `resolve(_:argument:)` | `ParameterFactory` (one parameter type per key) | Computed getter with arguments |
 | Property-wrapper injection | Via third-party libraries | ✅ `@Injected` out of the box | None (only via init) |
 | Use inside an SPM package | ❌ Forbidden (see `pkg-spm-design`) | ❌ Forbidden in the main target (same rule). Modular extensions per feature live in the app target | ✅ Allowed |
 | SwiftUI Preview / Test contexts | Manually via override Assembly | ✅ `.onPreview` / `.onTest` modifier out of the box | Manual |
@@ -147,24 +147,24 @@ If A needs B and B needs A — using `lazy` directly won't work (init requires t
 2. **Introduce a third type C** that A and B communicate through (usually the right move — a cycle is an architectural defect)
 3. **Closure injection** — A receives `() -> B` instead of `B`, the actual B is created on first call
 
+<!-- typecheck: cycle -->
 ```swift
-// Property injection: each service holds a weak reference to the other
 @MainActor
-final class AppDependencyContainer: AppDependencies {
+final class AppDependencyContainer {
+    lazy var analyticsService = AnalyticsService()
     lazy var userService: UserService = {
-        let service = UserService(network: networkClient)
-        service.analytics = analyticsService  // weak var inside UserService
+        let service = UserService(analytics: analyticsService)
+        analyticsService.userService = service  // weak var inside AnalyticsService
         return service
     }()
-    lazy var analyticsService: AnalyticsService = {
-        let service = AnalyticsService()
-        service.userService = userService     // weak var inside AnalyticsService
-        return service
-    }()
+
+    func bootstrap() {
+        _ = userService
+    }
 }
 ```
 
-The mechanics are identical to the Swinject variant, just without autoresolve. More detail — `di-swinject` → "Common Mistakes".
+Only one initializer reads the other side: if both did, the first access would recurse. `bootstrap()` builds `userService`, so the back reference is set before anything reads `analyticsService`. Swinject breaks the same cycle with `initCompleted` — `di-swinject` → "Common Mistakes".
 
 ### When manual definitely doesn't fit
 
@@ -296,25 +296,24 @@ Sometimes you need **more than one CR**:
 
 CRs are rarely covered with unit tests (they are testing infrastructure themselves), but **a smoke test on registrations is useful**:
 
+<!-- typecheck -->
 ```swift
+import XCTest
+
 @MainActor
 final class CompositionRootSmokeTests: XCTestCase {
-    func test_allCriticalServicesResolve() {
+    func test_everyDependencyIsTheProductionType() {
         let container = AppDependencyContainer()
         container.bootstrap()
 
-        // Verify that critical services resolve
-        XCTAssertNotNil(container.userService)
-        XCTAssertNotNil(container.networkClient)
-        XCTAssertNotNil(container.appSettingsManager)
-    }
-
-    func test_bootstrapDoesNotCrash() {
-        let container = AppDependencyContainer()
-        XCTAssertNoThrow(container.bootstrap())
+        XCTAssertTrue(container.userService is UserService)
+        XCTAssertTrue(container.analyticsService is AnalyticsService)
+        XCTAssertTrue(container.imageLoader is ImageLoader)
     }
 }
 ```
+
+The test reads only what `AppDependencies` exposes. It builds every dependency, so a missing registration traps here rather than on the first screen, and the type checks catch a mock left in the graph.
 
 For async bootstrap — verify the graph builds in a reasonable time:
 
