@@ -111,7 +111,10 @@ actor TokenRefresher {
 }
 ```
 
+<!-- typecheck -->
 ```swift
+import UIKit
+
 // ✅ Image cache — many readers, occasional writers
 actor ImageCache {
     private var entries: [URL: UIImage] = [:]
@@ -153,6 +156,11 @@ struct ItemsScreen: View {
             .task { await viewModel.load() }   // auto-cancelled on disappear
     }
 }
+```
+
+<!-- typecheck: ownership -->
+```swift
+import Combine
 
 // Pattern B: UIKit ViewModel — store and cancel
 @MainActor
@@ -160,6 +168,10 @@ final class ItemsViewModel: ObservableObject {
     @Published private(set) var items: [Item] = []
     private var fetchTask: Task<Void, Never>?
     private let fetchItems: FetchItemsUseCase
+
+    init(fetchItems: FetchItemsUseCase) {
+        self.fetchItems = fetchItems
+    }
 
     func load() {
         fetchTask?.cancel()
@@ -184,11 +196,18 @@ final class ItemsViewModel: ObservableObject {
 @MainActor
 final class ComposeViewModel {
     private let uploader: PhotoUploader   // app-scoped, not screen-scoped
+
+    init(uploader: PhotoUploader) {
+        self.uploader = uploader
+    }
+
     func tapSend(_ photo: Photo) {
         Task { await uploader.enqueue(photo) }   // Service.Task survives screen
     }
 }
+```
 
+```swift
 // Pattern D: TCA — let the framework own it
 @Reducer struct Items {
     enum CancelID { case fetch }
