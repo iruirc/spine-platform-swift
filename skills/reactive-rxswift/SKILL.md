@@ -21,7 +21,7 @@ This skill provides guidelines for using RxSwift effectively in iOS applications
 
 **Consider alternatives**:
 - Simple one-shot async calls → async/await
-- New projects targeting iOS 13+ → Combine
+- New projects → Combine or async/await, first-party on every `baseline`
 - Simple state management → closures/delegates
 
 ## Core Concepts Quick Reference
@@ -32,8 +32,8 @@ This skill provides guidelines for using RxSwift effectively in iOS applications
 | `Single` | 1 item or error | Yes | API calls, DB queries |
 | `Completable` | Nothing or error | Yes | Fire-and-forget operations |
 | `Maybe` | 0-1 item or error | Yes | Optional result operations |
-| `Driver` | 0...∞ items, no errors, main thread | No | UI bindings |
-| `Signal` | Like Driver, no replay | No | UI events (taps, gestures) |
+| `Driver` | 0...∞ items, no errors, main thread | Completes only, never errors | UI bindings |
+| `Signal` | Like Driver, no replay | Completes only, never errors | UI events (taps, gestures) |
 
 ## Memory Management
 
