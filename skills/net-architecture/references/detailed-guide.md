@@ -492,9 +492,11 @@ Cleanest API for the View layer; cancellation propagates naturally via `Task.can
 
 Keep these in dedicated specialized clients — don't pollute `HTTPClient` with multipart concerns.
 
+<!-- typecheck -->
 ```swift
 public protocol UploadClient {
-    func upload(_ data: Data, to url: URL, mimeType: String, filename: String) async throws -> URL
+    func upload(fileAt file: URL, to url: URL, mimeType: String, filename: String)
+        async throws -> URL
 }
 
 public protocol DownloadClient {
@@ -505,9 +507,10 @@ public protocol DownloadClient {
 **Background URLSession** (when uploads must survive app suspension):
 
 - Separate `URLSessionConfiguration.background(withIdentifier:)` instance — one per session ID; never share.
-- Delegate-based; bridge to async via `withCheckedThrowingContinuation` keyed by `taskIdentifier`.
-- App must implement `application(_:handleEventsForBackgroundURLSession:completionHandler:)` and store the completion handler — without this iOS won't wake your app.
-- Resume strategy on app relaunch: enumerate `session.tasks` and rebind continuations.
+- Upload from a file: a background session rejects `uploadTask(with:from:)` with `Data`. The client takes a file and writes the multipart body to another file before it creates the task.
+- Delegate-based, and the delegate owns each result. An awaiting continuation lives only as long as the process, while the transfer outlives it: record what each task is for (`taskDescription`) and let the delegate write the outcome where the app reads it.
+- At launch, recreate the session with the same identifier and delegate before anything else — the system then delivers the events of tasks that finished while the app was not running.
+- Implement `application(_:handleEventsForBackgroundURLSession:completionHandler:)`, store the completion handler, and call it on the main queue from `urlSessionDidFinishEvents(forBackgroundURLSession:)`.
 
 ## WebSocket / SSE
 
@@ -539,7 +542,7 @@ Two layers — pick deliberately.
 
 **Hard rules:**
 
-- **Never cache responses with `Authorization` header** unless the server returns explicit `Cache-Control: private` and you trust it. `URLCache` is shared across users on the same device — leak risk.
+- **Never let `URLCache` keep authorized responses across accounts.** `Cache-Control: private` only keeps shared caches (proxies) out; `URLCache` is the app's private cache and may store the response. Have the server send `Cache-Control: no-store`, or give the authorized session no `URLCache`; if responses are cached, clear the session's `URLCache` at logout.
 - **Cache invalidation** belongs to the Repository, not the View — when a `POST /items` succeeds, the Repository invalidates `items list` cache before returning.
 - **Do not** cache 4xx/5xx responses unless you're implementing offline-first explicitly (then cache them as "last known error" with TTL).
 
@@ -550,8 +553,8 @@ Persistent storage strategies (Core Data, SwiftData, SQLite) — see `persistenc
 | Framework | Style | Async | Interceptors | Codegen | When to pick |
 |---|---|---|---|---|---|
 | `URLSession` | Native, low-level | async/await ✅, Combine ✅ | Manual (your middleware) | — | **Default for new projects.** No dependency, full control. |
-| Alamofire | Imperative request builder | async/await ✅, Combine ✅, RxSwift via extension | Built-in `RequestInterceptor` | — | Existing Alamofire codebases; multipart edge cases; legacy iOS 13- support. |
-| Moya | Declarative endpoint enum on top of Alamofire | async/await (Moya 15+), Combine ✅, RxSwift ✅ | Plugins | — | Large API surface (100+ endpoints), Rx-heavy team, want endpoint catalog. |
+| Alamofire | Imperative request builder | async/await ✅, Combine ✅, RxSwift via extension | Built-in `RequestInterceptor` | — | Existing Alamofire codebases; multipart edge cases. |
+| Moya | Declarative endpoint enum on top of Alamofire | No async API (bridge it, see below), Combine ✅, RxSwift ✅ | Plugins | — | Existing Moya codebases only. |
 | Get (kean) | Modern minimal URLSession wrapper | async/await ✅ | Delegate-based | — | Greenfield projects that want less boilerplate than raw URLSession. |
 | `swift-openapi-generator` | Generated client from OpenAPI spec | async/await ✅ | `ClientMiddleware` | ✅ from yaml | API has stable OpenAPI spec; want compile-time guarantees. See `net-openapi`. |
 | Apollo iOS | GraphQL client (different paradigm) | async/await ✅ | Interceptors | ✅ from `.graphql` | GraphQL backend — out of scope here. |
@@ -561,7 +564,7 @@ Persistent storage strategies (Core Data, SwiftData, SQLite) — see `persistenc
 - **New project, REST, no spec yet** → URLSession + the skill's HTTPClient pattern.
 - **New project, REST, OpenAPI spec exists** → `swift-openapi-generator` wrapped in your `APIClient` protocol.
 - **Existing Alamofire codebase** → keep Alamofire, adapt to `HTTPClient` protocol via `AlamofireHTTPClient`.
-- **Existing Moya codebase** → keep, but consider whether the enum endpoint catalog still pays for itself in async/await world (Moya's RxSwift sweet spot is fading).
+- **Existing Moya codebase** → keep it behind your `ItemsAPI` protocol, and do not start a new project on it: its last release, 15.0.3 (2022), has no async API.
 - **GraphQL** → Apollo, separate skill territory.
 
 ### URLSession integration
@@ -631,26 +634,37 @@ Use Alamofire's `RequestInterceptor` only if you actively use Alamofire-specific
 ### Moya integration
 
 ```swift
+import Moya
+import CombineMoya
+
 enum ItemsTarget: TargetType {
-    case list(page: Int)
+    case list(cursor: String?)
     case create(ItemDraft)
     /* baseURL, path, method, task, headers, sampleData */
 }
 
-let provider = MoyaProvider<ItemsTarget>(plugins: [LoggerPlugin(), AuthPlugin()])
+let provider = MoyaProvider<ItemsTarget>(plugins: [NetworkLoggerPlugin(), AuthPlugin()])
 
-final class MoyaItemsAPI: ItemsAPI {
+// MoyaProvider is not Sendable; it holds only lets and a lock-guarded in-flight table.
+final class MoyaItemsAPI: ItemsAPI, @unchecked Sendable {
     let provider: MoyaProvider<ItemsTarget>
 
-    func fetchItems(page: Int) async throws -> ItemsPage {
-        let response = try await provider.request(.list(page: page))
-        try APIErrorMapper.check(response)
-        return try JSONDecoder.api.decode(ItemsPage.self, from: response.data)
+    init(provider: MoyaProvider<ItemsTarget>) {
+        self.provider = provider
+    }
+
+    func fetchItems(cursor: String?) async throws -> ItemsPage {
+        // No async API in Moya: cancelling the awaiting task cancels the request.
+        for try await response in provider.requestPublisher(.list(cursor: cursor)).values {
+            try APIErrorMapper.check(response)
+            return try JSONDecoder.api.decode(ItemsPage.self, from: response.data)
+        }
+        throw CancellationError()
     }
 }
 ```
 
-`MoyaProvider` is itself the transport — for Moya projects you can skip `HTTPClient` middleware and use Moya `PluginType` instead. **But** keep the `ItemsAPI` protocol layer above Moya so the rest of the app doesn't import Moya types.
+`MoyaProvider` is itself the transport — for Moya projects you can skip `HTTPClient` middleware and use Moya `PluginType` instead. **But** keep the `ItemsAPI` protocol layer above Moya so the rest of the app doesn't import Moya types. In a file that imports Moya, `Task` names `Moya.Task`; spell Swift's as `_Concurrency.Task`.
 
 ### swift-openapi-generator
 
