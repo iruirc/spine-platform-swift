@@ -34,7 +34,10 @@ State-driven navigation for SwiftUI apps. Replaces the imperative push/present/p
 
 The modern way: declare destinations once at the stack root, push by value.
 
+<!-- typecheck -->
 ```swift
+import SwiftUI
+
 struct ItemListView: View {
     let items: [Item]
 
@@ -61,6 +64,7 @@ For programmatic navigation, deep links, and reset operations — bind a `Naviga
 
 ### Typed array (compile-time safe, single destination type)
 
+<!-- typecheck -->
 ```swift
 struct OnboardingFlow: View {
     @State private var path: [OnboardingStep] = []
@@ -87,6 +91,7 @@ Use typed array when **all** destinations share one enum/type.
 
 When destinations span multiple types (e.g. `Item` and `Profile`), use `NavigationPath`.
 
+<!-- typecheck -->
 ```swift
 struct AppRootView: View {
     @State private var path = NavigationPath()
@@ -160,6 +165,7 @@ NavigationStack {
 
 ### `.sheet(isPresented:)` — boolean trigger
 
+<!-- typecheck -->
 ```swift
 struct HomeView: View {
     @State private var showSettings = false
@@ -175,8 +181,12 @@ struct HomeView: View {
 
 ### `.sheet(item:)` — Identifiable-trigger (preferred for data-driven sheets)
 
+<!-- typecheck: sheet -->
 ```swift
+import SwiftUI
+
 struct ItemListView: View {
+    let items: [Item]
     @State private var editingItem: Item?
 
     var body: some View {
@@ -209,6 +219,7 @@ struct ItemListView: View {
 
 ### Programmatic dismiss
 
+<!-- typecheck -->
 ```swift
 struct ChildView: View {
     @Environment(\.dismiss) private var dismiss
@@ -225,6 +236,7 @@ Works for sheet, fullScreenCover, and pushed views in a NavigationStack (pops on
 
 Each tab owns its own `NavigationStack` so that switching tabs preserves push state per tab.
 
+<!-- typecheck -->
 ```swift
 struct AppTabView: View {
     var body: some View {
@@ -287,6 +299,7 @@ enum SheetRoute: Identifiable, Equatable {
 
 Wire it once at the root and inject via `@Environment`:
 
+<!-- typecheck -->
 ```swift
 @main
 struct MyApp: App {
@@ -313,6 +326,7 @@ struct MyApp: App {
 
 Children read it from environment and call methods:
 
+<!-- typecheck -->
 ```swift
 struct ItemRowView: View {
     let item: Item
@@ -441,16 +455,17 @@ Coordinator-based UIKit apps can use `UIHostingController` to add SwiftUI screen
 
 ### Embed UIKit in SwiftUI — `UIViewControllerRepresentable`
 
+<!-- typecheck -->
 ```swift
-struct LegacyMapView: UIViewControllerRepresentable {
-    let region: MKCoordinateRegion
+struct LegacyReportView: UIViewControllerRepresentable {
+    let reportID: String
 
-    func makeUIViewController(context: Context) -> MKMapViewController {
-        MKMapViewController(region: region)
+    func makeUIViewController(context: Context) -> ReportViewController {
+        ReportViewController(reportID: reportID)
     }
 
-    func updateUIViewController(_ vc: MKMapViewController, context: Context) {
-        vc.update(region: region)
+    func updateUIViewController(_ vc: ReportViewController, context: Context) {
+        vc.update(reportID: reportID)
     }
 }
 ```
