@@ -24,18 +24,17 @@ There is no universal answer. Match storage to the **shape of the data and the a
 
 | Framework | Strengths | Weaknesses | Choose when |
 |---|---|---|---|
-| **Core Data** | Mature, Apple-supported, `NSFetchedResultsController`, CloudKit sync via `NSPersistentCloudKitContainer`, lightweight migrations free for many changes | Verbose, NSManagedObject is thread-confined and reference-typed, KVO-based (gotchas with Swift Concurrency), schema in `.xcdatamodeld` editor | Large relational graph, iOS 13+ deployment target, need CloudKit sync, willing to wrap NSManagedObject behind Repository |
-| **SwiftData** | Modern Swift API (`@Model`, `@Query`), value-like ergonomics, `@ModelActor` for background work, integrated with SwiftUI, CloudKit support | iOS 17+ only, immature (bugs, migration tooling thin), `@Query` re-runs on any model change, schema reflection has edge cases | iOS 17+ only, SwiftUI app, simple-to-medium relational model, willing to live on the bleeding edge |
+| **Core Data** | Mature, Apple-supported, `NSFetchedResultsController`, CloudKit sync via `NSPersistentCloudKitContainer`, lightweight migrations free for many changes | Verbose, NSManagedObject is thread-confined and reference-typed, KVO-based (gotchas with Swift Concurrency), schema in `.xcdatamodeld` editor | Large relational graph, any `baseline`, need CloudKit sync, willing to wrap NSManagedObject behind Repository |
+| **SwiftData** | Modern Swift API (`@Model`, `@Query`), value-like ergonomics, `@ModelActor` for background work, integrated with SwiftUI, CloudKit support | Needs iOS 17 / macOS 14, `@Query` re-runs on any model change, schema reflection has edge cases | `baseline` `iOS 17+` or `macOS 14+`, SwiftUI app, simple-to-medium relational model |
 | **GRDB (SQLite)** | Direct SQL when you need it, `ValueObservation` for reactive queries, fast, full control over schema/indexes, easy migrations via `DatabaseMigrator`, sync API + async wrappers | No CloudKit out of the box, you write your own sync, manual relationship handling | Performance-critical, complex queries (`JOIN`/`GROUP BY`), need precise SQL, no Apple-sync requirement, want value semantics |
-| **Realm** | Cross-platform (iOS+Android), live objects auto-update, MongoDB Atlas Device Sync | Thread-confined live objects (footgun), proprietary format, ownership uncertainty since MongoDB acquisition | Cross-platform code sharing, existing MongoDB Atlas backend |
 | **UserDefaults** | Trivial API, automatically persisted | Sync I/O, 4KB practical limit per key, no querying, NOT for sensitive data | Simple flags, last-selected-tab, onboarding-shown bool |
 | **Plain files (`FileManager`)** | Zero ceremony, full control, easy to inspect | No querying, no transactions, manual concurrency | Documents the user owns (exports, downloads, attachments), large blobs (images, video) |
 | **Keychain** | Encrypted, survives reinstall (configurable), iCloud-syncable | Slow, small values only, awkward API | Tokens, passwords, encryption keys — see the `@spine-platform-swift:swift-security` agent's audit checklist |
 
 **Decision shortcut:**
 
-- **Big relational + CloudKit + iOS 13+** → Core Data
-- **iOS 17+ SwiftUI greenfield, simple model** → SwiftData
+- **Big relational + CloudKit, any `baseline`** → Core Data
+- **`baseline` `iOS 17+` or `macOS 14+`, SwiftUI greenfield, simple model** → SwiftData
 - **Performance / complex SQL / control freak** → GRDB
 - **Just a flag** → UserDefaults
 - **Just a file** → `FileManager` + `NSFileProtectionComplete`
@@ -43,7 +42,7 @@ There is no universal answer. Match storage to the **shape of the data and the a
 
 Mixing is normal: GRDB for the main store + UserDefaults for flags + Keychain for tokens + files for downloaded media. Don't put media blobs in Core Data — `external storage` or no, the database file balloons.
 
-> **On Realm:** coverage in this guide is intentionally minimal beyond migration and threading specifics. For new projects prefer Core Data / SwiftData / GRDB; the Realm sections here exist for maintenance of existing projects.
+> **On Realm:** existing projects only — Atlas Device Sync reached end of life in September 2025 and the SDK is in maintenance mode. The Realm notes in this guide serve such a project; a new project chooses from the table above.
 
 ## Schema Design
 
@@ -670,7 +669,7 @@ When data must follow the user across devices, you have three choices:
 | Option | When |
 |---|---|
 | `NSPersistentCloudKitContainer` (Core Data + CloudKit) | Apple-only, want zero backend, willing to live with CloudKit's quirks (slow first sync, schema deploys via Xcode) |
-| SwiftData + CloudKit | iOS 17+ greenfield; same trade-offs as above, less mature |
+| SwiftData + CloudKit | `baseline` `iOS 17+` or `macOS 14+`; same trade-offs as above |
 | Custom sync (server + GRDB/SQLite) | Cross-platform, want push-based delta sync, willing to write conflict resolution |
 
 **Conflict resolution** must be explicit:
@@ -981,7 +980,6 @@ The macro expands at compile time to a full `toDomain` / `toEntity` / `update` b
 
 - <10 mappers — manual code is shorter than the macro DSL.
 - Mappers have very irregular shapes (each one does something unique) — the macro DSL becomes too rich and you lose readability.
-- You're on Swift < 5.9 and don't want to add Sourcery — wait for the macro option.
 
 ### Pragmatic Recommendation
 
