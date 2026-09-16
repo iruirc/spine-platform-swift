@@ -21,6 +21,14 @@ setup() {
   grep -qxF 'scanned 1 files, 1 units, 1 blocks, 1 failed' <<<"$output" || { echo "$output"; return 1; }
 }
 
+@test "a marked block that type-checks but races fails" {
+  run "$TYPECHECK" "$FX/races"
+  [ "$status" -eq 1 ] || { echo "status $status: $output"; return 1; }
+  grep -qF 'skills/demo/SKILL.md:13:' <<<"$output" || { echo "$output"; return 1; }
+  grep -qF 'risks causing data races' <<<"$output" || { echo "$output"; return 1; }
+  grep -qxF 'scanned 1 files, 1 units, 1 blocks, 1 failed' <<<"$output" || { echo "$output"; return 1; }
+}
+
 @test "a marked block imports only the allowed Apple SDK modules" {
   run "$TYPECHECK" "$FX/bad-import"
   [ "$status" -eq 2 ] || { echo "status $status: $output"; return 1; }
