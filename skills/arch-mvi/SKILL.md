@@ -248,6 +248,7 @@ func reduceItemList(
 
 ### Store
 
+<!-- typecheck -->
 ```swift
 import Observation
 
@@ -256,7 +257,7 @@ import Observation
 final class ItemListStore {
     private(set) var state = ItemListState()
     private let load: @Sendable () async throws -> [Item]
-    private var inFlight: Task<Void, Never>?
+    @ObservationIgnored private var inFlight: Task<Void, Never>?
 
     init(load: @Sendable @escaping () async throws -> [Item]) {
         self.load = load
@@ -279,6 +280,7 @@ final class ItemListStore {
 
 ### View
 
+<!-- typecheck -->
 ```swift
 import SwiftUI
 
@@ -450,7 +452,7 @@ Same swap applies to Flavor B's `ItemListViewModel`.
 
 ### Cancellation
 
-- Per-screen scope: store the `Task` in `private var inFlight: Task<Void, Never>?` and cancel it in `deinit` and at the start of any new request that supersedes the previous one (see `startLoad()` in Flavor B).
+- Per-screen scope: store the `Task` in `var inFlight: Task<Void, Never>?` (`@ObservationIgnored` in an `@Observable` type, or `deinit` cannot read it) and cancel it in `deinit` and at the start of any new request that supersedes the previous one (see `startLoad()` in Flavor B).
 - Per-intent scope: keep a dictionary `[IntentKey: Task<…>]` and cancel on `Intent.cancelX`.
 - Combine variant: store `AnyCancellable` in a set; same lifetime rules.
 
