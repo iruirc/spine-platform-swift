@@ -102,6 +102,9 @@ named migration.
 
 ## Realm
 
+Existing projects only: Atlas Device Sync reached end of life in September 2025,
+and the SDK is in maintenance mode.
+
 Bump `schemaVersion` and add cumulative guarded blocks:
 
 ```swift
