@@ -356,11 +356,11 @@ For very small apps (1-3 flows), skip the Router class entirely. Inject **naviga
 
 ```swift
 struct OpenItemAction: EnvironmentKey {
-    static let defaultValue: (Item) -> Void = { _ in }
+    static let defaultValue: @MainActor (Item) -> Void = { _ in }
 }
 
 extension EnvironmentValues {
-    var openItem: (Item) -> Void {
+    var openItem: @MainActor (Item) -> Void {
         get { self[OpenItemAction.self] }
         set { self[OpenItemAction.self] = newValue }
     }
