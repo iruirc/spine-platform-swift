@@ -37,7 +37,10 @@
 2. **Create a Mapping Model**: `File → New → Mapping Model`, pick source and destination versions. Xcode infers what it can. For each entity that needs custom logic — change its `Custom Policy` to your `NSEntityMigrationPolicy` subclass.
 3. **Write the policy** (only for entities that need it):
 
+<!-- typecheck -->
 ```swift
+import CoreData
+
 final class PersonToUserAndProfilePolicy: NSEntityMigrationPolicy {
     override func createDestinationInstances(forSource sInstance: NSManagedObject,
                                              in mapping: NSEntityMapping,
@@ -249,7 +252,10 @@ When you need a hard guarantee that **all rows** are on the new payload shape �
 
 The blob conversion lives inside the heavyweight Core Data policy / SwiftData `MigrationStage.custom.didMigrate` / GRDB migration block. Even if the Core Data entity structure didn't formally change, the blob change forces you onto the heavyweight path:
 
+<!-- typecheck: payload-versions -->
 ```swift
+import CoreData
+
 final class ItemPayloadV1ToV2Policy: NSEntityMigrationPolicy {
     override func createDestinationInstances(forSource sInstance: NSManagedObject,
                                              in mapping: NSEntityMapping,
@@ -280,6 +286,7 @@ GRDB equivalent is plain SQL: `SELECT id, payload FROM item` → decode old → 
 
 For projects where the blob holds an evolving business model (editor snapshots, document state, complex configs) — wrap every payload in an envelope with an explicit version:
 
+<!-- typecheck: payload-versions -->
 ```swift
 struct PayloadEnvelope: Codable {
     let version: Int
