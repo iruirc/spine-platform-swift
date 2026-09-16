@@ -83,9 +83,10 @@ Three patterns. Pick **one per project** and stick with it.
 
 ### Pattern 1 — Per-endpoint typed methods on APIClient
 
+<!-- typecheck -->
 ```swift
-public protocol ItemsAPI {
-    func fetchItems(page: Int) async throws -> ItemsPage
+public protocol ItemsAPI: Sendable {
+    func fetchItems(cursor: String?) async throws -> ItemsPage
     func createItem(_ draft: ItemDraft) async throws -> ItemDTO
     func deleteItem(id: String) async throws
 }
@@ -94,17 +95,23 @@ final class HTTPItemsAPI: ItemsAPI {
     let http: HTTPClient
     let baseURL: URL
 
-    func fetchItems(page: Int) async throws -> ItemsPage {
+    init(http: HTTPClient, baseURL: URL) {
+        self.http = http
+        self.baseURL = baseURL
+    }
+
+    func fetchItems(cursor: String?) async throws -> ItemsPage {
         let req = HTTPRequest(
             url: baseURL.appending(path: "items"),
             method: .get,
-            headers: [:],
-            queryItems: [.init(name: "page", value: "\(page)")]
+            queryItems: cursor.map { [URLQueryItem(name: "cursor", value: $0)] } ?? []
         )
         let res = try await http.send(req)
         try APIErrorMapper.check(res)
         return try JSONDecoder.api.decode(ItemsPage.self, from: res.body)
     }
+
+    // createItem(_:) and deleteItem(id:) follow the same shape
 }
 ```
 
@@ -425,21 +432,31 @@ Three patterns. Choose based on what the API supports; never roll multiple in on
 
 ### Cursor-based (preferred for infinite feeds)
 
+<!-- typecheck -->
 ```swift
-public struct ItemsPage {
+public struct ItemsPage: Decodable, Sendable {
     public let items: [ItemDTO]
     public let nextCursor: String?     // nil = end
 }
 
 actor ItemsPaginator {                 // repository layer: maps API DTOs to Domain
-    let api: ItemsAPI
+    private let api: ItemsAPI
     private var cursor: String?
     private var isExhausted = false
+    private var isLoading = false      // the actor re-enters at every await
     private(set) var items: [Item] = []
 
+    init(api: ItemsAPI) {
+        self.api = api
+    }
+
     func loadNext() async throws -> [Item] {
-        guard !isExhausted else { return items }
-        let page = try await api.fetchItems(cursor: cursor)
+        guard !isExhausted, !isLoading else { return items }
+        isLoading = true
+        defer { isLoading = false }
+        let requested = cursor
+        let page = try await api.fetchItems(cursor: requested)
+        guard cursor == requested else { return items }   // reset() ran during the await
         items.append(contentsOf: page.items.map(Item.init(dto:)))
         cursor = page.nextCursor
         isExhausted = page.nextCursor == nil
@@ -679,35 +696,46 @@ func makeStubbedSession() -> URLSession {
 
 ### Fake HTTPClient (unit-style)
 
+<!-- typecheck -->
 ```swift
-final class FakeHTTPClient: HTTPClient {
-    var responses: [URL: Result<HTTPResponse, Error>] = [:]
-    var sentRequests: [HTTPRequest] = []
+actor FakeHTTPClient: HTTPClient {
+    private let respond: @Sendable (HTTPRequest) throws -> HTTPResponse
+    private(set) var sentRequests: [HTTPRequest] = []
+
+    init(respond: @escaping @Sendable (HTTPRequest) throws -> HTTPResponse) {
+        self.respond = respond
+    }
 
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
         sentRequests.append(request)
-        guard let result = responses[request.url] else {
-            throw HTTPClientError.invalidResponse
-        }
-        return try result.get()
+        return try respond(request)
     }
 }
 ```
 
-**Use for:** ViewModel/Repository unit tests where you don't care about transport — only "did the call happen with the right query/body, what does this DTO turn into?"
+**Use for:** ViewModel/Repository unit tests where you don't care about transport — only "did the call happen with the right query/body, what does this DTO turn into?" The `respond` closure sees the whole request, so two calls to one URL with different queries get different answers.
 
 ### Contract tests for endpoint encoding
 
+<!-- typecheck -->
 ```swift
-func test_fetchItems_encodesPageAsQuery() async throws {
-    let fake = FakeHTTPClient()
-    let api = HTTPItemsAPI(http: fake, baseURL: URL(string: "https://x")!)
+import XCTest
 
-    _ = try? await api.fetchItems(page: 3)
+final class HTTPItemsAPITests: XCTestCase {
+    func test_fetchItems_encodesCursorAsQuery() async throws {
+        let fake = FakeHTTPClient { _ in
+            HTTPResponse(status: 200, headers: [:], body: Data(#"{"items":[]}"#.utf8))
+        }
+        let api = HTTPItemsAPI(http: fake, baseURL: URL(string: "https://x")!)
 
-    let req = fake.sentRequests.first!
-    XCTAssertEqual(req.url.absoluteString, "https://x/items?page=3")
-    XCTAssertEqual(req.method, .get)
+        _ = try await api.fetchItems(cursor: "c3")
+
+        let sent = await fake.sentRequests
+        XCTAssertEqual(sent.count, 1)
+        XCTAssertEqual(sent.first?.url.absoluteString, "https://x/items")
+        XCTAssertEqual(sent.first?.queryItems, [URLQueryItem(name: "cursor", value: "c3")])
+        XCTAssertEqual(sent.first?.method, .get)
+    }
 }
 ```
 

@@ -58,7 +58,7 @@ Rules:
   Domain types.
 - Repositories own API DTO -> Domain mapping, repository-level cache, and
   network error mapping.
-- API clients expose typed methods (`fetchItems(page:)`) and decode DTOs.
+- API clients expose typed methods (`fetchItems(cursor:)`) and decode DTOs.
 - `HTTPClient` is the framework-agnostic test boundary.
 - The transport is the only layer that imports URLSession-specific wrappers,
   Alamofire, Moya, Apollo, or generated OpenAPI client types.
