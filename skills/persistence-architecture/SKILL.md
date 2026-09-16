@@ -24,7 +24,7 @@ Data tutorial.
 
 | Need | Reference sections |
 |---|---|
-| Pick Core Data / SwiftData / GRDB / Realm / files | `Choosing the Framework`, `Storage Location and Sharing` |
+| Pick Core Data / SwiftData / GRDB / files | `Choosing the Framework`, `Storage Location and Sharing` |
 | Model identities, timestamps, soft deletes, transformable values | `Schema Design` |
 | Write repository implementations | `The Repository Boundary`, `Threading and Contexts`, `Sendable and Swift Concurrency` |
 | Design transactions, child collection updates, conflicts | `Repository Write Patterns` |
@@ -71,17 +71,18 @@ Rules:
 
 Pick the framework by data shape and access pattern:
 
-- Core Data: large relational graph, iOS 13+, CloudKit integration, mature
-  tooling.
-- SwiftData: iOS 17+ SwiftUI greenfield, simple-to-medium model, acceptable
-  newer-tooling risk.
+- Core Data: large relational graph, any `baseline`, CloudKit integration,
+  mature tooling.
+- SwiftData: `baseline` `iOS 17+` or `macOS 14+`, SwiftUI greenfield,
+  simple-to-medium model.
 - GRDB/SQLite: performance, explicit SQL, complex queries, precise migration
   control, custom sync.
-- Realm: mostly existing projects or cross-platform/Atlas commitments; be strict
-  about live-object thread confinement.
 - UserDefaults: small preferences and flags only.
 - Files: user-owned documents, media, attachments, exports.
 - Keychain: tokens, secrets, encryption keys.
+
+Realm is for existing projects only: Atlas Device Sync reached end of life in
+September 2025 and the SDK is in maintenance mode.
 
 Mixing stores is normal: database for records, files for blobs, UserDefaults for
 flags, Keychain for secrets.
@@ -205,8 +206,8 @@ surfaces as a typed error mapped per `error-architecture`.
   while the device is locked.
 - Store secrets and encryption keys in Keychain, not UserDefaults or a plain
   database.
-- Use SQLCipher/GRDB or Realm encryption when app-level database encryption is
-  required.
+- Use SQLCipher with GRDB when app-level database encryption is required; an
+  existing Realm project keeps Realm's own encryption.
 
 ## Dependency Injection
 
