@@ -77,9 +77,12 @@ Pure business logic. No UIKit, no frameworks, no third-party imports.
 
 #### Entity
 
+<!-- typecheck -->
 ```swift
 // Domain/Entities/Item.swift
-struct Item {
+import Foundation
+
+struct Item: Sendable {
     let id: String
     let title: String
     let description: String
@@ -87,7 +90,7 @@ struct Item {
     let createdAt: Date
 }
 
-enum ItemStatus: String {
+enum ItemStatus: String, Sendable {
     case active
     case archived
     case deleted
@@ -97,8 +100,9 @@ enum ItemStatus: String {
 #### Repository Protocol (interface only)
 
 **async/await**:
+<!-- typecheck -->
 ```swift
-protocol ItemRepositoryProtocol {
+protocol ItemRepositoryProtocol: Sendable {
     func getItems() async throws -> [Item]
     func getItem(id: String) async throws -> Item
     func save(_ item: Item) async throws
@@ -131,12 +135,13 @@ protocol ItemRepositoryProtocol {
 Single responsibility — one business operation per use case.
 
 **async/await**:
+<!-- typecheck -->
 ```swift
-protocol GetItemsUseCaseProtocol {
+protocol GetItemsUseCaseProtocol: Sendable {
     func execute() async throws -> [Item]
 }
 
-class GetItemsUseCase: GetItemsUseCaseProtocol {
+final class GetItemsUseCase: GetItemsUseCaseProtocol {
     private let repository: ItemRepositoryProtocol
 
     init(repository: ItemRepositoryProtocol) {
@@ -259,14 +264,14 @@ struct ItemDTO: Codable {
 
 **async/await**:
 ```swift
-protocol ItemRemoteDataSourceProtocol {
+protocol ItemRemoteDataSourceProtocol: Sendable {
     func fetchItems() async throws -> [ItemDTO]
     func fetchItem(id: String) async throws -> ItemDTO
     func update(_ dto: ItemDTO) async throws
     func delete(id: String) async throws
 }
 
-protocol ItemLocalDataSourceProtocol {
+protocol ItemLocalDataSourceProtocol: Sendable {
     func getCachedItems() async throws -> [ItemDTO]
     func cache(_ items: [ItemDTO]) async throws
 }
@@ -306,7 +311,7 @@ protocol ItemLocalDataSourceProtocol {
 
 **async/await**:
 ```swift
-class ItemRepositoryImpl: ItemRepositoryProtocol {
+final class ItemRepositoryImpl: ItemRepositoryProtocol {
     private let remote: ItemRemoteDataSourceProtocol
     private let local: ItemLocalDataSourceProtocol
 
@@ -423,6 +428,7 @@ class ItemRepositoryImpl: ItemRepositoryProtocol {
 
 ViewModel depends on UseCases (not Repository directly). Binding approach is independent of Clean Architecture — see `arch-mvvm` skill for options.
 
+<!-- typecheck -->
 ```swift
 // Presentation/FeatureViewModel.swift — example with closures binding
 @MainActor
@@ -438,6 +444,7 @@ class FeatureViewModel {
     var onItemSelected: ((Item) -> Void)?
 
     private var rawItems: [Item] = []
+    private var loadTask: Task<Void, Never>?
 
     init(
         getItemsUseCase: GetItemsUseCaseProtocol,
@@ -447,17 +454,25 @@ class FeatureViewModel {
         self.updateItemUseCase = updateItemUseCase
     }
 
+    deinit { loadTask?.cancel() }
+
     func viewDidLoad() {
         loadItems()
     }
 
     private func loadItems() {
-        Task {
-            isLoading = true
-            onStateChanged?()
+        loadTask?.cancel()
+        isLoading = true
+        onStateChanged?()
+        loadTask = Task { [weak self] in
+            guard let self else { return }
             do {
-                rawItems = try await getItemsUseCase.execute()
-                items = rawItems.map(ItemCellModel.init)
+                let result = try await getItemsUseCase.execute()
+                try Task.checkCancellation()
+                rawItems = result
+                items = result.map(ItemCellModel.init)
+            } catch is CancellationError {
+                return
             } catch {
                 onError?(error.localizedDescription)
             }
