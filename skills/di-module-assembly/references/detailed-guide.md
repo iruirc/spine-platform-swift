@@ -352,11 +352,14 @@ final class AppDependencyContainer: AppDependencies {
 
 `AppDependencyContainer` can be implemented with `lazy var` fields instead of Swinject — the external contract (`AppDependencies` + per-feature `*FeatureDependencies`) is identical, the rest of the chain (`CoordinatorFactory`, `ModuleFactory`, `Assembly`) is unchanged.
 
+<!-- typecheck -->
 ```swift
 @MainActor
 final class AppDependencyContainer: AppDependencies {
     lazy var userService: UserServiceProtocol = UserService(networkClient: networkClient)
     lazy var analyticsService: AnalyticsServiceProtocol = AnalyticsService()
+    lazy var imageLoader: ImageLoaderProtocol = ImageLoader(networkClient: networkClient)
+    lazy var appSettingsManager: AppSettingsManagerProtocol = AppSettingsManager()
     private lazy var networkClient: HTTPClient = URLSessionHTTPClient()
 
     func bootstrap() { _ = networkClient; _ = userService }
@@ -406,7 +409,10 @@ App/
 
 ### Testing Coordinators (no container needed)
 
+<!-- typecheck: testing -->
 ```swift
+import XCTest
+
 class ProfileCoordinatorTests: XCTestCase {
     var sut: ProfileCoordinator!
     var mockRouter: MockRouter!
@@ -414,7 +420,7 @@ class ProfileCoordinatorTests: XCTestCase {
     var mockModuleFactory: MockProfileModuleFactory!
 
     @MainActor
-    override func setUp() {
+    override func setUp() async throws {
         mockRouter = MockRouter()
         mockCoordinatorFactory = MockCoordinatorFactory()
         mockModuleFactory = MockProfileModuleFactory()
@@ -440,6 +446,20 @@ class MockProfileModuleFactory: ProfileModuleFactory {
             analyticsService: MockAnalyticsService()
         )
         let vc = ProfileViewController(viewModel: vm)
+        return ModuleComponents(view: vc, viewModel: vm)
+    }
+
+    func makeDetailModule(itemId: String)
+        -> ModuleComponents<DetailViewController, DetailViewModel> {
+        let vm = DetailViewModel(itemId: itemId, userService: MockUserService())
+        let vc = DetailViewController(viewModel: vm)
+        return ModuleComponents(view: vc, viewModel: vm)
+    }
+
+    func makeEditProfileModule()
+        -> ModuleComponents<EditProfileViewController, EditProfileViewModel> {
+        let vm = EditProfileViewModel(userService: MockUserService())
+        let vc = EditProfileViewController(viewModel: vm)
         return ModuleComponents(view: vc, viewModel: vm)
     }
 }
