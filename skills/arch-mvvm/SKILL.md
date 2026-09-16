@@ -82,7 +82,11 @@ The simplest approach. ViewModel exposes closure properties that the View sets.
 
 ### ViewModel
 
+<!-- typecheck: closures -->
 ```swift
+import Foundation
+
+@MainActor
 protocol FeatureViewModelProtocol {
     var onItemsUpdated: (([ItemCellModel]) -> Void)? { get set }
     var onLoadingChanged: ((Bool) -> Void)? { get set }
@@ -94,6 +98,7 @@ protocol FeatureViewModelProtocol {
     func didTapRetry()
 }
 
+@MainActor
 class FeatureViewModel: FeatureViewModelProtocol {
     private let service: FeatureServiceProtocol
     private var items: [Item] = []
@@ -185,19 +190,24 @@ class FeatureViewController: UIViewController {
 
 ### Testing (Closures)
 
+The ViewModel calls back through `DispatchQueue.main.async`: a test waits for that callback before it asserts.
+
+<!-- typecheck: closures -->
 ```swift
+import XCTest
+
 class FeatureViewModelTests: XCTestCase {
-    var sut: FeatureViewModel!
     var mockService: MockFeatureService!
 
     override func setUp() {
         mockService = MockFeatureService()
-        sut = FeatureViewModel(service: mockService)
     }
 
+    @MainActor
     func testViewDidLoad_fetchesItems() {
         let expectation = expectation(description: "items updated")
         mockService.stubbedResult = .success([Item(id: "1")])
+        let sut = FeatureViewModel(service: mockService)
 
         sut.onItemsUpdated = { items in
             XCTAssertEqual(items.count, 1)
@@ -208,23 +218,35 @@ class FeatureViewModelTests: XCTestCase {
         waitForExpectations(timeout: 1)
     }
 
+    @MainActor
     func testViewDidLoad_showsAndHidesLoading() {
+        let expectation = expectation(description: "loading finished")
+        mockService.stubbedResult = .success([])
+        let sut = FeatureViewModel(service: mockService)
         var states: [Bool] = []
 
-        sut.onLoadingChanged = { states.append($0) }
-        mockService.stubbedResult = .success([])
+        sut.onLoadingChanged = { isLoading in
+            states.append(isLoading)
+            if !isLoading { expectation.fulfill() }
+        }
 
         sut.viewDidLoad()
+        waitForExpectations(timeout: 1)
 
         XCTAssertEqual(states, [true, false])
     }
 
+    @MainActor
     func testDidSelectItem_signalsNavigation() {
+        let expectation = expectation(description: "items updated")
+        mockService.stubbedResult = .success([Item(id: "42")])
+        let sut = FeatureViewModel(service: mockService)
         var selectedItem: Item?
         sut.onItemSelected = { selectedItem = $0 }
-        mockService.stubbedResult = .success([Item(id: "42")])
+        sut.onItemsUpdated = { _ in expectation.fulfill() }
 
         sut.viewDidLoad()
+        waitForExpectations(timeout: 1)
         sut.didSelectItem(at: 0)
 
         XCTAssertEqual(selectedItem?.id, "42")
