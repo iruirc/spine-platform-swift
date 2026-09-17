@@ -61,6 +61,7 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | meta `CONTRIBUTING.md` | `ARCHETYPE_RULES` under `## Archetype rules`; `## Project-specific rules` is the user's |
 | package `README.md` | `PKG_HEADER` (holds the title), `PKG_DEPS` (holds `## Dependencies`) |
 | package `CLAUDE.md` | `PKG_META`; `PKG_BOUNDARY`, the archetype paragraph under `## Boundary contract` — lines below its end marker are the package's own constraints; `PKG_PUBLIC_API` (holds `## Public API`) |
+| package `Package.swift` | `PKG_MANIFEST_DEPS` inside `dependencies:` of the package, `PKG_TARGET_DEPS` inside `dependencies:` of its main target. The tools version, `platforms`, `products` and every other target are the user's |
 | `<workspace>.xcworkspace` | the whole file |
 | `<workspace>.code-workspace` | `folders` only |
 
