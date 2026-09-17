@@ -40,4 +40,13 @@ bootstrap:
   initial_commit_message: Initial commit
   git_author: null
 
-packages: []
+packages:
+  # - name: Example
+  #   archetype: library       # api-contract | engine | library | feature
+  #   version: "0.1.0"         # M.m.p semver
+  #   git: { origin: git@github.com:user/Example.git }
+  #   deps: []
+  #   external_deps:           # version kinds: from | exact | branch | revision; semver is M.m.p
+  #     - url: https://github.com/user/Dep1.git
+  #       version: { from: "1.0.0" }
+  #     - https://github.com/user/Dep2.git

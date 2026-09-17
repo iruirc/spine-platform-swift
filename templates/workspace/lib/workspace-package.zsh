@@ -30,8 +30,8 @@ _wspkg_platform_literal() {
   major="${v%%.*}"
   if [[ "$v" == *.* ]]; then minor="${${v#*.}%%.*}"; else minor=0; fi
   if [[ "$v" == *.*.* ]]; then patch="${v##*.}"; else patch=0; fi
-  # .vN exists only for N.0[.0] and only from the major SwiftPM actually declares a case for;
-  # anything else — a patch component, or a major below the enum's floor — renders as a string.
+  # .vN is used only when the major version is at or above the enum floor for the platform;
+  # other versions render as a string literal.
   if [[ "$minor" == 0 && "$patch" == 0 && "$major" -ge "$floor_major" ]]; then
     print -r -- ".${name}(.v${major})"
   elif [[ "$v" == *.* ]]; then

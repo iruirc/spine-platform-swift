@@ -1,0 +1,6 @@
+workspace: { name: bdpe }
+remotes: [origin]
+defaults:
+  platforms: {}
+packages:
+  - { name: A, archetype: engine, git: {origin: x}, version: "1.0.0" }

@@ -97,7 +97,10 @@ YML
   [ "$output" = '        .package(path: "../Core"),' ]
   run pkg "$(ws_fixture_path workspace-yml/pkg-manifest.yml)" 'wspkg::manifest_deps Core'
   [ "$output" = '        .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),' ] || { echo "$output"; return 1; }
+        .package(url: "https://github.com/apple/swift-log.git", exact: "1.5.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", branch: "main"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", revision: "abc123def456"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.1.0"),' ] || { echo "$output"; return 1; }
 }
 
 @test "target_deps names one product per workspace dep and nothing for external ones" {
@@ -114,7 +117,7 @@ YML
   [ "$output" = 'packages/Core/Package.swift: swift-tools-version 5.9 < 6.0 (fix by hand)
 packages/Core/Package.swift: platforms .iOS(.v15) below defaults.platforms ios 16.0 (fix by hand)
 packages/Core/Package.swift: platforms .macOS(.v12) below defaults.platforms macos 13.4 (fix by hand)
-packages/Core/Package.swift: external dep https://github.com/apple/swift-algorithms.git has no version requirement (add version: { from: "x.y.z" })' ] || { echo "$output"; return 1; }
+packages/Core/Package.swift: external dep https://github.com/apple/swift-testing.git has no version requirement (add version: { from: "x.y.z" })' ] || { echo "$output"; return 1; }
 }
 
 @test "diagnose says nothing about a manifest that meets the defaults" {
