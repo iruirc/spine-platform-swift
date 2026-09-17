@@ -619,30 +619,25 @@ ViewModel handles `RepositoryError.conflict` by re-fetching and prompting the us
 
 ### Anti-pattern: silent write failure
 
-Often hidden in async wrappers:
+Often hidden behind a completion-style API:
 
+<!-- typecheck: core-data -->
 ```swift
 // ❌ DANGEROUS
-func save(_ item: Item) throws {
-    container.performBackgroundTask { ctx in
-        // ... do save work ...
-        try? ctx.save()               // ← the error ends here
+extension CoreDataItemRepository {
+    func save(_ item: Item) throws {
+        container.performBackgroundTask { ctx in
+            let entity = ItemEntity(context: ctx)
+            Self.fill(entity, from: item)
+            try? ctx.save()               // ← the error ends here
+        }
     }
 }
 ```
 
-The function is declared `throws` but **cannot actually throw**, because the work runs on a different thread after the function has already returned. Any error inside is dropped. The UI shows «Saved!», the disk shows nothing.
+The function is declared `throws` but **cannot actually throw**, because the block runs on a background context after the function has already returned. Any error inside is dropped. The UI shows «Saved!», the disk shows nothing.
 
-Fix: bridge to async/await with `withCheckedThrowingContinuation`, or use the framework's synchronous variant if a brief block is acceptable, or expose `async throws` instead of fake `throws`:
-
-```swift
-func save(_ item: Item) async throws {
-    try await container.performBackgroundTask { ctx in
-        // ... do save work ...
-        try ctx.save()
-    }
-}
-```
+Fix: declare the write `async throws` and await the block. `performBackgroundTask` has an `async` overload that rethrows what the block throws, and the `upsert` in *Optimistic concurrency* above is written with it. A framework whose writes take only a completion handler bridges through `withCheckedThrowingContinuation` and resumes with the handler's result.
 
 ## Querying and Reactivity
 
@@ -1035,7 +1030,7 @@ In practice, KeyPath-machinery saves ~10–20% of code in average mappers and ad
 
 ### Level 4 — Codegen or Swift macros ✅
 
-This is the modern answer when manual mapping pain is real and recurring. Annotate the snapshot:
+This is the modern answer when manual mapping pain is real and recurring. Annotate the snapshot with macros the project writes itself — no framework ships them:
 
 ```swift
 @EntityMapped(CDOrder.self)
