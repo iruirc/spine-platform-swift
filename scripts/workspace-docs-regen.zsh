@@ -4,8 +4,8 @@
 #
 #   workspace-docs-regen.zsh [--check | --repair | --adopt] [--yes] [--pkg <name>]
 #
-# Runs from the meta-repo or any repository beside it. --repair and --adopt print what they would
-# change and exit 1 until rerun with --yes. --pkg limits package files; meta-repo files always run.
+# Runs from the meta-repo or any repository beside it. --repair and --adopt propose changes and
+# write nothing until rerun with --yes. --pkg limits package files; meta-repo files always run.
 # Exit: 0 done or no drift; 1 drift under --check, or changes awaiting --yes; 2 invalid workspace.yml
 # or malformed markers; 3 yq missing; 4 workspace.yml not found.
 # Last line: workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n> missing=<n> pending=<n>
@@ -123,7 +123,8 @@ if [[ "$mode" == adopt || "$mode" == repair ]]; then
     diff -u --label "$f" --label "$f (proposed)" -- "$f" "$tmp"
     if (( yes )); then cp -- "$tmp" "$f" || exit 4; else (( pending++ )); fi
   done
-  if (( pending )); then summary; exit 1; fi
+  # Without --yes, adopt/repair only propose; never fall through into the regen pass below.
+  if (( ! yes )); then summary; exit $(( pending ? 1 : 0 )); fi
 fi
 
 for f in $files; do
