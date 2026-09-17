@@ -65,5 +65,5 @@ setup() {
     || { echo "want $n files scanned: $output"; return 1; }
   blocks="$(sed -E 's/.* ([0-9]+) blocks,.*/\1/' <<<"$summary")"
   # Raise the floor when blocks are marked; lowering it needs a reason in the commit.
-  [ "$blocks" -ge 139 ] || { echo "found $blocks marked blocks, want at least 139"; return 1; }
+  [ "$blocks" -ge 140 ] || { echo "found $blocks marked blocks, want at least 140"; return 1; }
 }
