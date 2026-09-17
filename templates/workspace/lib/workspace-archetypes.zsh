@@ -5,16 +5,16 @@ wsarch::boundary_text() {
   local arch="$1"
   case "$arch" in
     api-contract)
-      print "API-contract package. Must declare protocols and DTOs only. Must not depend on any workspace package. May declare external_deps (e.g. swift-collections). \`workspace-check\` will fail any commit that adds a workspace dependency to this package."
+      print "API-contract package. Must declare protocols and DTOs only. Must not depend on any workspace package. May declare external_deps (e.g. swift-collections)."
       ;;
     engine)
-      print "Engine package. May depend only on api-contract packages. Must not import other engines, libraries, or features. \`workspace-check\` will fail any commit that violates this."
+      print "Engine package. May depend only on api-contract packages. Must not import other engines, libraries, or features."
       ;;
     library)
-      print "Library package. May depend on api-contract, engine, and other library packages. Must not import features. \`workspace-check\` will fail any commit that violates this."
+      print "Library package. May depend on api-contract, engine, and other library packages. Must not import features."
       ;;
     feature)
-      print "Feature package. May depend on api-contract, engine, and library packages. Must not import other features. Composes UI + behaviour for a user-facing slice. \`workspace-check\` will fail any commit that violates this."
+      print "Feature package. May depend on api-contract, engine, and library packages. Must not import other features. Composes UI + behaviour for a user-facing slice."
       ;;
     *)
       print -u2 "wsarch::boundary_text: unknown archetype '$arch'"
