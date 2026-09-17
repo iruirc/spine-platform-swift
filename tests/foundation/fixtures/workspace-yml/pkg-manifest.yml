@@ -1,0 +1,22 @@
+workspace:
+  name: ManifestWS
+remotes: [origin]
+defaults:
+  platforms: { ios: "16.0", macos: "13.4" }
+  tests: xctest
+packages:
+  - name: Core
+    archetype: api-contract
+    git: { origin: git@github.com:user/Core.git }
+    version: 0.1.0
+    external_deps:
+      - url: https://github.com/apple/swift-collections.git
+        version: { from: "1.0.0" }
+      - url: https://github.com/apple/swift-log.git
+        version: "1.5.0"
+      - https://github.com/apple/swift-algorithms.git
+  - name: App
+    archetype: feature
+    git: { origin: git@github.com:user/App.git }
+    version: 0.1.0
+    deps: [Core]
