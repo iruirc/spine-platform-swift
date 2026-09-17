@@ -261,8 +261,8 @@ final class ItemPayloadV1ToV2Policy: NSEntityMigrationPolicy {
                                              in mapping: NSEntityMapping,
                                              manager: NSMigrationManager) throws {
         let oldData = sInstance.value(forKey: "payload") as! Data
-        let oldPayload = try JSONDecoder().decode(PayloadV1.self, from: oldData)
-        let newPayload = PayloadV2(
+        let oldPayload = try JSONDecoder().decode(ItemPayloadV1.self, from: oldData)
+        let newPayload = ItemPayloadV2(
             a: oldPayload.a,
             b: oldPayload.b,
             fullName: "\(oldPayload.firstName) \(oldPayload.lastName)"
@@ -294,14 +294,14 @@ struct PayloadEnvelope: Codable {
 }
 
 enum AnyPayload {
-    case v1(PayloadV1), v2(PayloadV2), v3(PayloadV3)
+    case v1(ItemPayloadV1), v2(ItemPayloadV2), v3(ItemPayloadV3)
 
     init(envelopeData: Data) throws {
         let env = try JSONDecoder().decode(PayloadEnvelope.self, from: envelopeData)
         switch env.version {
-        case 1: self = .v1(try JSONDecoder().decode(PayloadV1.self, from: env.payload))
-        case 2: self = .v2(try JSONDecoder().decode(PayloadV2.self, from: env.payload))
-        case 3: self = .v3(try JSONDecoder().decode(PayloadV3.self, from: env.payload))
+        case 1: self = .v1(try JSONDecoder().decode(ItemPayloadV1.self, from: env.payload))
+        case 2: self = .v2(try JSONDecoder().decode(ItemPayloadV2.self, from: env.payload))
+        case 3: self = .v3(try JSONDecoder().decode(ItemPayloadV3.self, from: env.payload))
         default: throw PayloadError.unknownVersion(env.version)
         }
     }
@@ -326,7 +326,7 @@ Common combination: Approach 1 by default, Approach 3 for breaking changes that 
 - **`try?` on decode + a fallback default** — silent data loss; you'll discover it months later when a user asks why their old projects are blank.
 - **`catch { ctx.delete(entity); save() }`** — actively destroys data.
 - **Changing a Codable struct without checking** for legacy payloads on disk.
-- **Removing old `PayloadV1` types** before all users have rolled forward (breaks Approaches 2 and 4).
+- **Removing an old payload type or decoding branch** before all users have rolled forward (breaks Approaches 2 and 4).
 - **Trusting that lightweight schema migration «does something»** to the blob — it does literally nothing.
 
 ## Progressive migration
@@ -388,6 +388,8 @@ func migrateStore(at storeURL: URL, from start: Int, in models: [NSManagedObject
         .replacePersistentStore(at: storeURL, withPersistentStoreFrom: currentURL, type: .sqlite)
 }
 ```
+
+The helper infers every step whose mapping model is not in the bundle, which is what a lightweight step needs. A policy step whose mapping model is missing from the target is inferred too whenever its change is inferable, and migrates without the policy — the case step 4 turns inference off for. Here only that step's fixture test (*Testing / Migration tests*) catches it.
 
 **Anti-pattern: one mega mapping model v1→vCurrent.** Looks economical (only one file), breaks every user who isn't exactly on v(current-1). Always adjacent pairs.
 
