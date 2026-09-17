@@ -86,3 +86,62 @@ teardown() { ws_cleanup_tmpdirs; }
   [ "$status" -eq 2 ]
   [[ "$output" == *"no WORKSPACE_PKG_LIST_BEGIN"* ]]
 }
+
+@test "wsmark::lint flags a second pair of one marker" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  printf '%s\n' '<!-- WORKSPACE_X_BEGIN -->' one '<!-- WORKSPACE_X_END -->' '<!-- WORKSPACE_X_BEGIN -->' two '<!-- WORKSPACE_X_END -->' > "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$tmp'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"4: second WORKSPACE_X pair (first closed at line 3)"* ]]
+}
+
+@test "wsmark::repair_to drops a second pair's markers, keeps its text, and asks nothing" {
+  local dir="$(ws_mktemp_dir)"
+  printf '%s\n' '<!-- WORKSPACE_X_BEGIN -->' one '<!-- WORKSPACE_X_END -->' '<!-- WORKSPACE_X_BEGIN -->' two > "$dir/in.md"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::repair_to '$dir/in.md' '$dir/out.md' </dev/null"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$dir/out.md")" = "$(printf '%s\n' '<!-- WORKSPACE_X_BEGIN -->' one '<!-- WORKSPACE_X_END -->' two)" ]
+}
+
+@test "wsmark::wrap body wraps a section's body and ignores a heading inside a code fence" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  printf '%s\n' '## Quickstart' '' '```bash' '# clone' 'git clone x' '```' '' '## Next' > "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Quickstart' CLONE body"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$tmp")" = "$(printf '%s\n' '## Quickstart' '' '<!-- WORKSPACE_CLONE_BEGIN -->' '```bash' '# clone' 'git clone x' '```' '<!-- WORKSPACE_CLONE_END -->' '' '## Next')" ]
+}
+
+@test "wsmark::wrap paragraph leaves the text below the first paragraph outside the marker" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  printf '%s\n' '## Boundary contract' '' 'Engine package.' '' 'Also: no UIKit.' '' '<!-- WORKSPACE_PKG_PUBLIC_API_BEGIN -->' '<!-- WORKSPACE_PKG_PUBLIC_API_END -->' > "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Boundary contract' PKG_BOUNDARY paragraph"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$tmp")" = "$(printf '%s\n' '## Boundary contract' '' '<!-- WORKSPACE_PKG_BOUNDARY_BEGIN -->' 'Engine package.' '<!-- WORKSPACE_PKG_BOUNDARY_END -->' '' 'Also: no UIKit.' '' '<!-- WORKSPACE_PKG_PUBLIC_API_BEGIN -->' '<!-- WORKSPACE_PKG_PUBLIC_API_END -->')" ]
+}
+
+@test "wsmark::wrap section takes the heading in, and an empty body gets an empty pair" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  printf '%s\n' '## Public API' '' '- a' '' '## Empty' '' '## Test' > "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Public API' PKG_PUBLIC_API section && wsmark::wrap '$tmp' '## Empty' E body"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$tmp")" = "$(printf '%s\n' '<!-- WORKSPACE_PKG_PUBLIC_API_BEGIN -->' '## Public API' '' '- a' '<!-- WORKSPACE_PKG_PUBLIC_API_END -->' '' '## Empty' '' '<!-- WORKSPACE_E_BEGIN -->' '<!-- WORKSPACE_E_END -->' '' '## Test')" ]
+}
+
+@test "wsmark::wrap changes nothing when the marker is there, and returns 1 without the heading" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  cp "$(ws_fixture_path markers/well-formed.md)" "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '# Hello' PKG_LIST body"
+  [ "$status" -eq 0 ]
+  cmp "$tmp" "$(ws_fixture_path markers/well-formed.md)"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Absent' OTHER body"
+  [ "$status" -eq 1 ]
+  cmp "$tmp" "$(ws_fixture_path markers/well-formed.md)"
+}
+
+@test "wsmark::unwrap removes a pair and keeps what it held" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  cp "$(ws_fixture_path markers/well-formed.md)" "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::unwrap '$tmp' PKG_LIST"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$tmp")" = "$(grep -v WORKSPACE_PKG_LIST "$(ws_fixture_path markers/well-formed.md)")" ]
+}
