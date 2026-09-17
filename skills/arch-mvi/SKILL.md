@@ -391,9 +391,9 @@ Production callers use `send(_:)` only.
 
 Identical to Flavor A's `ItemListView`, replace `ItemListStore` with `ItemListViewModel`.
 
-## SwiftUI without `@Observable` (iOS 13–16)
+## SwiftUI without `@Observable` (iOS 16, macOS 13)
 
-`@Observable` is iOS 17+. On an iOS 13–16 SwiftUI target the Store/ViewModel backing is the only thing that changes — `State`, `Intent`, `Reducer`, `Effect` and the reduce loop are identical. Swap `@Observable` for `ObservableObject` + a single `@Published private(set) var state`:
+`@Observable` is iOS 17+ and macOS 14+. On an iOS 16 or macOS 13 SwiftUI target the Store/ViewModel backing is the only thing that changes — `State`, `Intent`, `Reducer`, `Effect` and the reduce loop are identical. Swap `@Observable` for `ObservableObject` + a single `@Published private(set) var state`:
 
 <!-- typecheck: observable-object -->
 ```swift
