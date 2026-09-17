@@ -86,6 +86,19 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   [ "$status" -eq 2 ]
 }
 
+@test "an unwritable file does not poison the scratch path for the next file of the same basename" {
+  local target="$PARENT/sharedPackages/AKit/Package.swift"
+  cp "$(ws_fixture_path docs-regen/pre-markers/sharedPackages/BEngine/Package.swift)" "$target"
+  chmod 444 "$target"
+  cd "$META"
+  run "$REGEN"
+  local rc="$status"
+  chmod 644 "$target"
+  [ "$rc" -eq 0 ]
+  cmp "$GOLDEN/sharedPackages/BEngine/Package.swift" "$PARENT/sharedPackages/BEngine/Package.swift"
+  cmp "$GOLDEN/domainPackages/CFeature/Package.swift" "$PARENT/domainPackages/CFeature/Package.swift"
+}
+
 @test "--check names a .code-workspace it would create" {
   rm -f "$META/RegenWS.code-workspace"
   cd "$META"
@@ -142,6 +155,20 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   [ "$status" -eq 2 ]
   [ "${lines[${#lines[@]}-1]}" = "workspace-docs-regen: regenerated=0 drifted=0 malformed=1 missing=0 pending=0" ]
   cmp "$BATS_TEST_TMPDIR/cross-nested.md" "$META/ARCHITECTURE.md"
+}
+
+@test "--repair --yes rebuilds a manifest whose target-deps END was deleted, without truncating the file" {
+  local m="$PARENT/domainPackages/CFeature/Package.swift"
+  grep -v 'WORKSPACE_PKG_TARGET_DEPS_END' "$m" > "$BATS_TEST_TMPDIR/truncated-source.swift"
+  cp "$BATS_TEST_TMPDIR/truncated-source.swift" "$m"
+  cd "$META"
+  run "$REGEN" --repair --yes
+  [ "$status" -eq 0 ]
+  grep -Fq '.testTarget(name: "CFeatureTests"' "$m"
+  [ "$(tail -n 1 "$m")" = ")" ]
+  grep -Fxq '            .product(name: "AKit", package: "AKit"),' "$m"
+  run "$REGEN" --check
+  [ "$status" -eq 0 ]
 }
 
 @test "a workspace.yml beside the meta-repo does not hijack discovery" {

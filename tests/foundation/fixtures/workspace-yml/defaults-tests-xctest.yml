@@ -1,0 +1,10 @@
+workspace:
+  name: XctestWS
+remotes: [origin]
+defaults:
+  tests: xctest
+packages:
+  - name: OnePkg
+    archetype: api-contract
+    git: { origin: git@github.com:user/OnePkg.git }
+    version: 0.1.0

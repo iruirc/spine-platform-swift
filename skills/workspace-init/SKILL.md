@@ -52,7 +52,7 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 
    **Anti-pattern to avoid:** presenting "How many packages?" or "Add 1 / 2 / 3 packages?" as a single multi-choice question and then collecting that many in a fixed batch. Always loop with re-prompts.
 6. Ask defaults overrides (Y/N) for `default_branch`, `push_remotes`, `release_strategy`. Then, always, ask the stack of the packages this workspace generates — both questions have a default, so accepting them is one keystroke each:
-   1. `qa_defaults_platforms` (multi-choice): `ios 17.0 + macos 14.0` (default) / `ios 16.0 + macos 13.0` / `ios 17.0` / custom. Custom asks once more for a comma-separated list (`ios=17.0,macos=14.0`); keys other than `ios` and `macos` are rejected and the question is asked again. Record `defaults.platforms` as a map.
+   1. `qa_defaults_platforms` (multi-choice): `ios 17.0 + macos 14.0` (default) / `ios 16.0 + macos 13.0` / `ios 17.0` / custom. Custom asks `qa_defaults_platforms_custom` once more for a comma-separated list (`ios=17.0,macos=14.0`); keys other than `ios` and `macos` are rejected and the question is asked again. Record `defaults.platforms` as a map.
    2. `qa_defaults_tests` (multi-choice): `swift-testing` (default) / `xctest`. Record `defaults.tests`.
 
    These are the deployment floor and the test stub of every package of this workspace, now and at every later `workspace-add --new`. The `Baseline` axis that `swift-init` asks per app at `s06b` belongs to the app and does not reach them: a package whose floor is above the app's breaks the app's build, so a workspace whose apps target iOS 16 answers `ios 16.0 + macos 13.0` here.
