@@ -84,7 +84,7 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | Step | Action | Idempotency check |
 |------|--------|-------------------|
 | s01_meta_dir | mkdir `<workspace-parent>/<workspace-name>-meta/` | dir exists |
-| s02_meta_files | render meta-repo templates from `templates/workspace/meta-repo/`, recursively (preserves subdir layout). Substitutes `{{WORKSPACE_NAME}}`. Excludes `xcworkspace-contents.xml.tmpl` and `code-workspace.json.tmpl` — those are handled by s07 / s08 (NOT rendered by s02). | per-file `[[ -f ]]` |
+| s02_meta_files | render meta-repo templates from `templates/workspace/meta-repo/`, recursively (preserves subdir layout). Substitutes `{{WORKSPACE_NAME}}`. Excludes `xcworkspace-contents.xml.tmpl` and `code-workspace.json.tmpl` — `s07_regen` writes those (NOT rendered by s02). | per-file `[[ -f ]]` |
 | s02b_meta_config | The config comes from core, never from a template here. (1) Only if `<meta>/CLAUDE-spine-toolkit.md` is absent: invoke `spine-toolkit:setup` with `<meta>` as the working directory, filling its `## Input` with `lang`, `mode` and `progress` from `wsyml::toolkit`, `platform = spine-platform-swift`, `stack = —` (a meta-repo has no stack to ask about), `tasks = skip` and `docs_map = skip` (Tasks/ and Docs/ are workspace siblings, provisioned by s09 / s09b). `CLAUDE.md` from s02 already imports the config, and setup leaves it as it is. The condition is for `--resume`: setup finding a config asks whether to overwrite it, and batch has nobody to answer. (2) `wsproj::append_workspace_meta <meta> meta`. | `grep -q '^## Workspace meta' <meta>/CLAUDE-spine-toolkit.md` |
 | s03_meta_git | `git init -b <default-branch>` in meta-repo | `[[ -d .git ]]` |
 | s04_meta_yml | copy `workspace.yml` into meta-repo | `[[ -f workspace.yml ]]` |
@@ -94,8 +94,7 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | s06c_project_inject_<app> | Source `wsproj::*` library. Read `wsyml::packages`. Run `wsproj::inject_deps <repo> <main-target-name>`. Run `xcodegen generate` in `<repo>/` (second xcodegen run regenerates `.xcodeproj` reflecting injected deps). | Always rerun (declarative; state file authoritative for skip — see "State file precedence" below) |
 | s06d_project_workspace_meta_<app> | Run `wsproj::append_workspace_meta <repo>` to add `## Workspace meta` section to `<repo>/CLAUDE-spine-toolkit.md`. | `grep -q '^## Workspace meta' <repo>/CLAUDE-spine-toolkit.md` |
 | s06e_project_git_<app> | `git init -b <default-branch>` in `<repo>`. | `[[ -d <repo>/.git ]]` |
-| s07_xcworkspace | copy `templates/workspace/meta-repo/xcworkspace-contents.xml.tmpl` to `<workspace-name>.xcworkspace/contents.xcworkspacedata`, then fill **both** markers: (1) `WORKSPACE_PROJECT_REFS` — when `project:` block is present, write one `<FileRef location="group:../<app-repo>/<app-repo>.xcodeproj"></FileRef>` per `project.apps.<key>.repo`. The `.xcodeproj` filename equals the repo name because s06b invoked `swift-init` with `--main-target-name=<repo>`, which makes both the main target and the `.xcodeproj` follow the repo name — keeping each platform's `.xcodeproj` distinct in the xcworkspace tree. Leave the marker empty when `project:` is absent. (2) `WORKSPACE_PKG_REFS` — one `<FileRef location="group:../<group_dir_or_packages>/<name>"></FileRef>` per package | always overwrite (derived) |
-| s08_codeworkspace | copy `templates/workspace/meta-repo/code-workspace.json.tmpl` to `<workspace-name>.code-workspace`, then append to `folders[]`: (1) when `project:` is present, one `{ "name": "<app-repo>", "path": "../<app-repo>" }` per `project.apps.<key>.repo`; (2) one `{ "name": "<name>", "path": "../<group_dir_or_packages>/<name>" }` per package; (3) when `workspace.tasks.enabled` is true, one `{ "name": "Tasks", "path": "../<tasks-link-name>" }` (see "Tasks/Docs path resolution" below for `<tasks-link-name>`); (4) when `workspace.docs.enabled` is true, one `{ "name": "Docs", "path": "../<docs-link-name>" }` | always overwrite |
+| s07_regen | Run `workspace-docs-regen` from `<meta>`. It writes `<workspace-name>.xcworkspace` with a `FileRef` per app repo and per package, sets the `folders` of `<workspace-name>.code-workspace`, and fills every marked section of the meta-repo and package docs. It runs after every package and project repo exists, so the refs and each package's `## Public API` are complete. | Always rerun (a run with nothing to change writes nothing) |
 | s09_tasks | iff `workspace.tasks.enabled` (default `true`): provision Tasks/ per `workspace.tasks.mode`. See "Tasks/Docs provisioning" below for the per-mode behavior. | per-mode (see "Tasks/Docs idempotency") |
 | s09b_docs | iff `workspace.docs.enabled` (default `true`): provision Docs/ per `workspace.docs.mode`. See "Tasks/Docs provisioning" below for the per-mode behavior. Skip (mark complete) if the target path at `<workspace-parent>/<docs-link-name>` already exists as a folder, symlink, or file — preserves manually placed `Docs` symlinks already on disk. | per-mode (see "Tasks/Docs idempotency") |
 | s10_meta_initial_commit | iff `bootstrap.commit_after_init`: `git -c user.name=... -c user.email=... commit` | `git rev-list HEAD` non-empty |
@@ -182,11 +181,6 @@ For project-block workflows: interruption of swift-init Q&A (Ctrl-C during s06b 
 - Inside each rendered file, `{{...}}` placeholders are substituted via `sed`.
 - Known placeholders:
   - `{{WORKSPACE_NAME}}` — workspace name (`workspace.name` from `workspace.yml`).
-  - `{{META_REPO_DIR}}` — `<workspace-name>-meta`.
   - `{{PACKAGE_NAME}}` — package name (per-package).
-  - `{{ARCHETYPE}}` — package archetype (`feature` / `library` / `api-contract` / `engine-sdk`).
-  - `{{GROUP}}` — package group name, or `—` if ungrouped.
   - `{{VERSION}}` — package version (semver-like string).
-  - `{{ALLOWED_DEPS_CSV}}` — comma-separated list of archetype-allowed deps, or `—`.
-  - `{{EXTERNAL_DEPS_CSV}}` — comma-separated list of external SPM deps, or `—`.
-  - `{{ARCHETYPE_BOUNDARY_TEXT}}` — narrative paragraph from `wsarch::boundary_text` (archetype boundary contract).
+- Marker pairs render empty; `s07_regen` fills them.

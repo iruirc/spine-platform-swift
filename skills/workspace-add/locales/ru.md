@@ -24,7 +24,7 @@ incorporate — включить существующий standalone-репо
 
 ## warn_existing_claude_md
 предупреждение: {path}/CLAUDE.md уже существует; не перезаписан.
-чтобы взять под управление toolkit: workspace-docs-regen --repair --pkg {name}
+чтобы взять под управление toolkit: workspace-docs-regen --adopt --pkg {name}
 
 ## report_success_new
 Пакет {name} создан в {path}. Артефакты workspace перегенерированы.
