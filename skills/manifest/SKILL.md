@@ -50,7 +50,7 @@ tests        = XCTest, Swift Testing, Quick+Nimble
 
 | `ui` | Navigation |
 |---|---|
-| `UIKit` | `arch-coordinator`; SwiftUI screens inside it follow the "Hybrid" section of `arch-swiftui-navigation` |
+| `UIKit` | `arch-coordinator`; SwiftUI screens inside it follow `arch-swiftui-navigation` → "Hybrid: SwiftUI ↔ UIKit Interop" |
 | `SwiftUI` | `arch-swiftui-navigation`, with a router |
 | `AppKit` | no navigation skill |
 
