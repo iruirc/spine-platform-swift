@@ -118,7 +118,7 @@ For both `tasks` and `docs` blocks, two derived values are used elsewhere in the
   - mode `sibling` → `<workspace-parent>/Tasks` or `<workspace-parent>/Docs` (fixed link name).
   - mode `path` → `<workspace-parent>/<path-without-leading-./>`.
   - mode `symlink` → `<workspace-parent>/Tasks` or `<workspace-parent>/Docs` (the symlink itself; its target is `symlink_target`).
-- `<tasks-link-name>` / `<docs-link-name>` — the name used when registering the folder in the xcworkspace/code-workspace tree:
+- `<tasks-link-name>` / `<docs-link-name>` — the folder name each block provisions under the workspace parent; `workspace-docs-regen` uses the same name for the `.code-workspace`'s `folders`:
   - mode `sibling` / `symlink` → `Tasks` or `Docs`.
   - mode `path` → `basename(path)`.
 

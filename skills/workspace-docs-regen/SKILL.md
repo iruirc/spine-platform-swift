@@ -48,9 +48,9 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | 1, `--check` | `report_drift_detected` with `drifted`, then the diffs |
 | 1, `--repair` / `--adopt` | the confirmation above |
 | 2, `malformed` > 0 | `error_malformed_markers` with `malformed` |
-| 2, otherwise | `error_validation`, then the script's stderr |
-| 3 | `yq` is missing: `brew install yq` |
-| 4 | `error_missing_workspace_yml` |
+| 2, otherwise | `error_validation`, then the script's stderr — unless it opens with `usage:`, a bug in the call: show that line instead |
+| 3 | `error_yq_missing` |
+| 4 | `error_missing_workspace_yml` when stderr names the search (`no workspace.yml`, `several workspaces`, `is not inside`); otherwise a write failed — the script's stderr names the file, show that line as is |
 
 ## What it owns
 

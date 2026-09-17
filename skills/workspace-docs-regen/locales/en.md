@@ -16,6 +16,9 @@ Drift detected in {n} file(s):
 ## error_validation
 workspace.yml is invalid; the errors are listed above. exit 2.
 
+## error_yq_missing
+yq not on PATH (required by this toolkit). Install: brew install yq
+
 ## error_missing_workspace_yml
 workspace.yml not found in this directory, its ancestors, or a *-meta directory beside one of them; cd into a repository of the workspace first.
 
