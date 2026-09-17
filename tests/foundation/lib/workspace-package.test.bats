@@ -53,6 +53,37 @@ xctest
 swift-testing' ] || { echo "$output"; return 1; }
 }
 
+@test "_wspkg_platform_literal keeps a patch component and only renders .vN for a real enum case" {
+  run zsh -c "source '$(ws_lib_path workspace-package.zsh)'; _wspkg_platform_literal ios 17.0.3"
+  [ "$output" = '.iOS("17.0.3")' ]
+  run zsh -c "source '$(ws_lib_path workspace-package.zsh)'; _wspkg_platform_literal macos 10"
+  [ "$output" = '.macOS("10.0")' ]
+  run zsh -c "source '$(ws_lib_path workspace-package.zsh)'; _wspkg_platform_literal ios 7"
+  [ "$output" = '.iOS("7.0")' ]
+  run zsh -c "source '$(ws_lib_path workspace-package.zsh)'; _wspkg_platform_literal ios 17.2"
+  [ "$output" = '.iOS("17.2")' ]
+  run zsh -c "source '$(ws_lib_path workspace-package.zsh)'; _wspkg_platform_literal macos 11.0.0"
+  [ "$output" = '.macOS(.v11)' ]
+}
+
+@test "diagnose says nothing about a manifest generated from ios 17.0.3" {
+  local dir="$(ws_mktemp_dir)"
+  local yml="$dir/ws.yml"
+  cat > "$yml" <<'YML'
+workspace: { name: pf173 }
+remotes: [origin]
+defaults:
+  platforms: { ios: "17.0.3" }
+packages:
+  - { name: Core, archetype: engine, git: {origin: x}, version: "1.0.0" }
+YML
+  local m="$dir/Package.swift"
+  legacy_manifest "$m"
+  sed -i '' -e 's|5\.9|6.4|' -e 's|\.iOS(\.v15)|.iOS("17.0.3")|' "$m"
+  run pkg "$yml" "wspkg::diagnose Core '$m' Package.swift"
+  [ "$output" = "" ] || { echo "$output"; return 1; }
+}
+
 @test "rel_path drops the shared head: same group, another group, ungrouped" {
   run pkg "$(ws_fixture_path workspace-yml/docs-regen.yml)" 'wspkg::rel_path BEngine AKit; wspkg::rel_path CFeature AKit'
   [ "$output" = '../AKit

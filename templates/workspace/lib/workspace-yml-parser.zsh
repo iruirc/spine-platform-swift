@@ -105,7 +105,9 @@ wsyml::validate() {
   local toolkit_lang toolkit_mode toolkit_progress
   local has_project proj_name app_keys ak app_repo
   local v mp_keys mpk mpv
-  local plat_keys pk pv tests_kind
+  local plat_keys pk pv tests_kind plat_declared plat_tag
+  local ext_n j ext_tag ext_url ver_tag ver_key ver_val vkeys nvkeys
+  local -a vkeys_arr
   local -A seen group_set remote_set allowed_set seen_repos
 
   # Rule 1: workspace.name required, matches [A-Za-z][A-Za-z0-9-]*
@@ -327,28 +329,108 @@ wsyml::validate() {
 
   # Rule 15: defaults.platforms and defaults.tests. Both optional — an absent block means the
   # toolkit's own floor (ios 17.0, macos 14.0) and swift-testing; see wspkg::platform_floor.
-  plat_keys="$(wsyml::get '.defaults.platforms | keys | .[]?' 2>/dev/null || true)"
-  for pk in ${(f)plat_keys}; do
-    [[ -z "$pk" ]] && continue
-    case "$pk" in
-      ios|macos) ;;
-      *)
-        print -u2 "$_path: defaults.platforms.$pk rejected (ios|macos only)"
-        ((errs++))
-        continue
-        ;;
-    esac
-    pv="$(wsyml::get ".defaults.platforms.$pk" 2>/dev/null || true)"
-    if [[ ! "$pv" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
-      print -u2 "$_path: defaults.platforms.$pk '$pv' must match semver M.m.p"
+  # A non-map platforms (a scalar, or []) walks the key loop with nothing to iterate and would
+  # otherwise pass silently, then feed wspkg::platform_floor a `has("platforms")` of true with no
+  # keys to answer it — every generated manifest ends up with platforms: [] and no floor at all.
+  plat_declared="$(wsyml::get '.defaults | has("platforms")' 2>/dev/null || print -- false)"
+  if [[ "$plat_declared" == true ]]; then
+    plat_tag="$(wsyml::get '.defaults.platforms | tag' 2>/dev/null || true)"
+    if [[ "$plat_tag" != '!!map' ]]; then
+      print -u2 "$_path: defaults.platforms must be a map of ios/macos to a version"
       ((errs++))
+    else
+      plat_keys="$(wsyml::get '.defaults.platforms | keys | .[]?' 2>/dev/null || true)"
+      for pk in ${(f)plat_keys}; do
+        [[ -z "$pk" ]] && continue
+        case "$pk" in
+          ios|macos) ;;
+          *)
+            print -u2 "$_path: defaults.platforms.$pk rejected (ios|macos only)"
+            ((errs++))
+            continue
+            ;;
+        esac
+        pv="$(wsyml::get ".defaults.platforms.$pk" 2>/dev/null || true)"
+        if [[ ! "$pv" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+          print -u2 "$_path: defaults.platforms.$pk '$pv' must match semver M.m.p"
+          ((errs++))
+        fi
+      done
     fi
-  done
+  fi
   tests_kind="$(wsyml::get '.defaults.tests' 2>/dev/null || true)"
   if [[ -n "$tests_kind" && ! "$tests_kind" =~ ^(swift-testing|xctest)$ ]]; then
     print -u2 "$_path: defaults.tests '$tests_kind' must be swift-testing|xctest"
     ((errs++))
   fi
+
+  # Rule 16: external_deps[] version requirement shape (spec D-3's four kinds: a bare string, or a
+  # map with url and an optional version of exactly one of from|exact|branch|revision). Nothing else
+  # enforced this, so a value only SwiftPM would reject — an unquoted float, an unknown requirement
+  # key, two requirement keys at once — reached Package.swift unchecked.
+  for p in ${(f)pkgs}; do
+    # A duplicate package name (already reported by rule 3) makes select() match more than one
+    # entry, so length comes back once per match; take the first so a bad name can't also crash
+    # the loop bound below.
+    ext_n="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps | length" 2>/dev/null || echo 0)"
+    ext_n="${ext_n%%$'\n'*}"
+    for ((j = 0; j < ext_n; j++)); do
+      ext_tag="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[$j] | tag" 2>/dev/null || true)"
+      [[ "$ext_tag" == '!!str' ]] && continue
+      if [[ "$ext_tag" != '!!map' ]]; then
+        print -u2 "$_path: package '$p' external dep #$j must be a URL string or a map with url"
+        ((errs++))
+        continue
+      fi
+      ext_url="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[$j].url" 2>/dev/null || true)"
+      if [[ -z "$ext_url" ]]; then
+        print -u2 "$_path: package '$p' external dep #$j missing url"
+        ((errs++))
+        continue
+      fi
+      [[ "$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[$j] | has(\"version\")" 2>/dev/null || print -- false)" == true ]] || continue
+      ver_tag="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[$j].version | tag" 2>/dev/null || true)"
+      case "$ver_tag" in
+        '!!map')
+          vkeys="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[$j].version | keys | .[]" 2>/dev/null || true)"
+          vkeys_arr=(${(f)vkeys})
+          nvkeys=${#vkeys_arr[@]}
+          if (( nvkeys != 1 )); then
+            print -u2 "$_path: package '$p' external dep $ext_url version must have exactly one key (from|exact|branch|revision)"
+            ((errs++))
+            continue
+          fi
+          ver_key="${vkeys_arr[1]}"
+          case "$ver_key" in
+            from|exact|branch|revision) ;;
+            *)
+              print -u2 "$_path: package '$p' external dep $ext_url version key '$ver_key' must be one of from|exact|branch|revision"
+              ((errs++))
+              continue
+              ;;
+          esac
+          if [[ "$ver_key" == from || "$ver_key" == exact ]]; then
+            ver_val="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[$j].version.\"$ver_key\"" 2>/dev/null || true)"
+            if [[ ! "$ver_val" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              print -u2 "$_path: package '$p' external dep $ext_url version.$ver_key '$ver_val' must match M.m.p"
+              ((errs++))
+            fi
+          fi
+          ;;
+        '!!str'|'!!int'|'!!float')
+          ver_val="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[$j].version" 2>/dev/null || true)"
+          if [[ ! "$ver_val" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            print -u2 "$_path: package '$p' external dep $ext_url version '$ver_val' must match M.m.p"
+            ((errs++))
+          fi
+          ;;
+        *)
+          print -u2 "$_path: package '$p' external dep $ext_url version must be a string or a map"
+          ((errs++))
+          ;;
+      esac
+    done
+  done
 
   # Project block validation (P-rules 1, 2, 3, 3a, 4-8)
   has_project="$(wsyml::get '.project | length' 2>/dev/null || echo 0)"

@@ -367,6 +367,25 @@ EOF
   [[ "$output" == *"defaults.tests 'quick-nimble' must be swift-testing|xctest"* ]]
 }
 
+@test "validate rejects a defaults.platforms that is not a map" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-platforms-scalar.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"defaults.platforms must be a map of ios/macos to a version"* ]]
+}
+
+@test "validate rejects an external dep's unquoted-float version, an unknown requirement key, and a two-key map" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-external-dep-version.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"external dep https://example.com/one.git version '1' must match M.m.p"* ]] || return 1
+  [[ "$output" == *"external dep https://example.com/two.git version key 'range' must be one of from|exact|branch|revision"* ]] || return 1
+  [[ "$output" == *"external dep https://example.com/three.git version must have exactly one key (from|exact|branch|revision)"* ]] || return 1
+}
+
+@test "validate accepts pkg-manifest.yml's external_deps: a from-map, a scalar, and a bare URL" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/pkg-manifest.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
 @test "validate accepts a workspace that declares platforms and tests, and one that declares neither" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/pkg-manifest.yml)' && wsyml::validate"
   [ "$status" -eq 0 ]

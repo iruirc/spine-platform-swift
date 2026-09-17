@@ -37,17 +37,32 @@ teardown() { ws_cleanup_tmpdirs; }
   [ "$output" = $'ru\nmanual\nnormal' ] || { echo "got: $output"; return 1; }
 }
 
-@test "generated package builds with swift build (sanity)" {
+@test "a manifest regen filled builds with swift build (sanity)" {
   if ! command -v swift >/dev/null 2>&1; then
     skip "swift not on PATH"
   fi
   local parent="$(ws_mktemp_dir)"
+  # docs-regen.yml's BEngine gets a real path dependency + product from regen (a path dep on AKit,
+  # which has an external dep of its own); building it is the only proof the filled lines compile.
+  # AKit itself is not built directly: its own manifest carries that external dependency, and the
+  # suite must not need the network.
   run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
-    "$(ws_fixture_path workspace-yml/grouped.yml)" "$parent"
+    "$(ws_fixture_path workspace-yml/docs-regen.yml)" "$parent"
   [ "$status" -eq 0 ]
-  cd "$parent/sharedPackages/AKit"
+  cd "$parent/sharedPackages/BEngine"
   run swift build
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "defaults.tests xctest renders the XCTest stub and not the Swift Testing one" {
+  local parent="$(ws_mktemp_dir)"
+  run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+    "$(ws_fixture_path workspace-yml/defaults-tests-xctest.yml)" "$parent"
   [ "$status" -eq 0 ]
+  local test_file="$parent/packages/OnePkg/Tests/OnePkgTests/OnePkgTests.swift"
+  [ -f "$test_file" ]
+  grep -Fq 'import XCTest' "$test_file"
+  ! grep -Fq 'import Testing' "$test_file"
 }
 
 @test "ws-init-driver fails on cyclic.yml" {

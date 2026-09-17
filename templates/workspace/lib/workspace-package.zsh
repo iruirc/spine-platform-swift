@@ -21,18 +21,23 @@ _wspkg_ge() {
 }
 
 _wspkg_platform_literal() {
-  local key="$1" v="$2" name major minor
+  local key="$1" v="$2" name floor_major major minor patch
   case "$key" in
-    ios)   name=iOS ;;
-    macos) name=macOS ;;
+    ios)   name=iOS;   floor_major=8  ;;
+    macos) name=macOS; floor_major=11 ;;
     *)     print -u2 "_wspkg_platform_literal: unknown platform '$key'"; return 2 ;;
   esac
   major="${v%%.*}"
   if [[ "$v" == *.* ]]; then minor="${${v#*.}%%.*}"; else minor=0; fi
-  if [[ "$minor" == 0 ]]; then
+  if [[ "$v" == *.*.* ]]; then patch="${v##*.}"; else patch=0; fi
+  # .vN exists only for N.0[.0] and only from the major SwiftPM actually declares a case for;
+  # anything else — a patch component, or a major below the enum's floor — renders as a string.
+  if [[ "$minor" == 0 && "$patch" == 0 && "$major" -ge "$floor_major" ]]; then
     print -r -- ".${name}(.v${major})"
-  else
+  elif [[ "$v" == *.* ]]; then
     print -r -- ".${name}(\"${v}\")"
+  else
+    print -r -- ".${name}(\"${v}.0\")"
   fi
 }
 
@@ -224,6 +229,10 @@ wspkg::adopt_to() {
     { line[NR] = $0 }
     END {
       deps = 0; tgt = 0
+      # Exact comparison against the two shapes the template renders (with and without the
+      # trailing comma): a regex here would let a metacharacter in pkg miss the match.
+      want1 = "        .target(name: \"" pkg "\", dependencies: []),"
+      want2 = "        .target(name: \"" pkg "\", dependencies: [])"
       for (i = 1; i <= NR; i++) {
         if (line[i] ~ /^    dependencies: \[$/) {
           for (j = i + 1; j <= NR; j++) {
@@ -231,7 +240,7 @@ wspkg::adopt_to() {
             if (line[j] !~ /^[ \t]*(\/\/.*)?$/) break
           }
         }
-        if (line[i] ~ ("^        \\.target\\(name: \"" pkg "\", dependencies: \\[\\]\\),?$")) tgt = i
+        if (line[i] == want1 || line[i] == want2) tgt = i
       }
       if (!deps || !tgt) exit 1
       for (i = 1; i <= NR; i++) {

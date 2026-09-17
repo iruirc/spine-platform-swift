@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 # Regenerates what a workspace derives from its workspace.yml: the marked sections of the meta-repo
-# and package docs, the .xcworkspace, and the folders of the .code-workspace.
+# and package docs, a package manifest's dependency arrays, the .xcworkspace, and the folders of the
+# .code-workspace.
 #
 #   workspace-docs-regen.zsh [--check | --repair | --adopt] [--yes] [--pkg <name>]
 #
@@ -89,10 +90,12 @@ content() {
   esac
 }
 
-# The temp copy keeps the target's name: a marker's comment syntax follows the file's extension.
+# Each scratch copy carries only the file's extension, never its name: a marker's comment syntax
+# follows the extension, and two target files sharing a basename must not share a scratch path.
 tmpdir="$(mktemp -d -t wsregen.XXXXXX)" || exit 4
 trap 'rm -rf -- "$tmpdir"' EXIT
 tmp="$tmpdir/scratch"
+scratch=0
 regenerated=0 drifted=0 malformed=0 missing=0 pending=0
 
 summary() { print "workspace-docs-regen: regenerated=$regenerated drifted=$drifted malformed=$malformed missing=$missing pending=$pending"; }
@@ -115,13 +118,13 @@ settle() {
 if [[ "$mode" == adopt || "$mode" == repair ]]; then
   for f in $files; do
     [[ -f "$f" ]] || continue
-    tmp="$tmpdir/${f:t}"
+    (( scratch++ )); tmp="$tmpdir/$scratch.${f:e}"
     if [[ "$mode" == repair ]]; then
       wsmark::lint "$f" 2>/dev/null && continue
       wsmark::repair_to "$f" "$tmp" || { (( malformed++ )); continue; }
     else
       wsmark::lint "$f" 2>/dev/null || { (( malformed++ )); continue; }
-      cp -- "$f" "$tmp"
+      cp -- "$f" "$tmp" || exit 4
       for rule in ${(s:;:)adopt[$f]}; do
         parts=("${(@s:|:)rule}")
         case "${parts[1]}" in
@@ -130,7 +133,7 @@ if [[ "$mode" == adopt || "$mode" == repair ]]; then
           manifest)
             if ! wspkg::adopt_to "$f" "$tmp" "${pkg_of[$f]}"; then
               print -r -- "$f: not the shape the package template renders; add both marker pairs by hand"
-              cp -- "$f" "$tmp"
+              cp -- "$f" "$tmp" || exit 4
               (( pending++ ))
             fi
             ;;
@@ -148,9 +151,9 @@ fi
 
 for f in $files; do
   if [[ ! -f "$f" ]]; then (( missing++ )); continue; fi
-  tmp="$tmpdir/${f:t}"
+  (( scratch++ )); tmp="$tmpdir/$scratch.${f:e}"
   if ! wsmark::lint "$f"; then (( malformed++ )); continue; fi
-  cp -- "$f" "$tmp"
+  cp -- "$f" "$tmp" || exit 4
   for m in ${(s: :)markers[$f]}; do
     wsmark::has "$tmp" "$m" || continue
     content "$m" "${pkg_of[$f]}" "${dir_of[$f]}" | wsmark::write "$tmp" "$m" || exit 4

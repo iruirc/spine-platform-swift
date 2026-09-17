@@ -163,6 +163,14 @@ teardown() { ws_cleanup_tmpdirs; }
   cmp "$tmp" "$(ws_fixture_path markers/well-formed.md)"
 }
 
+@test "wsmark::wrap refuses a non-markdown file" {
+  local tmp="$(ws_mktemp_dir)/Package.swift"
+  printf '%s\n' '## Heading' > "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Heading' X body"
+  [ "$status" -eq 4 ]
+  cmp <(printf '%s\n' '## Heading') "$tmp"
+}
+
 @test "wsmark::unwrap removes a pair and keeps what it held" {
   local tmp="$(ws_mktemp_dir)/file.md"
   cp "$(ws_fixture_path markers/well-formed.md)" "$tmp"
@@ -249,7 +257,23 @@ SWIFT
   grep -v 'WORKSPACE_PKG_MANIFEST_DEPS_END' "$dir/Package.swift" > "$dir/Broken.swift"
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::repair_to '$dir/Broken.swift' '$dir/Fixed.swift'"
   [ "$status" -eq 0 ]
+  # The END now carries the BEGIN's indentation, so it no longer matches unindented; what matters is
+  # that it sits right after the BEGIN, and that nothing below it (the closing brackets) was lost.
   run grep -xF '// WORKSPACE_PKG_MANIFEST_DEPS_END' "$dir/Fixed.swift"
+  [ "$status" -eq 1 ]
+  local begin_no end_no
+  begin_no="$(grep -n 'WORKSPACE_PKG_MANIFEST_DEPS_BEGIN' "$dir/Fixed.swift" | cut -d: -f1)"
+  end_no="$(grep -n 'WORKSPACE_PKG_MANIFEST_DEPS_END' "$dir/Fixed.swift" | cut -d: -f1)"
+  [ "$((end_no - begin_no))" -eq 1 ]
+  [ "$(tail -n 1 "$dir/Fixed.swift")" = ")" ]
+}
+
+@test "wsmark::repair_to closes an unclosed markdown marker right after its BEGIN, and the result lints clean" {
+  local dir="$(ws_mktemp_dir)"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::repair_to '$(ws_fixture_path markers/missing-end.md)' '$dir/out.md'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$dir/out.md")" = "$(printf '%s\n' '# Hi' '<!-- WORKSPACE_PKG_LIST_BEGIN -->' '<!-- WORKSPACE_PKG_LIST_END -->' 'content but no end')" ]
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$dir/out.md'"
   [ "$status" -eq 0 ]
 }
 

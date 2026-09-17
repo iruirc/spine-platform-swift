@@ -177,7 +177,7 @@ wsmark::lint() {
 }
 
 wsmark::repair_to() {
-  local file="$1" out="$2" lineno line name top m i found bre ere
+  local file="$1" out="$2" lineno line name top ws m i found bre ere
   if [[ ! -r "$file" || -z "$out" ]]; then
     print -u2 "wsmark::repair_to: usage: <readable-file> <out-file>"
     return 4
@@ -190,11 +190,18 @@ wsmark::repair_to() {
     bre='^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$'
     ere='^<!-- WORKSPACE_([A-Z_]+)_END -->$'
   fi
+  # Two passes: a single pass can only learn a BEGIN is unclosed once it hits EOF, by which point
+  # the line to insert the END after is long behind it. So collect the surviving lines first, note
+  # where each still-open BEGIN sits among them, and only then emit — closing each right after its
+  # own line instead of swallowing everything below it.
+  local -a lines kept
   local -a open_stack
-  local -A closed seconds
-  lineno=0
+  local -A closed seconds begin_at begin_ws
   while IFS= read -r line || [[ -n "$line" ]]; do
-    ((lineno++))
+    lines+=("$line")
+  done < "$file"
+  for ((lineno=1; lineno<=${#lines[@]}; lineno++)); do
+    line="${lines[$lineno]}"
     if [[ "$line" =~ $bre ]]; then
       name="${match[1]}"
       found=0
@@ -205,7 +212,10 @@ wsmark::repair_to() {
       # A second pair loses its markers and keeps its text.
       if (( ${+closed[$name]} )); then seconds[$name]=1; continue; fi
       open_stack+=("$name")
-      print -r -- "$line" >> "$out"
+      kept+=("$line")
+      [[ "$line" =~ '^([[:space:]]*)' ]] && ws="${match[1]}" || ws=""
+      begin_at[$name]=${#kept[@]}
+      begin_ws[$name]="$ws"
     elif [[ "$line" =~ $ere ]]; then
       name="${match[1]}"
       if (( ${+seconds[$name]} )); then unset "seconds[$name]"; continue; fi
@@ -217,15 +227,22 @@ wsmark::repair_to() {
       fi
       closed[$name]=1
       open_stack[-1]=()
-      print -r -- "$line" >> "$out"
+      kept+=("$line")
     else
-      print -r -- "$line" >> "$out"
+      kept+=("$line")
     fi
-  done < "$file"
-  while (( ${#open_stack[@]} > 0 )); do
-    m="${open_stack[-1]}"
-    _wsmark_end "$file" "$m" >> "$out"
-    open_stack[-1]=()
+  done
+  local -A insert_after
+  for ((i=1; i<=${#open_stack[@]}; i++)); do
+    m="${open_stack[$i]}"
+    insert_after[${begin_at[$m]}]="$m"
+  done
+  for ((i=1; i<=${#kept[@]}; i++)); do
+    print -r -- "${kept[$i]}" >> "$out"
+    if (( ${+insert_after[$i]} )); then
+      m="${insert_after[$i]}"
+      print -r -- "${begin_ws[$m]}$(_wsmark_end "$file" "$m")" >> "$out"
+    fi
   done
   return 0
 }
@@ -259,6 +276,12 @@ wsmark::wrap() {
   local file="$1" heading="$2" name="$3" scope="$4"
   if [[ -z "$file" || -z "$heading" || -z "$name" || ! "$scope" =~ ^(body|paragraph|section)$ ]]; then
     print -u2 "wsmark::wrap: usage: <file> <heading> <marker-name> body|paragraph|section"
+    return 4
+  fi
+  # D-2: markdown-only. It hardcodes the HTML comment and hunts for headings, neither of which a
+  # Swift manifest has.
+  if [[ "${file:e}" != md ]]; then
+    print -u2 "wsmark::wrap: $file is not markdown"
     return 4
   fi
   [[ -r "$file" && -w "$file" ]] || { print -u2 "wsmark::wrap: cannot read+write $file"; return 4; }

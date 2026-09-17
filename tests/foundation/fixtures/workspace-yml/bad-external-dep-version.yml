@@ -1,0 +1,14 @@
+workspace: { name: bxdv }
+remotes: [origin]
+packages:
+  - name: A
+    archetype: engine
+    git: { origin: x }
+    version: "1.0.0"
+    external_deps:
+      - url: https://example.com/one.git
+        version: 1.0
+      - url: https://example.com/two.git
+        version: { range: "1.0.0..<2.0.0" }
+      - url: https://example.com/three.git
+        version: { from: "1.0.0", exact: "2.0.0" }

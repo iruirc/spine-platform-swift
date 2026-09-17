@@ -1,0 +1,6 @@
+workspace: { name: bdps }
+remotes: [origin]
+defaults:
+  platforms: "ios 17.0"
+packages:
+  - { name: A, archetype: engine, git: {origin: x}, version: "1.0.0" }
