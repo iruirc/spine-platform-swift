@@ -16,6 +16,9 @@
 ## error_validation
 workspace.yml некорректен; ошибки перечислены выше. exit 2.
 
+## error_yq_missing
+yq не найден в PATH (нужен этому тулкиту). Установка: brew install yq
+
 ## error_missing_workspace_yml
 workspace.yml не найден ни в этой папке, ни в её предках, ни в папке *-meta рядом с одним из них; перейди в любой репозиторий workspace'а.
 
