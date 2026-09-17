@@ -85,6 +85,40 @@ git clone x ../packages/A
 ```' ] || { echo "$output"; return 1; }
 }
 
+@test "external deps: a map version, a bare-string version, a bare-string entry, and no version" {
+  local yml="$(ws_mktemp_dir)/workspace.yml"
+  cat > "$yml" <<'YML'
+workspace:
+  name: ExtDeps
+remotes: [origin]
+packages:
+  - name: P
+    archetype: library
+    git: { origin: x }
+    version: 0.1.0
+    external_deps:
+      - url: https://a.git
+        version: { from: "1.0.0" }
+      - url: https://b.git
+        version: "2.0.0"
+      - https://c.git
+      - url: https://d.git
+YML
+  run docs "$yml" 'wsdocs::pkg_deps P'
+  [ "$output" = '## Dependencies
+
+Workspace packages:
+
+- none
+
+External packages:
+
+- https://a.git (from 1.0.0)
+- https://b.git (2.0.0)
+- https://c.git
+- https://d.git' ] || { echo "$output"; return 1; }
+}
+
 @test "public API lists top-level public and open declarations in byte order, cut at the brace; files without any add no line" {
   local pkg="$(ws_mktemp_dir)"
   mkdir -p "$pkg/Sources/OnePkg/Sub"

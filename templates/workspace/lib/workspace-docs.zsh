@@ -115,7 +115,7 @@ wsdocs::pkg_header() {
 
 # An external dep is a URL or a map with url and an optional version requirement.
 _wsdocs_external() {
-  wsyml::get ".packages[] | select(.name == \"$1\") | .external_deps[]? | select(tag == \"!!str\") // (.url + ((.version // {}) | to_entries | map(\" (\" + .key + \" \" + (.value | tostring) + \")\") | join(\"\")))" 2>/dev/null || true
+  wsyml::get ".packages[] | select(.name == \"$1\") | .external_deps[]? | select(tag == \"!!str\") // (.url + ((.version // {}) | (select(tag == \"!!map\") | to_entries | map(\" (\" + .key + \" \" + (.value | tostring) + \")\") | join(\"\")) // (\" (\" + tostring + \")\")))" 2>/dev/null || true
 }
 
 _wsdocs_bullets() {

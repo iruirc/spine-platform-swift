@@ -92,6 +92,29 @@ tree_hash() { find "$PARENT" -type f -not -path '*/.git/*' -exec md5 -q {} + | m
   [ "$status" -eq 0 ]
 }
 
+@test "a preview reports what it cannot repair instead of silently skipping it" {
+  # A cross-nested pair (WORKSPACE_GRAPH_BEGIN sits inside the LAYERS pair) is a boundary
+  # wsmark::repair_to refuses to auto-fix, not just a lint error --repair can propose past.
+  awk '/<!-- WORKSPACE_LAYERS_END -->/ { print "<!-- WORKSPACE_GRAPH_BEGIN -->" } { print }' \
+    "$META/ARCHITECTURE.md" > "$BATS_TEST_TMPDIR/cross-nested.md"
+  cp "$BATS_TEST_TMPDIR/cross-nested.md" "$META/ARCHITECTURE.md"
+  cd "$META"
+  run "$REGEN" --repair
+  [ "$status" -eq 2 ]
+  [ "${lines[${#lines[@]}-1]}" = "workspace-docs-regen: regenerated=0 drifted=0 malformed=1 missing=0 pending=0" ]
+  cmp "$BATS_TEST_TMPDIR/cross-nested.md" "$META/ARCHITECTURE.md"
+}
+
+@test "a workspace.yml beside the meta-repo does not hijack discovery" {
+  cp "$META/workspace.yml" "$PARENT/workspace.yml"
+  cd "$PARENT/sharedPackages/AKit"
+  run "$REGEN"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"RegenWS-meta"* ]]
+  [ ! -e "$PARENT/RegenWS.xcworkspace" ]
+  [ ! -e "$PARENT/RegenWS.code-workspace" ]
+}
+
 @test "--adopt brings 1.12 docs under the markers and keeps what the user wrote" {
   local pre="$(ws_fixture_path docs-regen/pre-markers)" f
   local -a files=(RegenWS-meta/README.md RegenWS-meta/CONTRIBUTING.md sharedPackages/BEngine/CLAUDE.md)

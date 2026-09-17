@@ -51,6 +51,10 @@ if [[ -n "$only" ]] && ! wsyml::packages | grep -qxF -- "$only"; then
   exit 2
 fi
 meta="${ws_yml:h}" parent="${ws_yml:h:h}" ws="$(wsyml::get '.workspace.name')"
+if [[ "${meta:t}" != "$ws-meta" ]]; then
+  print -u2 "workspace-docs-regen: $ws_yml is not inside $ws-meta"
+  exit 4
+fi
 
 typeset -a files
 typeset -A markers adopt pkg_of dir_of
@@ -107,9 +111,9 @@ if [[ "$mode" == adopt || "$mode" == repair ]]; then
     [[ -f "$f" ]] || continue
     if [[ "$mode" == repair ]]; then
       wsmark::lint "$f" 2>/dev/null && continue
-      wsmark::repair_to "$f" "$tmp" || continue
+      wsmark::repair_to "$f" "$tmp" || { (( malformed++ )); continue; }
     else
-      wsmark::lint "$f" 2>/dev/null || continue
+      wsmark::lint "$f" 2>/dev/null || { (( malformed++ )); continue; }
       cp -- "$f" "$tmp"
       for rule in ${(s:;:)adopt[$f]}; do
         parts=("${(@s:|:)rule}")
@@ -124,7 +128,8 @@ if [[ "$mode" == adopt || "$mode" == repair ]]; then
     if (( yes )); then cp -- "$tmp" "$f" || exit 4; else (( pending++ )); fi
   done
   # Without --yes, adopt/repair only propose; never fall through into the regen pass below.
-  if (( ! yes )); then summary; exit $(( pending ? 1 : 0 )); fi
+  if (( ! yes )); then summary; (( malformed )) && exit 2; exit $(( pending ? 1 : 0 )); fi
+  malformed=0
 fi
 
 for f in $files; do
