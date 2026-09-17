@@ -20,7 +20,7 @@ workspace-init pre-flight:
 - optional: xcodegen  ✓
 
 ## preflight_optional_xcodegen_missing
-- optional: xcodegen  ✗ (install for example_app: true)
+- optional: xcodegen  ✗ (install for a project: block)
 
 ## qa_toolkit_lang
 Language of the toolkit config and of the rest of this dialog: [en | ru]
@@ -50,7 +50,7 @@ Version (default 0.1.0):
 Workspace-internal deps (multiselect):
 
 ## qa_pkg_example_app
-Generate Example/ (xcodegen, Cluster 3)?
+Record an Example/ app for this package in workspace.yml? Nothing generates it yet.
 
 ## qa_tasks_enabled
 Provision a shared Tasks/ folder at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)
