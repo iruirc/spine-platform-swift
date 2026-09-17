@@ -227,6 +227,8 @@ SWIFT
   [ "$status" -eq 1 ]
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::has '$(ws_fixture_path markers/well-formed.md)' PKG_LIST"
   [ "$status" -eq 0 ]
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::has '$(ws_fixture_path markers/well-formed.md)' PKG_META"
+  [ "$status" -eq 1 ]
 }
 
 @test "wsmark::unwrap drops indented .swift markers and keeps the body" {
@@ -249,4 +251,17 @@ SWIFT
   [ "$status" -eq 0 ]
   run grep -xF '// WORKSPACE_PKG_MANIFEST_DEPS_END' "$dir/Fixed.swift"
   [ "$status" -eq 0 ]
+}
+
+@test "wsmark::write with empty stdin leaves the pair empty in a .swift file" {
+  local tmp="$(ws_mktemp_dir)/Package.swift"
+  _ws_swift_manifest "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; printf '' | wsmark::write '$tmp' PKG_MANIFEST_DEPS"
+  [ "$status" -eq 0 ]
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::read '$tmp' PKG_MANIFEST_DEPS"
+  [ "$status" -eq 0 ]
+  [ "$output" = "" ]
+  run grep -A1 'WORKSPACE_PKG_MANIFEST_DEPS_BEGIN' "$tmp"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"WORKSPACE_PKG_MANIFEST_DEPS_END"* ]]
 }
