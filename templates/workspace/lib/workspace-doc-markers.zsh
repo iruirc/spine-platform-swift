@@ -82,11 +82,16 @@ wsmark::lint() {
   fi
   local errs=0
   local -a open_stack open_lines
+  local -A closed_at
   local lineno=0 line name top i
   while IFS= read -r line || [[ -n "$line" ]]; do
     ((lineno++))
     if [[ "$line" =~ '^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$' ]]; then
       name="${match[1]}"
+      if (( ${+closed_at[$name]} )); then
+        print -u2 "$file:$lineno: second WORKSPACE_${name} pair (first closed at line ${closed_at[$name]})"
+        ((errs++))
+      fi
       # duplicate BEGIN of same name?
       for ((i=1; i<=${#open_stack[@]}; i++)); do
         if [[ "${open_stack[$i]}" == "$name" ]]; then
@@ -114,6 +119,7 @@ wsmark::lint() {
           done
         fi
         if (( ${#open_stack[@]} > 0 )); then
+          closed_at[$name]=$lineno
           open_stack[-1]=()
           open_lines[-1]=()
         fi
@@ -132,57 +138,61 @@ wsmark::lint() {
   return 0
 }
 
-wsmark::repair() {
-  local file tmp lineno line name top resp m i found
-  file="$1"
-  if [[ ! -r "$file" || ! -w "$file" ]]; then
-    print -u2 "wsmark::repair: cannot read+write $file"
+wsmark::repair_to() {
+  local file="$1" out="$2" lineno line name top m i found
+  if [[ ! -r "$file" || -z "$out" ]]; then
+    print -u2 "wsmark::repair_to: usage: <readable-file> <out-file>"
     return 4
   fi
-  # Build a repaired version into a temp file by replaying the parse with fixups.
-  tmp="$(mktemp -t wsmark-repair.XXXXXX)" || return 4
+  : > "$out" || return 4
   local -a open_stack
+  local -A closed seconds
   lineno=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     ((lineno++))
     if [[ "$line" =~ '^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$' ]]; then
       name="${match[1]}"
-      # drop duplicate BEGIN of same name
       found=0
       for ((i=1; i<=${#open_stack[@]}; i++)); do
         if [[ "${open_stack[$i]}" == "$name" ]]; then found=1; break; fi
       done
-      if (( found )); then
-        # Skip duplicate marker (do not write)
-        continue
-      fi
+      (( found )) && continue
+      # A second pair loses its markers and keeps its text.
+      if (( ${+closed[$name]} )); then seconds[$name]=1; continue; fi
       open_stack+=("$name")
-      print -r -- "$line" >> "$tmp"
+      print -r -- "$line" >> "$out"
     elif [[ "$line" =~ '^<!-- WORKSPACE_([A-Z_]+)_END -->$' ]]; then
       name="${match[1]}"
-      if (( ${#open_stack[@]} == 0 )); then
-        # Orphan END — drop it
-        continue
-      fi
+      if (( ${+seconds[$name]} )); then unset "seconds[$name]"; continue; fi
+      (( ${#open_stack[@]} == 0 )) && continue
       top="${open_stack[-1]}"
       if [[ "$top" != "$name" ]]; then
-        # Cross-nested END — refuse auto-repair, keep file unchanged + bail
-        print -u2 "wsmark::repair: cannot auto-repair cross-nested boundary at line $lineno"
-        rm -f "$tmp"
+        print -u2 "wsmark::repair_to: cannot auto-repair cross-nested boundary at $file:$lineno"
         return 2
       fi
+      closed[$name]=1
       open_stack[-1]=()
-      print -r -- "$line" >> "$tmp"
+      print -r -- "$line" >> "$out"
     else
-      print -r -- "$line" >> "$tmp"
+      print -r -- "$line" >> "$out"
     fi
   done < "$file"
-  # Close any remaining open markers
   while (( ${#open_stack[@]} > 0 )); do
     m="${open_stack[-1]}"
-    print -r -- "<!-- WORKSPACE_${m}_END -->" >> "$tmp"
+    print -r -- "<!-- WORKSPACE_${m}_END -->" >> "$out"
     open_stack[-1]=()
   done
+  return 0
+}
+
+wsmark::repair() {
+  local file="$1" tmp resp rc
+  if [[ ! -r "$file" || ! -w "$file" ]]; then
+    print -u2 "wsmark::repair: cannot read+write $file"
+    return 4
+  fi
+  tmp="$(mktemp -t wsmark-repair.XXXXXX)" || return 4
+  wsmark::repair_to "$file" "$tmp" || { rc=$?; rm -f "$tmp"; return $rc; }
   print "Proposed changes to $file:"
   diff -u "$file" "$tmp" || true
   print -n "Apply? (y/N) "
@@ -191,6 +201,65 @@ wsmark::repair() {
     rm -f "$tmp"
     return 1
   fi
+  mv -- "$tmp" "$file"
+  return 0
+}
+
+# Puts an unmarked section under a marker so regen can own it. <scope> is where the pair goes:
+# body — everything under <heading>; paragraph — its first paragraph only, so text the user added
+# below stays theirs; section — <heading> and its body. A section ends at the next H1/H2 or marker
+# line outside a code fence. Returns 0 when the file already has the marker or was wrapped, 1 when
+# <heading> is absent.
+wsmark::wrap() {
+  local file="$1" heading="$2" name="$3" scope="$4"
+  if [[ -z "$file" || -z "$heading" || -z "$name" || ! "$scope" =~ ^(body|paragraph|section)$ ]]; then
+    print -u2 "wsmark::wrap: usage: <file> <heading> <marker-name> body|paragraph|section"
+    return 4
+  fi
+  [[ -r "$file" && -w "$file" ]] || { print -u2 "wsmark::wrap: cannot read+write $file"; return 4; }
+  grep -qxF -- "<!-- WORKSPACE_${name}_BEGIN -->" "$file" && return 0
+  grep -qxF -- "$heading" "$file" || return 1
+  local tmp
+  tmp="$(mktemp -t wsmark-wrap.XXXXXX)" || return 4
+  awk -v h="$heading" -v b="<!-- WORKSPACE_${name}_BEGIN -->" -v e="<!-- WORKSPACE_${name}_END -->" -v scope="$scope" '
+    { line[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) if (line[i] == h) { hl = i; break }
+      fence = 0; last = NR
+      for (i = hl + 1; i <= NR; i++) {
+        if (line[i] ~ /^```/) fence = !fence
+        if (!fence && (line[i] ~ /^##? / || line[i] ~ /^<!-- WORKSPACE_[A-Z_]+_(BEGIN|END) -->$/)) { last = i - 1; break }
+      }
+      first = 0
+      for (i = hl + 1; i <= last; i++) if (line[i] != "") { first = i; break }
+      if (first && scope == "paragraph") {
+        fence = 0
+        for (i = first; i <= last; i++) {
+          if (line[i] ~ /^```/) fence = !fence
+          if (!fence && line[i] == "") { last = i - 1; break }
+        }
+      }
+      while (last > hl && line[last] == "") last--
+      for (i = 1; i <= NR; i++) {
+        if (scope == "section" && i == hl) print b
+        if (scope != "section" && first && i == first) print b
+        print line[i]
+        if (!first && i == hl) { if (scope != "section") { print ""; print b }; print e }
+        else if (first && i == last) print e
+      }
+    }
+  ' "$file" > "$tmp" || { rm -f "$tmp"; return 4; }
+  mv -- "$tmp" "$file"
+  return 0
+}
+
+# Drops a marker pair and keeps what it held, handing the section back to the user.
+wsmark::unwrap() {
+  local file="$1" name="$2"
+  [[ -r "$file" && -w "$file" && -n "$name" ]] || { print -u2 "wsmark::unwrap: usage: <file> <marker-name>"; return 4; }
+  local tmp
+  tmp="$(mktemp -t wsmark-unwrap.XXXXXX)" || return 4
+  grep -vxF -e "<!-- WORKSPACE_${name}_BEGIN -->" -e "<!-- WORKSPACE_${name}_END -->" -- "$file" > "$tmp"
   mv -- "$tmp" "$file"
   return 0
 }
