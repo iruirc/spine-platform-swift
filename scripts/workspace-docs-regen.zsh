@@ -102,6 +102,7 @@ settle() {
     diff -u --label "$file" --label "$file (regenerated)" -- "$old" "$tmp"
     return 0
   fi
+  # Write the content to take the umask; never copy or move the temp file.
   mkdir -p -- "${file:h}" && cat -- "$tmp" > "$file" || exit 4
   (( regenerated++ ))
 }
