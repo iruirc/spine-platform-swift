@@ -1,0 +1,31 @@
+workspace:
+  name: RegenWS
+remotes: [origin, mirror]
+package_groups:
+  - name: common
+    dir: sharedPackages
+  - name: domain
+    dir: domainPackages
+packages:
+  - name: AKit
+    archetype: api-contract
+    group: common
+    git: { origin: git@github.com:user/AKit.git, mirror: git@mirror:user/AKit.git }
+    version: 0.1.0
+    external_deps:
+      - url: https://github.com/apple/swift-collections.git
+        version: { from: "1.0.0" }
+      - https://github.com/apple/swift-algorithms.git
+  - name: BEngine
+    archetype: engine
+    group: common
+    git: { origin: git@github.com:user/BEngine.git }
+    version: 0.2.0
+    deps: [AKit]
+    allowed_deps: [AKit]
+  - name: CFeature
+    archetype: feature
+    group: domain
+    git: { origin: git@github.com:user/CFeature.git }
+    version: 1.0.0
+    deps: [AKit, BEngine]

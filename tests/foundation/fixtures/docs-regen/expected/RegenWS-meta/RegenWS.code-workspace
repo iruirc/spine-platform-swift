@@ -1,0 +1,29 @@
+{
+  "folders": [
+    {
+      "name": "RegenWS-meta",
+      "path": "."
+    },
+    {
+      "name": "AKit",
+      "path": "../sharedPackages/AKit"
+    },
+    {
+      "name": "BEngine",
+      "path": "../sharedPackages/BEngine"
+    },
+    {
+      "name": "CFeature",
+      "path": "../domainPackages/CFeature"
+    },
+    {
+      "name": "Tasks",
+      "path": "../Tasks"
+    },
+    {
+      "name": "Docs",
+      "path": "../Docs"
+    }
+  ],
+  "settings": {}
+}

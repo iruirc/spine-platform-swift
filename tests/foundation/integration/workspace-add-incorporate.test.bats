@@ -8,11 +8,11 @@ teardown() { ws_cleanup_tmpdirs; }
   local target="$(ws_mktemp_dir)/BareKit"
   mkdir -p "$target"
   echo "fake Package.swift" > "$target/Package.swift"
-  run "$(ws_repo_root)/tests/foundation/helpers/ws-add-driver.zsh" "$target" engine BareKit
+  run "$(ws_repo_root)/tests/foundation/helpers/ws-add-driver.zsh" "$target" BareKit
   [ "$status" -eq 0 ]
   [ -f "$target/CLAUDE.md" ]
-  run grep -F '**Archetype**: engine' "$target/CLAUDE.md"
-  [ "$status" -eq 0 ]
+  grep -Fxq '# Package: BareKit' "$target/CLAUDE.md"
+  grep -Fxq '<!-- WORKSPACE_PKG_BOUNDARY_BEGIN -->' "$target/CLAUDE.md"
 }
 
 @test "incorporate package with existing CLAUDE.md: it is preserved + warning emitted" {
@@ -20,7 +20,7 @@ teardown() { ws_cleanup_tmpdirs; }
   mkdir -p "$target"
   echo "fake Package.swift" > "$target/Package.swift"
   echo "USER_OWNED_CONTENT" > "$target/CLAUDE.md"
-  run "$(ws_repo_root)/tests/foundation/helpers/ws-add-driver.zsh" "$target" engine HasCLAUDE
+  run "$(ws_repo_root)/tests/foundation/helpers/ws-add-driver.zsh" "$target" HasCLAUDE
   [ "$status" -eq 0 ]
   # The warning is half the test's name and was never asserted: silently keeping
   # the file reads to the caller exactly like having written a new one.
