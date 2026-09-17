@@ -6,6 +6,9 @@ set -euo pipefail
 source "${0:A:h}/../../../templates/workspace/lib/workspace-yml-parser.zsh"
 source "${0:A:h}/../../../templates/workspace/lib/workspace-graph.zsh"
 source "${0:A:h}/../../../templates/workspace/lib/workspace-project.zsh"
+source "${0:A:h}/../../../templates/workspace/lib/workspace-doc-markers.zsh"
+source "${0:A:h}/../../../templates/workspace/lib/workspace-docs.zsh"
+source "${0:A:h}/../../../templates/workspace/lib/workspace-package.zsh"
 
 ws_yml="${1:?usage: ws-init-driver.zsh <workspace.yml> <workspace-parent-dir>}"
 ws_parent="${2:?}"
@@ -120,6 +123,9 @@ ws_provision_block tasks Tasks tasks-repo
 ws_provision_block docs  Docs  docs-repo
 
 # Per package
+tools_version="$(wspkg::tools_version)"
+platforms_inline="$(wspkg::platforms_inline)"
+tests_kind="$(wspkg::tests_kind)"
 for p in $(wsyml::packages); do
   group="$(wsyml::package_field "$p" group 2>/dev/null || echo '')"
   ver="$(wsyml::package_field "$p" version)"
@@ -133,11 +139,19 @@ for p in $(wsyml::packages); do
   while IFS= read -r src; do
     rel="${src#$templates_root/package/}"
     rel="${rel%.tmpl}"
+    # A variant template renders only for the workspace's defaults.tests.
+    case "${rel##*.}" in
+      swift-testing|xctest)
+        [[ "${rel##*.}" == "$tests_kind" ]] || continue
+        rel="${rel%.*}"
+        ;;
+    esac
     rel="${rel//PACKAGE_NAMETests/${p}Tests}"
     rel="${rel//PACKAGE_NAME/$p}"
     dst="$pkg_dir/$rel"
     mkdir -p "${dst:h}"
-    sed -e "s|{{PACKAGE_NAME}}|$p|g" -e "s|{{VERSION}}|$ver|g" "$src" > "$dst"
+    sed -e "s|{{PACKAGE_NAME}}|$p|g" -e "s|{{VERSION}}|$ver|g" \
+        -e "s|{{SWIFT_TOOLS_VERSION}}|$tools_version|g" -e "s|{{PLATFORMS}}|$platforms_inline|g" "$src" > "$dst"
   done < <(find "$templates_root/package" -type f -name '*.tmpl')
   ( cd "$pkg_dir" && git init -q -b main )
 done

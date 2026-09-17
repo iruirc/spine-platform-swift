@@ -16,13 +16,24 @@ teardown() { ws_cleanup_tmpdirs; }
 
 tree_hash() { find "$PARENT" -type f -not -path '*/.git/*' -exec md5 -q {} + | md5 -q; }
 
+# The tools version of a manifest comes from the machine that generated it, so the golden files hold
+# one value and both sides are read with it masked; the test below asserts the real one.
+norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|'; }
+
 @test "a new workspace matches the golden files" {
   n=0
   while IFS= read -r f; do
     n=$((n + 1))
-    diff -u "$GOLDEN/$f" "$PARENT/$f" || return 1
+    diff -u <(norm < "$GOLDEN/$f") <(norm < "$PARENT/$f") || return 1
   done < <(cd "$GOLDEN" && find . -type f | sed 's|^\./||' | LC_ALL=C sort)
-  [ "$n" -eq 11 ] || { echo "compared $n golden files; the scan went vacuous"; return 1; }
+  [ "$n" -eq 14 ] || { echo "compared $n golden files; the scan went vacuous"; return 1; }
+}
+
+@test "a generated manifest names this machine's toolchain" {
+  local tools
+  tools="$(zsh -c "for f in workspace-yml-parser workspace-doc-markers workspace-docs workspace-package; do source '$(ws_repo_root)/templates/workspace/lib/'\$f.zsh; done; wsyml::load '$META/workspace.yml'; wspkg::tools_version")"
+  [[ "$tools" =~ ^[0-9]+\.[0-9]+$ ]] || { echo "no toolchain version: $tools"; return 1; }
+  grep -Fxq "// swift-tools-version: $tools" "$PARENT/sharedPackages/AKit/Package.swift"
 }
 
 @test "a second run and --check change nothing" {
@@ -200,4 +211,74 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   run "$REGEN"
   [ "$status" -eq 4 ]
   [[ "$output" == *"no workspace.yml"* ]]
+}
+
+@test "--check shows a manifest that lost a dependency and writes nothing" {
+  local m="$PARENT/domainPackages/CFeature/Package.swift"
+  grep -v '.package(path: "../../sharedPackages/BEngine")' "$m" > "$BATS_TEST_TMPDIR/stale.swift"
+  cp "$BATS_TEST_TMPDIR/stale.swift" "$m"
+  cd "$META"
+  run "$REGEN" --check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'+        .package(path: "../../sharedPackages/BEngine"),'* ]] || return 1
+  cmp "$BATS_TEST_TMPDIR/stale.swift" "$m"
+  run "$REGEN"
+  [ "$status" -eq 0 ]
+  cmp "$GOLDEN/domainPackages/CFeature/Package.swift" "$m"
+}
+
+@test "an external dep with no version requirement is reported and left out of the manifest" {
+  cd "$META"
+  run "$REGEN"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"sharedPackages/AKit/Package.swift: external dep https://github.com/apple/swift-algorithms.git has no version requirement"* ]] || return 1
+  [ "${lines[${#lines[@]}-1]}" = "workspace-docs-regen: regenerated=0 drifted=0 malformed=0 missing=0 pending=0" ]
+  run grep -c 'swift-algorithms' "$PARENT/sharedPackages/AKit/Package.swift"
+  [ "$output" = "0" ]
+}
+
+@test "a manifest below the stack is named on every run and never rewritten" {
+  local m="$PARENT/sharedPackages/BEngine/Package.swift"
+  sed -i '' -e 's|^// swift-tools-version: .*|// swift-tools-version: 5.9|' \
+            -e 's|\[\.iOS(\.v17), \.macOS(\.v14)\]|[.iOS(.v15), .macOS(.v14)]|' "$m"
+  cd "$META"
+  run "$REGEN"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"sharedPackages/BEngine/Package.swift: swift-tools-version 5.9 < 6.0 (fix by hand)"* ]] || return 1
+  [[ "$output" == *"sharedPackages/BEngine/Package.swift: platforms .iOS(.v15) below defaults.platforms ios 17.0 (fix by hand)"* ]] || return 1
+  grep -Fxq '// swift-tools-version: 5.9' "$m"
+  grep -Fq '[.iOS(.v15), .macOS(.v14)]' "$m"
+}
+
+@test "--adopt brings a 1.14 manifest under the markers and fills it" {
+  local m="$PARENT/sharedPackages/BEngine/Package.swift"
+  cp "$(ws_fixture_path docs-regen/pre-markers/sharedPackages/BEngine/Package.swift)" "$m"
+  cd "$META"
+  run "$REGEN" --adopt
+  [ "$status" -eq 1 ]
+  [ "${lines[${#lines[@]}-1]}" = "workspace-docs-regen: regenerated=0 drifted=0 malformed=0 missing=0 pending=1" ]
+  cmp "$(ws_fixture_path docs-regen/pre-markers/sharedPackages/BEngine/Package.swift)" "$m"
+  run "$REGEN" --adopt --yes
+  [ "$status" -eq 0 ]
+  grep -Fxq '        .package(path: "../AKit"),' "$m"
+  grep -Fxq '            .product(name: "AKit", package: "AKit"),' "$m"
+  run grep -c 'Filled by' "$m"
+  [ "$output" = "0" ]
+  # The stack it was adopted with stays 1.14's, and saying so does not colour the exit code.
+  run "$REGEN" --check
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"swift-tools-version 5.9 < 6.0"* ]] || return 1
+}
+
+@test "--adopt reports a manifest whose arrays are the user's and changes nothing" {
+  local m="$PARENT/sharedPackages/BEngine/Package.swift"
+  cp "$(ws_fixture_path docs-regen/pre-markers/sharedPackages/BEngine/Package.swift)" "$m"
+  sed -i '' -e 's|// Filled by.*|.package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),|' "$m"
+  cp "$m" "$BATS_TEST_TMPDIR/hand-written.swift"
+  cd "$META"
+  run "$REGEN" --adopt --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Package.swift: not the shape the package template renders; add both marker pairs by hand"* ]] || return 1
+  [ "${lines[${#lines[@]}-1]}" = "workspace-docs-regen: regenerated=0 drifted=0 malformed=0 missing=0 pending=1" ]
+  cmp "$BATS_TEST_TMPDIR/hand-written.swift" "$m"
 }

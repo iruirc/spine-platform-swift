@@ -1,20 +1,21 @@
-// swift-tools-version: 5.9
+// swift-tools-version: {{SWIFT_TOOLS_VERSION}}
 import PackageDescription
 
 let package = Package(
     name: "{{PACKAGE_NAME}}",
-    platforms: [
-        .iOS(.v15),
-        .macOS(.v12)
-    ],
+    platforms: [{{PLATFORMS}}],
     products: [
         .library(name: "{{PACKAGE_NAME}}", targets: ["{{PACKAGE_NAME}}"])
     ],
     dependencies: [
-        // Filled by `workspace-init` / `workspace-add` based on deps + external_deps in workspace.yml.
+        // WORKSPACE_PKG_MANIFEST_DEPS_BEGIN
+        // WORKSPACE_PKG_MANIFEST_DEPS_END
     ],
     targets: [
-        .target(name: "{{PACKAGE_NAME}}", dependencies: []),
+        .target(name: "{{PACKAGE_NAME}}", dependencies: [
+            // WORKSPACE_PKG_TARGET_DEPS_BEGIN
+            // WORKSPACE_PKG_TARGET_DEPS_END
+        ]),
         .testTarget(name: "{{PACKAGE_NAME}}Tests", dependencies: ["{{PACKAGE_NAME}}"])
     ]
 )

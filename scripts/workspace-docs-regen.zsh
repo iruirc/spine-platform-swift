@@ -12,7 +12,7 @@
 set -uo pipefail
 
 lib="${0:A:h}/../templates/workspace/lib"
-for f in workspace-yml-parser workspace-graph workspace-doc-markers workspace-archetypes workspace-docs; do
+for f in workspace-yml-parser workspace-graph workspace-doc-markers workspace-archetypes workspace-docs workspace-package; do
   source "$lib/$f.zsh"
 done
 
@@ -69,6 +69,7 @@ for p in ${(f)"$(wsyml::packages)"}; do
   add "$pdir/README.md" "PKG_HEADER PKG_DEPS" "" "$p" "$pdir"
   add "$pdir/CLAUDE.md" "PKG_META PKG_BOUNDARY PKG_PUBLIC_API" \
     "wrap|## Boundary contract|PKG_BOUNDARY|paragraph;wrap|## Public API|PKG_PUBLIC_API|section" "$p" "$pdir"
+  add "$pdir/Package.swift" "PKG_MANIFEST_DEPS PKG_TARGET_DEPS" "manifest" "$p" "$pdir"
 done
 
 content() {
@@ -83,11 +84,15 @@ content() {
     PKG_META) wsdocs::pkg_meta "$2" ;;
     PKG_BOUNDARY) wsdocs::pkg_boundary "$2" ;;
     PKG_PUBLIC_API) wsdocs::pkg_public_api "$2" "$3" ;;
+    PKG_MANIFEST_DEPS) wspkg::manifest_deps "$2" ;;
+    PKG_TARGET_DEPS) wspkg::target_deps "$2" ;;
   esac
 }
 
-tmp="$(mktemp -t wsregen.XXXXXX)" || exit 4
-trap 'rm -f -- "$tmp"' EXIT
+# The temp copy keeps the target's name: a marker's comment syntax follows the file's extension.
+tmpdir="$(mktemp -d -t wsregen.XXXXXX)" || exit 4
+trap 'rm -rf -- "$tmpdir"' EXIT
+tmp="$tmpdir/scratch"
 regenerated=0 drifted=0 malformed=0 missing=0 pending=0
 
 summary() { print "workspace-docs-regen: regenerated=$regenerated drifted=$drifted malformed=$malformed missing=$missing pending=$pending"; }
@@ -110,6 +115,7 @@ settle() {
 if [[ "$mode" == adopt || "$mode" == repair ]]; then
   for f in $files; do
     [[ -f "$f" ]] || continue
+    tmp="$tmpdir/${f:t}"
     if [[ "$mode" == repair ]]; then
       wsmark::lint "$f" 2>/dev/null && continue
       wsmark::repair_to "$f" "$tmp" || { (( malformed++ )); continue; }
@@ -121,6 +127,13 @@ if [[ "$mode" == adopt || "$mode" == repair ]]; then
         case "${parts[1]}" in
           wrap) wsmark::wrap "$tmp" "${parts[2]}" "${parts[3]}" "${parts[4]}" ;;
           unwrap) wsmark::unwrap "$tmp" "${parts[2]}" ;;
+          manifest)
+            if ! wspkg::adopt_to "$f" "$tmp" "${pkg_of[$f]}"; then
+              print -r -- "$f: not the shape the package template renders; add both marker pairs by hand"
+              cp -- "$f" "$tmp"
+              (( pending++ ))
+            fi
+            ;;
         esac
       done
     fi
@@ -135,10 +148,11 @@ fi
 
 for f in $files; do
   if [[ ! -f "$f" ]]; then (( missing++ )); continue; fi
+  tmp="$tmpdir/${f:t}"
   if ! wsmark::lint "$f"; then (( malformed++ )); continue; fi
   cp -- "$f" "$tmp"
   for m in ${(s: :)markers[$f]}; do
-    grep -qxF -- "<!-- WORKSPACE_${m}_BEGIN -->" "$tmp" || continue
+    wsmark::has "$tmp" "$m" || continue
     content "$m" "${pkg_of[$f]}" "${dir_of[$f]}" | wsmark::write "$tmp" "$m" || exit 4
   done
   settle "$f"
@@ -146,6 +160,7 @@ done
 
 if [[ "$(wsyml::get '.workspace.xcworkspace' 2>/dev/null)" != false ]]; then
   f="$meta/$ws.xcworkspace/contents.xcworkspacedata"
+  tmp="$tmpdir/${f:t}"
   wsdocs::xcworkspace > "$tmp" || exit 4
   settle "$f"
 fi
@@ -153,6 +168,7 @@ fi
 # The rest of the .code-workspace is the user's editor settings, so only folders is compared and set.
 if [[ "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
   f="$meta/$ws.code-workspace"
+  tmp="$tmpdir/${f:t}"
   want="$(wsdocs::code_workspace_folders)"
   if [[ -f "$f" ]]; then
     if ! have="$(yq -p=json -o=json -I=0 '.folders' "$f" 2>/dev/null)"; then
@@ -179,6 +195,13 @@ if [[ "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
     fi
   fi
 fi
+
+# What the toolkit reports and never rewrites: a manifest older than the stack this plugin generates.
+for p in ${(f)"$(wsyml::packages)"}; do
+  [[ -z "$only" || "$p" == "$only" ]] || continue
+  pdir="$parent/$(wsdocs::pkg_dir "$p")"
+  wspkg::diagnose "$p" "$pdir/Package.swift" "${pdir#$parent/}/Package.swift"
+done
 
 summary
 (( malformed )) && exit 2
