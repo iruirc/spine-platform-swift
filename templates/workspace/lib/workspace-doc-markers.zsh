@@ -1,6 +1,33 @@
 #!/usr/bin/env zsh
 # workspace-doc-markers.zsh — parse + replace WORKSPACE_*_BEGIN / _END regions.
 
+# A marker's syntax follows the file it lives in: Swift takes a line comment, which may be indented
+# so it can sit inside the array it owns; everything else takes the HTML comment of a markdown file.
+_wsmark_begin() {
+  if [[ "${1:e}" == swift ]]; then print -r -- "// WORKSPACE_${2}_BEGIN"
+  else print -r -- "<!-- WORKSPACE_${2}_BEGIN -->"; fi
+}
+
+_wsmark_end() {
+  if [[ "${1:e}" == swift ]]; then print -r -- "// WORKSPACE_${2}_END"
+  else print -r -- "<!-- WORKSPACE_${2}_END -->"; fi
+}
+
+# 1 when a marker line of this file may carry leading whitespace.
+_wsmark_lax() { [[ "${1:e}" == swift ]] && print 1 || print 0 }
+
+# True when <file> carries the BEGIN marker of <name>.
+wsmark::has() {
+  local file="$1" name="$2" begin
+  [[ -r "$file" ]] || return 1
+  begin="$(_wsmark_begin "$file" "$name")"
+  if [[ "$(_wsmark_lax "$file")" == 1 ]]; then
+    grep -qE -- "^[[:space:]]*${begin}\$" "$file"
+  else
+    grep -qxF -- "$begin" "$file"
+  fi
+}
+
 wsmark::read() {
   local file="$1" name="$2"
   if [[ -z "$file" || -z "$name" ]]; then
@@ -11,12 +38,13 @@ wsmark::read() {
     print -u2 "wsmark::read: cannot read $file"
     return 4
   fi
-  local begin="<!-- WORKSPACE_${name}_BEGIN -->"
-  local end="<!-- WORKSPACE_${name}_END -->"
-  awk -v b="$begin" -v e="$end" '
+  local begin="$(_wsmark_begin "$file" "$name")"
+  local end="$(_wsmark_end "$file" "$name")"
+  awk -v b="$begin" -v e="$end" -v lax="$(_wsmark_lax "$file")" '
+    function key(s) { if (lax) sub(/^[ \t]+/, "", s); return s }
     BEGIN { inside = 0; found = 0 }
-    $0 == b { inside = 1; found++; next }
-    $0 == e { inside = 0; next }
+    key($0) == b { inside = 1; found++; next }
+    key($0) == e { inside = 0; next }
     inside { print }
     END { if (found != 1) exit 2 }
   ' "$file"
@@ -32,8 +60,8 @@ wsmark::write() {
     print -u2 "wsmark::write: cannot read+write $file"
     return 4
   fi
-  local begin="<!-- WORKSPACE_${name}_BEGIN -->"
-  local end="<!-- WORKSPACE_${name}_END -->"
+  local begin="$(_wsmark_begin "$file" "$name")"
+  local end="$(_wsmark_end "$file" "$name")"
   # Guard: refuse to write to ambiguous targets. awk's $0 == b matches every
   # BEGIN line, so duplicates would be silently populated together. Missing
   # markers leave nothing to write to.
@@ -54,18 +82,21 @@ wsmark::write() {
   cat - > "$nc_file"
   local tmp
   tmp="$(mktemp -t wsmark.XXXXXX)" || { rm -f "$nc_file"; return 4; }
-  awk -v b="$begin" -v e="$end" -v nc_file="$nc_file" '
+  awk -v b="$begin" -v e="$end" -v nc_file="$nc_file" -v lax="$(_wsmark_lax "$file")" '
+    function key(s) { if (lax) sub(/^[ \t]+/, "", s); return s }
     BEGIN {
       inside = 0
       nc = ""
+      has = 0
       while ((getline line < nc_file) > 0) {
+        has = 1
         if (nc == "") nc = line
         else nc = nc "\n" line
       }
       close(nc_file)
     }
-    $0 == b { print; print nc; inside = 1; next }
-    $0 == e { print; inside = 0; next }
+    key($0) == b { print; if (has) print nc; inside = 1; next }
+    key($0) == e { print; inside = 0; next }
     inside { next }
     { print }
   ' "$file" > "$tmp" || { rm -f "$tmp" "$nc_file"; return 4; }
@@ -83,10 +114,17 @@ wsmark::lint() {
   local errs=0
   local -a open_stack open_lines
   local -A closed_at
-  local lineno=0 line name top i
+  local lineno=0 line name top i bre ere
+  if [[ "${file:e}" == swift ]]; then
+    bre='^[[:space:]]*// WORKSPACE_([A-Z_]+)_BEGIN$'
+    ere='^[[:space:]]*// WORKSPACE_([A-Z_]+)_END$'
+  else
+    bre='^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$'
+    ere='^<!-- WORKSPACE_([A-Z_]+)_END -->$'
+  fi
   while IFS= read -r line || [[ -n "$line" ]]; do
     ((lineno++))
-    if [[ "$line" =~ '^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$' ]]; then
+    if [[ "$line" =~ $bre ]]; then
       name="${match[1]}"
       if (( ${+closed_at[$name]} )); then
         print -u2 "$file:$lineno: second WORKSPACE_${name} pair (first closed at line ${closed_at[$name]})"
@@ -102,7 +140,7 @@ wsmark::lint() {
       done
       open_stack+=("$name")
       open_lines+=("$lineno")
-    elif [[ "$line" =~ '^<!-- WORKSPACE_([A-Z_]+)_END -->$' ]]; then
+    elif [[ "$line" =~ $ere ]]; then
       name="${match[1]}"
       if (( ${#open_stack[@]} == 0 )); then
         print -u2 "$file:$lineno: orphan WORKSPACE_${name}_END (no matching _BEGIN)"
@@ -139,18 +177,25 @@ wsmark::lint() {
 }
 
 wsmark::repair_to() {
-  local file="$1" out="$2" lineno line name top m i found
+  local file="$1" out="$2" lineno line name top m i found bre ere
   if [[ ! -r "$file" || -z "$out" ]]; then
     print -u2 "wsmark::repair_to: usage: <readable-file> <out-file>"
     return 4
   fi
   : > "$out" || return 4
+  if [[ "${file:e}" == swift ]]; then
+    bre='^[[:space:]]*// WORKSPACE_([A-Z_]+)_BEGIN$'
+    ere='^[[:space:]]*// WORKSPACE_([A-Z_]+)_END$'
+  else
+    bre='^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$'
+    ere='^<!-- WORKSPACE_([A-Z_]+)_END -->$'
+  fi
   local -a open_stack
   local -A closed seconds
   lineno=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     ((lineno++))
-    if [[ "$line" =~ '^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$' ]]; then
+    if [[ "$line" =~ $bre ]]; then
       name="${match[1]}"
       found=0
       for ((i=1; i<=${#open_stack[@]}; i++)); do
@@ -161,7 +206,7 @@ wsmark::repair_to() {
       if (( ${+closed[$name]} )); then seconds[$name]=1; continue; fi
       open_stack+=("$name")
       print -r -- "$line" >> "$out"
-    elif [[ "$line" =~ '^<!-- WORKSPACE_([A-Z_]+)_END -->$' ]]; then
+    elif [[ "$line" =~ $ere ]]; then
       name="${match[1]}"
       if (( ${+seconds[$name]} )); then unset "seconds[$name]"; continue; fi
       (( ${#open_stack[@]} == 0 )) && continue
@@ -179,7 +224,7 @@ wsmark::repair_to() {
   done < "$file"
   while (( ${#open_stack[@]} > 0 )); do
     m="${open_stack[-1]}"
-    print -r -- "<!-- WORKSPACE_${m}_END -->" >> "$out"
+    _wsmark_end "$file" "$m" >> "$out"
     open_stack[-1]=()
   done
   return 0
@@ -264,7 +309,11 @@ wsmark::unwrap() {
   [[ -r "$file" && -w "$file" && -n "$name" ]] || { print -u2 "wsmark::unwrap: usage: <file> <marker-name>"; return 4; }
   local tmp
   tmp="$(mktemp -t wsmark-unwrap.XXXXXX)" || return 4
-  grep -vxF -e "<!-- WORKSPACE_${name}_BEGIN -->" -e "<!-- WORKSPACE_${name}_END -->" -- "$file" > "$tmp"
+  if [[ "${file:e}" == swift ]]; then
+    grep -vE -- "^[[:space:]]*// WORKSPACE_${name}_(BEGIN|END)$" "$file" > "$tmp"
+  else
+    grep -vxF -e "<!-- WORKSPACE_${name}_BEGIN -->" -e "<!-- WORKSPACE_${name}_END -->" -- "$file" > "$tmp"
+  fi
   mv -- "$tmp" "$file"
   return 0
 }

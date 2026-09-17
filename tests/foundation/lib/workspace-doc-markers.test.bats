@@ -170,3 +170,83 @@ teardown() { ws_cleanup_tmpdirs; }
   [ "$status" -eq 0 ]
   [ "$(cat "$tmp")" = "$(grep -v WORKSPACE_PKG_LIST "$(ws_fixture_path markers/well-formed.md)")" ]
 }
+
+# A Swift manifest carries its markers as line comments, indented to the array they own.
+_ws_swift_manifest() {
+  local f="$1"
+  cat > "$f" <<'SWIFT'
+// swift-tools-version: 6.4
+let package = Package(
+    dependencies: [
+        // WORKSPACE_PKG_MANIFEST_DEPS_BEGIN
+        // WORKSPACE_PKG_MANIFEST_DEPS_END
+    ]
+)
+SWIFT
+}
+
+@test "wsmark::write fills an indented marker in a .swift file and keeps the marker lines" {
+  local tmp="$(ws_mktemp_dir)/Package.swift"
+  _ws_swift_manifest "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; printf '%s\n' '        .package(path: \"../AKit\"),' | wsmark::write '$tmp' PKG_MANIFEST_DEPS"
+  [ "$status" -eq 0 ]
+  run grep -cxF '        // WORKSPACE_PKG_MANIFEST_DEPS_BEGIN' "$tmp"
+  [ "$output" = "1" ]
+  run grep -xF '        .package(path: "../AKit"),' "$tmp"
+  [ "$status" -eq 0 ]
+  run grep -xF '// WORKSPACE_PKG_MANIFEST_DEPS_BEGIN' "$tmp"
+  [ "$status" -eq 1 ]
+}
+
+@test "wsmark::read returns what an indented .swift marker holds" {
+  local tmp="$(ws_mktemp_dir)/Package.swift"
+  _ws_swift_manifest "$tmp"
+  zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; printf '%s\n' '        .package(path: \"../AKit\"),' | wsmark::write '$tmp' PKG_MANIFEST_DEPS"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::read '$tmp' PKG_MANIFEST_DEPS"
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = '        .package(path: "../AKit"),' ]
+}
+
+@test "wsmark::lint accepts a well-formed .swift file and flags a missing END" {
+  local dir="$(ws_mktemp_dir)"
+  _ws_swift_manifest "$dir/Package.swift"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$dir/Package.swift'"
+  [ "$status" -eq 0 ]
+  grep -v 'WORKSPACE_PKG_MANIFEST_DEPS_END' "$dir/Package.swift" > "$dir/Broken.swift"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$dir/Broken.swift'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"missing WORKSPACE_PKG_MANIFEST_DEPS_END"* ]]
+}
+
+@test "wsmark::has answers for both comment styles" {
+  local dir="$(ws_mktemp_dir)"
+  _ws_swift_manifest "$dir/Package.swift"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::has '$dir/Package.swift' PKG_MANIFEST_DEPS"
+  [ "$status" -eq 0 ]
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::has '$dir/Package.swift' PKG_TARGET_DEPS"
+  [ "$status" -eq 1 ]
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::has '$(ws_fixture_path markers/well-formed.md)' PKG_LIST"
+  [ "$status" -eq 0 ]
+}
+
+@test "wsmark::unwrap drops indented .swift markers and keeps the body" {
+  local tmp="$(ws_mktemp_dir)/Package.swift"
+  _ws_swift_manifest "$tmp"
+  zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; printf '%s\n' '        .package(path: \"../AKit\"),' | wsmark::write '$tmp' PKG_MANIFEST_DEPS"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::unwrap '$tmp' PKG_MANIFEST_DEPS"
+  [ "$status" -eq 0 ]
+  run grep -c 'WORKSPACE_PKG_MANIFEST_DEPS' "$tmp"
+  [ "$output" = "0" ]
+  run grep -xF '        .package(path: "../AKit"),' "$tmp"
+  [ "$status" -eq 0 ]
+}
+
+@test "wsmark::repair_to closes an unclosed .swift marker with a line comment" {
+  local dir="$(ws_mktemp_dir)"
+  _ws_swift_manifest "$dir/Package.swift"
+  grep -v 'WORKSPACE_PKG_MANIFEST_DEPS_END' "$dir/Package.swift" > "$dir/Broken.swift"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::repair_to '$dir/Broken.swift' '$dir/Fixed.swift'"
+  [ "$status" -eq 0 ]
+  run grep -xF '// WORKSPACE_PKG_MANIFEST_DEPS_END' "$dir/Fixed.swift"
+  [ "$status" -eq 0 ]
+}
