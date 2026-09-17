@@ -353,3 +353,23 @@ EOF
   [ "$status" -eq 4 ]
   [[ "$output" == *"unknown key 'colour'"* ]]
 }
+
+@test "validate rejects a defaults.platforms key it does not support and a version that is not semver" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-platforms.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"defaults.platforms.watchos rejected"* ]]
+  [[ "$output" == *"defaults.platforms.ios 'seventeen' must match semver"* ]]
+}
+
+@test "validate rejects a defaults.tests value outside swift-testing|xctest" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-tests.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"defaults.tests 'quick-nimble' must be swift-testing|xctest"* ]]
+}
+
+@test "validate accepts a workspace that declares platforms and tests, and one that declares neither" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/pkg-manifest.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/minimal.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
