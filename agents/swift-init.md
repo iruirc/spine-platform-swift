@@ -212,7 +212,7 @@ Navigation follows `ui_framework`, never the architecture flag — the rule the 
 | UI framework | Navigation layer |
 |---|---|
 | `uikit` | `Coordinators/AppCoordinator.swift`, plus `CoordinatorFactory` once two features exist; `SceneDelegate` starts the coordinator (`arch-coordinator`) |
-| `swiftui` | `Navigation/AppRouter.swift` — `@MainActor @Observable`, holding `NavigationPath` and presentation state ("Router Class Pattern" in `arch-swiftui-navigation`); the `@main` App owns it and the root `NavigationStack`, and `*ModuleFactory` builds each screen inside `navigationDestination`; no `Coordinators/` |
+| `swiftui` | `Navigation/AppRouter.swift` — `@MainActor @Observable`, holding `NavigationPath` and presentation state (`arch-swiftui-navigation` → "Router Class Pattern (SwiftUI alternative to Coordinator)"); the `@main` App owns it and the root `NavigationStack`, and `*ModuleFactory` builds each screen inside `navigationDestination`; no `Coordinators/` |
 | `appkit` | `Coordinators/AppCoordinator.swift`, started from `AppDelegate`; no `SceneDelegate` |
 
 With `--architecture=tca` the scaffold follows `arch-tca` instead: `@Presents` and `StackState` replace both.

@@ -435,7 +435,7 @@ Custom strategies (Keychain, SQLite, server-synced) are written by conforming to
 
 **Caveats:**
 - `@Shared` participates in `TestStore` exhaustivity — every mutation must be asserted.
-- Never put auth tokens or PII in `@Shared(.appStorage(...))` — `UserDefaults` is plaintext, world-readable on jailbroken devices, and synced via iCloud Backup. Use a custom Keychain-backed `SharedKey` instead. See `swift-security`.
+- Never put auth tokens or PII in `@Shared(.appStorage(...))` — `UserDefaults` is plaintext, world-readable on jailbroken devices, and synced via iCloud Backup. Use a custom Keychain-backed `SharedKey` instead. See `@spine-platform-swift:swift-security`.
 - For read-only consumers, prefer `@SharedReader` to make intent explicit.
 
 ## Navigation
@@ -725,7 +725,7 @@ var body: some ReducerOf<Self> {
 
 Use sparingly:
 - **Local debugging only.** Wrap in `#if DEBUG` and remove before merge — never commit a reducer with `_printChanges()` in `body` long-term.
-- **Never on reducers handling auth, payments, or PII.** Tokens, passwords, profile data all end up in the console log and can leak via attached debugger, system logs, or shared screen recordings. Same risk for any logging middleware. See `swift-security` (M6 — Inadequate Privacy Controls) and the TCA-specific note there about action payloads showing up in `TestStore` failure diffs.
+- **Never on reducers handling auth, payments, or PII.** Tokens, passwords, profile data all end up in the console log and can leak via attached debugger, system logs, or shared screen recordings. Same risk for any logging middleware. See `@spine-platform-swift:swift-security` (M6 — Inadequate Privacy Controls) and the TCA-specific note there about action payloads showing up in `TestStore` failure diffs.
 
 For ongoing observability in shipped builds, build a dedicated logging reducer that explicitly redacts sensitive cases instead of using `_printChanges()`.
 

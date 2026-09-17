@@ -11,7 +11,7 @@ Every Swift package needs to be designed deliberately. There is no universal tem
 > - `di-composition-root` — where the host app plugs the package into when wiring its graph
 > - `di-module-assembly` — Factory pattern inside a Feature package and inside the host app
 > - `di-swinject` — if Swinject is the chosen DI framework in the host app (but **not** inside the package itself)
-> - `di-factory` — if Factory (hmlongco) is the chosen DI framework in the host app. The "do not import a DI framework in a package" rule applies to Factory too; modular `extension Container` per feature lives in the **app target**, see the `di-factory` "Modular Containers" section
+> - `di-factory` — if Factory (hmlongco) is the chosen DI framework in the host app. The "do not import a DI framework in a package" rule applies to Factory too; modular `extension Container` per feature lives in the **app target**, see `di-factory` → "Modular Organization"
 
 ## Decision tree: which kind of package is this?
 
@@ -41,7 +41,7 @@ digraph package_type {
 
 1. **Never import a DI framework** in the main target of a package — neither Swinject, nor Factory (FactoryKit), nor Resolver, nor Needle, nor Cleanse. It creates a hard coupling: the host is forced to use the same framework at the same major version.
    - **Exception:** the package's test target may import a DI framework to build a mock graph for integration tests.
-   - **About Factory specifically:** even though its `extension Container` pattern looks attractive for modular organization, putting `import FactoryKit` into an SPM package is the same rule violation as Swinject. Modular `extension Container { var foo: Factory<Foo> }` per feature lives in the **app target** (e.g. files like `Container+ProfileFeature.swift`, `Container+SettingsFeature.swift`), not in SPM packages. See `di-factory`, "Modular Containers" section.
+   - **About Factory specifically:** even though its `extension Container` pattern looks attractive for modular organization, putting `import FactoryKit` into an SPM package is the same rule violation as Swinject. Modular `extension Container { var foo: Factory<Foo> }` per feature lives in the **app target** (e.g. files like `Container+ProfileFeature.swift`, `Container+SettingsFeature.swift`), not in SPM packages. See `di-factory` → "Modular Organization".
 2. **Minimize `public`** — anything not needed outside the package stays `internal`. Every `public` is a public contract that can't be broken without a major version bump.
 3. **Domain packages don't depend on UIKit/SwiftUI/AppKit** — Models, Engine, business logic must be platform-independent. UI dependencies belong only in Feature packages.
 4. **No global singletons** in the package — that turns the package into a Service Locator and destroys testability.

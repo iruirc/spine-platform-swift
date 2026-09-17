@@ -493,7 +493,7 @@ intentSubject
 
 Model errors as part of `State` (e.g. `.failed(message)`), not as a separate `@Published var error: Error?`. Two sources of truth = MVI invariant violation.
 
-For mapping low-level errors (`URLError`, decoding) to user-facing `String` / typed enum, see `error-architecture` ("Mapping between layers").
+For mapping low-level errors (`URLError`, decoding) to user-facing `String` / typed enum, see `error-architecture` → "Layer-by-Layer Mapping".
 
 ## Performance
 
@@ -576,7 +576,7 @@ Because `State : Equatable`, View snapshot tests can pin a state and render the 
 
 ### Mocking dependencies
 
-Inject closures (`@Sendable () async throws -> [Item]`) rather than protocol-conforming objects. Closures are lightweight, value-typed, and require no test-double class hierarchy. For non-trivial dependency surfaces, prefer a protocol — see `arch-mvvm` "Testing".
+Inject closures (`@Sendable () async throws -> [Item]`) rather than protocol-conforming objects. Closures are lightweight, value-typed, and require no test-double class hierarchy. For non-trivial dependency surfaces, prefer a protocol — see `arch-mvvm` → "Testing ViewModel".
 
 ## Anti-Patterns
 
@@ -624,4 +624,4 @@ The migration is mechanical:
 - Closure dependencies → `@Dependency`.
 - `Store` → TCA `Store` / `StoreOf<Feature>`.
 
-See `arch-tca` "Migration paths" for the full procedure.
+See `arch-tca` → "Migration Paths" for the full procedure.
