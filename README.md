@@ -87,7 +87,8 @@ wired to local-path package dependencies), `workspace-add` adds or incorporates 
 
 ## The manifest
 
-`skills/manifest/SKILL.md` is the contract surface. Five tables, read by invoking the skill:
+`skills/manifest/SKILL.md` is the contract surface. Five required tables and `## Driver`, read by
+invoking the skill:
 
 | Table | Declares |
 |---|---|
@@ -96,13 +97,14 @@ wired to local-path package dependencies), `workspace-add` adds or incorporates 
 | `## Heuristics` | which repo signals (imports, tokens, paths) pin which axis value |
 | `## Topics` | topic → the skills that cover it, for the orchestrator's methodology skills |
 | `## Entrypoints` | `setup = swift-setup` — the platform half of installation |
+| `## Driver` | the driver a project gets when it never chose one, and the surfaces its projects run on |
 
 The manifest is the only thing spine-toolkit reads here. Everything else in this plugin is reached
 through it, or invoked by name by an agent.
 
 ## Requirements
 
-- `spine-toolkit` `>=1.3.0 <2`, declared as a dependency in `plugin.json`.
+- `spine-toolkit` `>=1.12.0 <2`, declared as a dependency in `plugin.json`.
   An installed core outside that range is not a warning: the host demotes this plugin and it does
   not load at all — no agents, no skills, no manifest.
 - The workspace skills need `yq` v4+ (`brew install yq`). `gh` is optional, needed only for
@@ -113,7 +115,8 @@ through it, or invoked by name by an agent.
 
 English is the source of truth. User-facing strings live in `skills/<name>/locales/en.md` with a
 key-for-key `ru.md` beside it. The active language comes from the project config's `## Language`
-block; skill triggers are bilingual regardless. Convention: `conventions/i18n.md`.
+block. Whatever it is, the agents, `swift-setup` and the three workspace skills list their triggers
+in both languages; the knowledge skills list English ones. Convention: `conventions/i18n.md`.
 
 ## Development
 
