@@ -118,6 +118,18 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   [ "$status" -eq 0 ]
 }
 
+@test "--adopt without --yes writes nothing even when there is nothing to adopt" {
+  printf '%s\n' 'public struct Engine {' '}' > "$PARENT/sharedPackages/BEngine/Sources/BEngine/Engine.swift"
+  cd "$META"
+  run "$REGEN" --adopt
+  [ "$status" -eq 0 ]
+  [ "${lines[${#lines[@]}-1]}" = "workspace-docs-regen: regenerated=0 drifted=0 malformed=0 missing=0 pending=0" ]
+  cmp "$GOLDEN/sharedPackages/BEngine/CLAUDE.md" "$PARENT/sharedPackages/BEngine/CLAUDE.md"
+  run "$REGEN" --repair
+  [ "$status" -eq 0 ]
+  cmp "$GOLDEN/sharedPackages/BEngine/CLAUDE.md" "$PARENT/sharedPackages/BEngine/CLAUDE.md"
+}
+
 @test "the .code-workspace keeps its settings; one that is not plain JSON is reported" {
   local cw="$META/RegenWS.code-workspace"
   yq -i -p=json -o=json -I=2 '.settings."editor.tabSize" = 4 | del(.folders[1])' "$cw"
