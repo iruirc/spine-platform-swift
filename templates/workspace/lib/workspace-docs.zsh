@@ -175,15 +175,17 @@ wsdocs::pkg_public_api() {
 wsdocs::xcworkspace() {
   local tmp p key repo projects="" pkgs=""
   tmp="$(mktemp -t wsdocs-xcws.XXXXXX)" || return 4
-  cp -- "$_WSDOCS_TEMPLATES/meta-repo/xcworkspace-contents.xml.tmpl" "$tmp"
+  cp -- "$_WSDOCS_TEMPLATES/meta-repo/xcworkspace-contents.xml.tmpl" "$tmp" || { rm -f -- "$tmp"; return 4; }
   while read -r key repo; do
     [[ -n "$repo" ]] && projects+="   <FileRef location=\"group:../$repo/$repo.xcodeproj\"></FileRef>"$'\n'
   done < <(wsdocs::apps)
   for p in ${(f)"$(wsyml::packages)"}; do
     pkgs+="   <FileRef location=\"group:../$(wsdocs::pkg_dir "$p")\"></FileRef>"$'\n'
   done
-  [[ -n "$projects" ]] && print -r -- "${projects%$'\n'}" | wsmark::write "$tmp" PROJECT_REFS
-  print -r -- "${pkgs%$'\n'}" | wsmark::write "$tmp" PKG_REFS
+  if [[ -n "$projects" ]]; then
+    print -r -- "${projects%$'\n'}" | wsmark::write "$tmp" PROJECT_REFS || { rm -f -- "$tmp"; return 4; }
+  fi
+  print -r -- "${pkgs%$'\n'}" | wsmark::write "$tmp" PKG_REFS || { rm -f -- "$tmp"; return 4; }
   cat -- "$tmp"
   rm -f -- "$tmp"
 }

@@ -64,13 +64,33 @@ tree_hash() { find "$PARENT" -type f -not -path '*/.git/*' -exec md5 -q {} + | m
   for p in sharedPackages/AKit domainPackages/CFeature; do
     printf '%s\n' '# stale' | zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::write '$PARENT/$p/README.md' PKG_HEADER"
   done
+  printf '%s\n' '- stale' | zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::write '$META/README.md' PKG_LIST"
   cd "$PARENT/domainPackages/CFeature"
   run "$REGEN" --pkg CFeature
   [ "$status" -eq 0 ]
   cmp "$GOLDEN/domainPackages/CFeature/README.md" "$PARENT/domainPackages/CFeature/README.md"
+  cmp "$GOLDEN/RegenWS-meta/README.md" "$META/README.md"
   grep -Fxq '# stale' "$PARENT/sharedPackages/AKit/README.md"
   run "$REGEN" --pkg Nope
   [ "$status" -eq 2 ]
+}
+
+@test "--check names a .code-workspace it would create" {
+  rm -f "$META/RegenWS.code-workspace"
+  cd "$META"
+  run "$REGEN" --check
+  [ "$status" -eq 1 ]
+  # bash 3.2's `set -e` does not act on a [[ ]] mid-body; `|| return 1` makes the check bite.
+  [[ "$output" == *"RegenWS.code-workspace: would be created"* ]] || return 1
+  [ ! -e "$META/RegenWS.code-workspace" ]
+}
+
+@test "a regenerated contents.xcworkspacedata is world-readable" {
+  rm -rf "$META/RegenWS.xcworkspace"
+  cd "$META"
+  run "$REGEN"
+  [ "$status" -eq 0 ]
+  [ "$(stat -f %Lp "$META/RegenWS.xcworkspace/contents.xcworkspacedata")" = 644 ]
 }
 
 @test "malformed markers exit 2 and leave the rest regenerated; --repair waits for --yes" {

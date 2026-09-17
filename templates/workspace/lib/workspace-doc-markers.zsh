@@ -119,7 +119,7 @@ wsmark::lint() {
           done
         fi
         if (( ${#open_stack[@]} > 0 )); then
-          closed_at[$name]=$lineno
+          (( ${+closed_at[$name]} )) || closed_at[$name]=$lineno
           open_stack[-1]=()
           open_lines[-1]=()
         fi
@@ -224,7 +224,12 @@ wsmark::wrap() {
   awk -v h="$heading" -v b="<!-- WORKSPACE_${name}_BEGIN -->" -v e="<!-- WORKSPACE_${name}_END -->" -v scope="$scope" '
     { line[NR] = $0 }
     END {
-      for (i = 1; i <= NR; i++) if (line[i] == h) { hl = i; break }
+      fence = 0; hl = 0
+      for (i = 1; i <= NR; i++) {
+        if (line[i] ~ /^```/) fence = !fence
+        if (!fence && line[i] == h) { hl = i; break }
+      }
+      if (!hl) exit 1
       fence = 0; last = NR
       for (i = hl + 1; i <= NR; i++) {
         if (line[i] ~ /^```/) fence = !fence
@@ -248,7 +253,7 @@ wsmark::wrap() {
         else if (first && i == last) print e
       }
     }
-  ' "$file" > "$tmp" || { rm -f "$tmp"; return 4; }
+  ' "$file" > "$tmp" || { rm -f "$tmp"; return 1; }
   mv -- "$tmp" "$file"
   return 0
 }

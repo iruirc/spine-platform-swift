@@ -95,6 +95,14 @@ teardown() { ws_cleanup_tmpdirs; }
   [[ "$output" == *"4: second WORKSPACE_X pair (first closed at line 3)"* ]]
 }
 
+@test "wsmark::lint on three pairs of one marker names the first close" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  printf '%s\n' '<!-- WORKSPACE_X_BEGIN -->' one '<!-- WORKSPACE_X_END -->' '<!-- WORKSPACE_X_BEGIN -->' two '<!-- WORKSPACE_X_END -->' '<!-- WORKSPACE_X_BEGIN -->' three '<!-- WORKSPACE_X_END -->' > "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$tmp'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"7: second WORKSPACE_X pair (first closed at line 3)"* ]]
+}
+
 @test "wsmark::repair_to drops a second pair's markers, keeps its text, and asks nothing" {
   local dir="$(ws_mktemp_dir)"
   printf '%s\n' '<!-- WORKSPACE_X_BEGIN -->' one '<!-- WORKSPACE_X_END -->' '<!-- WORKSPACE_X_BEGIN -->' two > "$dir/in.md"
@@ -125,6 +133,23 @@ teardown() { ws_cleanup_tmpdirs; }
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Public API' PKG_PUBLIC_API section && wsmark::wrap '$tmp' '## Empty' E body"
   [ "$status" -eq 0 ]
   [ "$(cat "$tmp")" = "$(printf '%s\n' '<!-- WORKSPACE_PKG_PUBLIC_API_BEGIN -->' '## Public API' '' '- a' '<!-- WORKSPACE_PKG_PUBLIC_API_END -->' '' '## Empty' '' '<!-- WORKSPACE_E_BEGIN -->' '<!-- WORKSPACE_E_END -->' '' '## Test')" ]
+}
+
+@test "wsmark::wrap section ignores a heading quoted inside a code fence and wraps the real one" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  printf '%s\n' '## Fenced' '```' '## Public API' '```' '' '## Public API' '' '- a' '' '## Test' > "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Public API' PKG_PUBLIC_API section"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$tmp")" = "$(printf '%s\n' '## Fenced' '```' '## Public API' '```' '' '<!-- WORKSPACE_PKG_PUBLIC_API_BEGIN -->' '## Public API' '' '- a' '<!-- WORKSPACE_PKG_PUBLIC_API_END -->' '' '## Test')" ]
+}
+
+@test "wsmark::wrap returns 1 and changes nothing when the only heading is inside a code fence" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  printf '%s\n' '## Fenced' '```' '## Public API' '```' '' '## Test' > "$tmp"
+  cp "$tmp" "$tmp.orig"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Public API' PKG_PUBLIC_API section"
+  [ "$status" -eq 1 ]
+  cmp "$tmp" "$tmp.orig"
 }
 
 @test "wsmark::wrap changes nothing when the marker is there, and returns 1 without the heading" {

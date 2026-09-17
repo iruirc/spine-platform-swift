@@ -102,7 +102,7 @@ settle() {
     diff -u --label "$file" --label "$file (regenerated)" -- "$old" "$tmp"
     return 0
   fi
-  mkdir -p -- "${file:h}" && cp -- "$tmp" "$file" || exit 4
+  mkdir -p -- "${file:h}" && cat -- "$tmp" > "$file" || exit 4
   (( regenerated++ ))
 }
 
@@ -169,9 +169,11 @@ if [[ "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
     fi
   else
     (( drifted++ ))
-    if [[ "$mode" != check ]]; then
+    if [[ "$mode" == check ]]; then
+      print -r -- "$f: would be created"
+    else
       sed "s|{{WORKSPACE_NAME}}|$ws|g" "${lib:h}/meta-repo/code-workspace.json.tmpl" \
-        | WANT="$want" yq -p=json -o=json -I=2 '.folders = env(WANT)' - > "$f" || exit 4
+        | WANT="$want" yq -p=json -o=json -I=2 '.folders = env(WANT)' - > "$tmp" && cat -- "$tmp" > "$f" || exit 4
       (( regenerated++ ))
     fi
   fi
