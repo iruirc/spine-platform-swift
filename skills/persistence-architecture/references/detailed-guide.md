@@ -1093,7 +1093,7 @@ Test the Repository implementation against a real DB but in-memory:
 
 | Framework | In-memory store |
 |---|---|
-| Core Data | `NSPersistentStoreDescription(url: URL(fileURLWithPath: "/dev/null"))` + `NSInMemoryStoreType` |
+| Core Data | `description.url = URL(fileURLWithPath: "/dev/null")` on the default SQLite type, as Pattern B's `.inMemory` does; not `NSInMemoryStoreType`, where batch insert, update and delete requests raise an Objective-C exception |
 | SwiftData | `ModelConfiguration(isStoredInMemoryOnly: true)` |
 | GRDB | `DatabaseQueue()`, or `DatabaseQueue(named:)` for several connections to one in-memory database; `DatabasePool` needs a file, because it switches the database to WAL |
 | Realm | `Realm.Configuration(inMemoryIdentifier: "test-\(UUID())")` |
