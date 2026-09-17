@@ -27,13 +27,13 @@ en
 - `agents/` — nine `swift-*` Claude Code subagents, named by the manifest's `## Roles` table
 - `commands/` — `/swift-init`, `/workspace-*`
 - `templates/workspace/`, `tests/foundation/`
-- `scripts/` plus `conventions/i18n.md` — five **adapted forks** of core's files, each recording the
-  core path it came from and that file's sha256. `lint-locales.sh` and `lint-manifest.sh` differ
-  from core only in comments; `lint-i18n.sh`, `test-foundation.sh` and `conventions/i18n.md` also
-  differ in logic or content, because this plugin has no `claude-md-stub` template, does have an
-  `integration` suite, and has its own orphan-key list. They are not copies — do not "restore" them
-  to match core. CI goes red when core's original moves, and a human decides whether the change
-  belongs here.
+- `scripts/` plus `conventions/i18n.md` — six **adapted forks** of core's files, each recording the
+  core path it came from and that file's sha256. `lint-core-refs.sh`, `lint-locales.sh` and
+  `lint-manifest.sh` differ from core only in comments; `lint-i18n.sh`, `test-foundation.sh` and
+  `conventions/i18n.md` also differ in logic or content, because this plugin has no `claude-md-stub`
+  template, does have an `integration` suite, and has its own orphan-key list. They are not copies —
+  do not "restore" them to match core. CI goes red when core's original moves, and a human decides
+  whether the change belongs here.
 
 ## Conventions
 
