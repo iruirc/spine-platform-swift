@@ -10,6 +10,15 @@ workspace-init pre-flight:
 ## preflight_required_yq_missing
 - required: yq        ✗ (установи: brew install yq)
 
+## preflight_required_swift_ok
+- required: swift     ✓ ({version})
+
+## preflight_required_swift_missing
+- required: swift     ✗ (установи Xcode или тулчейн Swift)
+
+## preflight_required_swift_too_old
+- required: swift     ✗ ({version} < 6.0; пакет генерируется под языковой режим Swift 6)
+
 ## preflight_optional_gh_ok
 - optional: gh        ✓
 
@@ -51,6 +60,15 @@ Workspace-зависимости (мультивыбор):
 
 ## qa_pkg_example_app
 Записать в workspace.yml Example/-приложение для пакета? Пока его ничто не генерирует.
+
+## qa_defaults_platforms
+Минимальные версии платформ для пакетов этого workspace: [ios 17.0 + macos 14.0 (по умолчанию) | ios 16.0 + macos 13.0 | ios 17.0 | ввести вручную]
+
+## qa_defaults_platforms_custom
+Платформы списком через запятую, например ios=17.0,macos=14.0:
+
+## qa_defaults_tests
+Фреймворк тестов нового пакета: [swift-testing (по умолчанию) | xctest]
 
 ## qa_tasks_enabled
 Создать общую Tasks/-папку на уровне workspace-parent (рядом с packages и project-репо)? (Y/N, по умолчанию Y)
