@@ -373,6 +373,12 @@ EOF
   [[ "$output" == *"defaults.platforms must be a map of ios/macos to a version"* ]]
 }
 
+@test "validate rejects a defaults.platforms that is an empty map" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-platforms-empty.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"defaults.platforms must have at least one entry"* ]]
+}
+
 @test "validate rejects an external dep's unquoted-float version, an unknown requirement key, and a two-key map" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-external-dep-version.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
@@ -381,14 +387,12 @@ EOF
   [[ "$output" == *"external dep https://example.com/three.git version must have exactly one key (from|exact|branch|revision)"* ]] || return 1
 }
 
-@test "validate accepts pkg-manifest.yml's external_deps: a from-map, a scalar, and a bare URL" {
+@test "validate accepts external_deps with all four requirement kinds, a URL-only map, and a bare URL string" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/pkg-manifest.yml)' && wsyml::validate"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
 }
 
 @test "validate accepts a workspace that declares platforms and tests, and one that declares neither" {
-  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/pkg-manifest.yml)' && wsyml::validate"
-  [ "$status" -eq 0 ]
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/minimal.yml)' && wsyml::validate"
   [ "$status" -eq 0 ]
 }

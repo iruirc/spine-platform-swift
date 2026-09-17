@@ -118,7 +118,7 @@ settle() {
 if [[ "$mode" == adopt || "$mode" == repair ]]; then
   for f in $files; do
     [[ -f "$f" ]] || continue
-    (( scratch++ )); tmp="$tmpdir/$scratch.${f:e}"
+    (( scratch++ )); tmp="$tmpdir/$scratch.${f:t}"
     if [[ "$mode" == repair ]]; then
       wsmark::lint "$f" 2>/dev/null && continue
       wsmark::repair_to "$f" "$tmp" || { (( malformed++ )); continue; }
@@ -151,7 +151,7 @@ fi
 
 for f in $files; do
   if [[ ! -f "$f" ]]; then (( missing++ )); continue; fi
-  (( scratch++ )); tmp="$tmpdir/$scratch.${f:e}"
+  (( scratch++ )); tmp="$tmpdir/$scratch.${f:t}"
   if ! wsmark::lint "$f"; then (( malformed++ )); continue; fi
   cp -- "$f" "$tmp" || exit 4
   for m in ${(s: :)markers[$f]}; do

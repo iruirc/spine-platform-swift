@@ -332,6 +332,8 @@ wsyml::validate() {
   # A non-map platforms (a scalar, or []) walks the key loop with nothing to iterate and would
   # otherwise pass silently, then feed wspkg::platform_floor a `has("platforms")` of true with no
   # keys to answer it — every generated manifest ends up with platforms: [] and no floor at all.
+  # An empty map {} passes the type check but has no keys to iterate, so it also renders
+  # platforms: [] in the generated manifest — reject it too.
   plat_declared="$(wsyml::get '.defaults | has("platforms")' 2>/dev/null || print -- false)"
   if [[ "$plat_declared" == true ]]; then
     plat_tag="$(wsyml::get '.defaults.platforms | tag' 2>/dev/null || true)"
@@ -340,22 +342,27 @@ wsyml::validate() {
       ((errs++))
     else
       plat_keys="$(wsyml::get '.defaults.platforms | keys | .[]?' 2>/dev/null || true)"
-      for pk in ${(f)plat_keys}; do
-        [[ -z "$pk" ]] && continue
-        case "$pk" in
-          ios|macos) ;;
-          *)
-            print -u2 "$_path: defaults.platforms.$pk rejected (ios|macos only)"
+      if [[ -z "$plat_keys" ]]; then
+        print -u2 "$_path: defaults.platforms must have at least one entry (ios|macos)"
+        ((errs++))
+      else
+        for pk in ${(f)plat_keys}; do
+          [[ -z "$pk" ]] && continue
+          case "$pk" in
+            ios|macos) ;;
+            *)
+              print -u2 "$_path: defaults.platforms.$pk rejected (ios|macos only)"
+              ((errs++))
+              continue
+              ;;
+          esac
+          pv="$(wsyml::get ".defaults.platforms.$pk" 2>/dev/null || true)"
+          if [[ ! "$pv" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+            print -u2 "$_path: defaults.platforms.$pk '$pv' must match semver M.m.p"
             ((errs++))
-            continue
-            ;;
-        esac
-        pv="$(wsyml::get ".defaults.platforms.$pk" 2>/dev/null || true)"
-        if [[ ! "$pv" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
-          print -u2 "$_path: defaults.platforms.$pk '$pv' must match semver M.m.p"
-          ((errs++))
-        fi
-      done
+          fi
+        done
+      fi
     fi
   fi
   tests_kind="$(wsyml::get '.defaults.tests' 2>/dev/null || true)"

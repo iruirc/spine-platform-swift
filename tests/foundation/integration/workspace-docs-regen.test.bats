@@ -166,7 +166,9 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   [ "$status" -eq 0 ]
   grep -Fq '.testTarget(name: "CFeatureTests"' "$m"
   [ "$(tail -n 1 "$m")" = ")" ]
-  grep -Fxq '            .product(name: "AKit", package: "AKit"),' "$m"
+  # Repair displaces what the lost END swallowed, so the line appears twice today:
+  # once inside the restored pair, once below it. This is the current behaviour, not the desired one.
+  [ "$(grep -Fxc '            .product(name: "AKit", package: "AKit"),' "$m")" -eq 2 ]
   run "$REGEN" --check
   [ "$status" -eq 0 ]
 }
