@@ -9,25 +9,18 @@ Multi-package SPM workspace.
 
 ## Quickstart
 
-```bash
-git clone <meta-repo-url> {{WORKSPACE_NAME}}-meta
-cd {{WORKSPACE_NAME}}-meta
-# clone all package repos:
-yq -p=yaml -o=tsv eval '.packages[] | [.name, .git.origin] | @tsv' workspace.yml \
-  | while IFS=$'\t' read -r name url; do git clone "$url" "../packages/$name"; done
-open {{WORKSPACE_NAME}}.xcworkspace
-```
+<!-- WORKSPACE_CLONE_BEGIN -->
+<!-- WORKSPACE_CLONE_END -->
 
 ## Daily ops
 
-- Add a package: `workspace-add --new <name>` or `workspace-add --incorporate <path>`
-- Regenerate doc sections: `workspace-docs-regen`
-
-Marker mismatch: `workspace-docs-regen --repair`. CI drift check: `workspace-docs-regen --check`.
+<!-- WORKSPACE_DAILY_OPS_BEGIN -->
+<!-- WORKSPACE_DAILY_OPS_END -->
 
 ## Schema
 
-`workspace.yml` is the single source of truth. Every field is annotated in `workspace-yml-skeleton.yml`, which ships inside the `spine-platform-swift` plugin (or run `workspace-init` to scaffold a new one).
+<!-- WORKSPACE_SCHEMA_BEGIN -->
+<!-- WORKSPACE_SCHEMA_END -->
 
 ## See also
 

@@ -5,8 +5,6 @@ set -euo pipefail
 
 source "${0:A:h}/../../../templates/workspace/lib/workspace-yml-parser.zsh"
 source "${0:A:h}/../../../templates/workspace/lib/workspace-graph.zsh"
-source "${0:A:h}/../../../templates/workspace/lib/workspace-doc-markers.zsh"
-source "${0:A:h}/../../../templates/workspace/lib/workspace-archetypes.zsh"
 source "${0:A:h}/../../../templates/workspace/lib/workspace-project.zsh"
 
 ws_yml="${1:?usage: ws-init-driver.zsh <workspace.yml> <workspace-parent-dir>}"
@@ -123,7 +121,6 @@ ws_provision_block docs  Docs  docs-repo
 
 # Per package
 for p in $(wsyml::packages); do
-  arch="$(wsyml::package_field "$p" archetype)"
   group="$(wsyml::package_field "$p" group 2>/dev/null || echo '')"
   ver="$(wsyml::package_field "$p" version)"
   if [[ -n "$group" ]]; then
@@ -140,16 +137,7 @@ for p in $(wsyml::packages); do
     rel="${rel//PACKAGE_NAME/$p}"
     dst="$pkg_dir/$rel"
     mkdir -p "${dst:h}"
-    sed -e "s|{{PACKAGE_NAME}}|$p|g" \
-        -e "s|{{ARCHETYPE}}|$arch|g" \
-        -e "s|{{GROUP}}|${group:-—}|g" \
-        -e "s|{{VERSION}}|$ver|g" \
-        -e "s|{{WORKSPACE_NAME}}|$ws_name|g" \
-        -e "s|{{META_REPO_DIR}}|${ws_name}-meta|g" \
-        -e "s|{{ALLOWED_DEPS_CSV}}|—|g" \
-        -e "s|{{EXTERNAL_DEPS_CSV}}|—|g" \
-        -e "s|{{ARCHETYPE_BOUNDARY_TEXT}}|$(wsarch::boundary_text "$arch" | sed 's/|/\\|/g')|g" \
-        "$src" > "$dst"
+    sed -e "s|{{PACKAGE_NAME}}|$p|g" -e "s|{{VERSION}}|$ver|g" "$src" > "$dst"
   done < <(find "$templates_root/package" -type f -name '*.tmpl')
   ( cd "$pkg_dir" && git init -q -b main )
 done
@@ -169,20 +157,8 @@ if [[ -n "$proj_name" ]]; then
     [[ -z "$app_repo" ]] && continue
     "${0:A:h}/ws-project-init-driver.zsh" "$ws_yml" "$ws_parent" "$ak" "$app_repo"
   done
-
-  # Render WORKSPACE_PROJECT_REFS in xcworkspace (workspace-doc-markers.zsh already sourced at top)
-  xcwsfile="$meta_dir/${ws_name}.xcworkspace/contents.xcworkspacedata"
-  mkdir -p "$meta_dir/${ws_name}.xcworkspace"
-  if [[ ! -f "$xcwsfile" ]]; then
-    cp "$templates_root/meta-repo/xcworkspace-contents.xml.tmpl" "$xcwsfile"
-  fi
-  proj_refs=""
-  for ak in ${(f)app_keys}; do
-    [[ "$ak" =~ ^(ios|macos)$ ]] || continue
-    app_repo="$(wsyml::get ".project.apps.$ak.repo" 2>/dev/null || true)"
-    [[ -z "$app_repo" ]] && app_repo="$(wsyml::get ".project.apps.$ak" 2>/dev/null || true)"
-    [[ -z "$app_repo" ]] && continue
-    proj_refs+="   <FileRef location=\"group:../$app_repo/$app_repo.xcodeproj\"></FileRef>"$'\n'
-  done
-  print -r -- "${proj_refs%$'\n'}" | wsmark::write "$xcwsfile" PROJECT_REFS
 fi
+
+# s07_regen
+regen="${0:A:h}/../../../scripts/workspace-docs-regen.zsh"
+( cd "$meta_dir" && "$regen" >&2 )

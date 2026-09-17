@@ -1,0 +1,39 @@
+# RegenWS
+
+Multi-package SPM workspace.
+
+## Packages
+
+<!-- WORKSPACE_PKG_LIST_BEGIN -->
+<!-- WORKSPACE_PKG_LIST_END -->
+
+## Quickstart
+
+```bash
+git clone <meta-repo-url> RegenWS-meta
+cd RegenWS-meta
+# clone all package repos:
+yq -p=yaml -o=tsv eval '.packages[] | [.name, .git.origin] | @tsv' workspace.yml \
+  | while IFS=$'\t' read -r name url; do git clone "$url" "../packages/$name"; done
+open RegenWS.xcworkspace
+```
+
+## Daily ops
+
+- Add a package: `workspace-add --new <name>` or `workspace-add --incorporate <path>`
+- Regenerate doc sections: `workspace-docs-regen`
+- Switch branch across all repos: `workspace-branch switch --create <branch>` (Cluster 2)
+- Switch deps to local overrides: `workspace-deps-switch local` (Cluster 2)
+- Resolve packages: `workspace-resolve` (Cluster 2)
+- Release: `workspace-release` (Cluster 2)
+
+Marker mismatch: `workspace-docs-regen --repair`. CI drift check: `workspace-docs-regen --check`.
+
+## Schema
+
+`workspace.yml` is the single source of truth. Every field is annotated in `templates/workspace/workspace-yml-skeleton.yml` in the spine-platform-swift plugin (or run `workspace-init` to scaffold a new one).
+
+## See also
+
+- `ARCHITECTURE.md` — layer table + dependency graph.
+- `CONTRIBUTING.md` — archetype rules.

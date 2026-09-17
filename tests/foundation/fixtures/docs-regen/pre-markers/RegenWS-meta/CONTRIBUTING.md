@@ -1,0 +1,18 @@
+# RegenWS — Contributing
+
+## Archetype rules
+
+| Archetype | Cannot depend on | Can depend on |
+|-----------|------------------|---------------|
+| api-contract | anyone | external_deps only |
+| engine | engine, library, feature | api-contract |
+| library | feature | api-contract, engine, library |
+| feature | nothing else | api-contract, engine, library |
+
+`allowed_deps` per package overrides defaults. `workspace-check` enforces both.
+
+## Project-specific rules
+
+<!-- WORKSPACE_PROJECT_RULES_BEGIN -->
+<!-- WORKSPACE_PROJECT_RULES_END -->
+Keep UI state out of packages.
