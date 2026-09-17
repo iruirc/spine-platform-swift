@@ -19,8 +19,9 @@ en
 
 ## Repository layout
 
-- `skills/manifest/SKILL.md` — **the contract core reads.** Five tables: `## Roles`, `## Axes`,
-  `## Heuristics`, `## Topics`, `## Entrypoints`. Everything core knows about Swift arrives here.
+- `skills/manifest/SKILL.md` — **the contract core reads.** Five required tables: `## Roles`,
+  `## Axes`, `## Heuristics`, `## Topics`, `## Entrypoints`, and `## Driver`, which this
+  platform declares. Everything core knows about Swift arrives here.
 - `skills/` — knowledge skills: `arch-*`, `di-*`, `net-*`, `persistence-*`, `reactive-*`,
   `workspace-*`, `swift-setup`
 - `agents/` — nine `swift-*` Claude Code subagents, named by the manifest's `## Roles` table

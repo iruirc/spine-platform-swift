@@ -125,9 +125,10 @@ section_cells() {
 @test "a reference to another skill's section is written in the arrow form" {
   # The test above resolves only `<skill>` → "<H2>"; a section named any other way goes unchecked.
   names="$(ls "$ROOT/skills" | paste -sd '|' -)"
-  [ -n "$names" ] || { echo "no skills found; the scan went vacuous"; return 1; }
+  n="$(ls "$ROOT/skills" | wc -l | tr -d ' ')"
+  [ "$n" -ge 25 ] || { echo "found $n skills; the scan went vacuous"; return 1; }
   hits="$(cd "$ROOT" && grep -rnE \
-    "\`($names)\`,? \(?\"[^\"]+\"|\"[^\"]+\"( section| archetype)? (in|of) (the )?\`($names)\`" \
+    "\`($names)\`,? \(?[\"«][^\"»]+[\"»]|[\"«][^\"»]+[\"»]( section| archetype)? (in|of) (the )?\`($names)\`" \
     skills agents commands || true)"
   [ -z "$hits" ] || { echo "$hits"; return 1; }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# spine-platform-swift's manifest is the five-table contract spine-toolkit documents and
+# spine-platform-swift's manifest is the contract spine-toolkit documents and
 # demonstrates with its own reference platform: these tests check the real manifest
 # against that same contract. They live here rather than in core because core's
 # suite must reach no tree but core's — reaching this one leaves core's tests
