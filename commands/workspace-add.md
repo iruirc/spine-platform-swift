@@ -4,4 +4,4 @@ description: |
   Добавить новый пакет или включить существующий standalone-пакет в workspace.
 ---
 
-Activate `spine-platform-swift:workspace-add` and follow its flow. Required flag: `--new <name>` or `--incorporate <path>`.
+Activate `spine-platform-swift:workspace-add` and follow its flow. Required flag: `--new <name>` or `--incorporate <path>`. Optional flags: `--push` with `--new`; `--name <override>` and `--symlink` with `--incorporate`.
