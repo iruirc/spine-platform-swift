@@ -793,8 +793,8 @@ struct FeatureView: View {
 > **⚠ Don't reach for `@Observable` on a UIKit-only project.** UIKit has no built-in bridge to the Observation framework. `withObservationTracking` is one-shot — it fires `onChange` exactly once and must be re-registered after every callback. There is no equivalent of `@State` / `@Bindable` for UIViewController, no automatic property-level diffing, and no Combine-style cancellation lifecycle.
 >
 > **If your project is UIKit + iOS 17+, choose one of these instead:**
-> - **Combine + @Published** (Approach 2) — works on iOS 13+, has `sink` / `assign` / cancellation via `AnyCancellable`, supports stream composition.
-> - **async/await + @MainActor** (Approach 3) — works on iOS 15+, simpler if your flows are linear and you don't need stream operators.
+> - **Combine + @Published** (Approach 2) — has `sink` / `assign` / cancellation via `AnyCancellable`, supports stream composition.
+> - **async/await + @MainActor** (Approach 3) — simpler if your flows are linear and you don't need stream operators.
 >
 > **The only legitimate reason to put @Observable on a UIKit ViewModel** is if the same ViewModel must also drive a SwiftUI screen (e.g. you're migrating UIKit → SwiftUI screen-by-screen and want one ViewModel to power both). In that case the snippet below shows the manual tracking pattern. Otherwise prefer Combine or async/await — they exist precisely for this case.
 
