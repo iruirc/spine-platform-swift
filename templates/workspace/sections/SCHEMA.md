@@ -1,0 +1,1 @@
+`workspace.yml` is the single source of truth. Every field is annotated in `workspace-yml-skeleton.yml`, which ships inside the `spine-platform-swift` plugin (or run `workspace-init` to scaffold a new one).
