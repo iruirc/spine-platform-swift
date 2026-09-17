@@ -105,6 +105,7 @@ wsyml::validate() {
   local toolkit_lang toolkit_mode toolkit_progress
   local has_project proj_name app_keys ak app_repo
   local v mp_keys mpk mpv
+  local plat_keys pk pv tests_kind
   local -A seen group_set remote_set allowed_set seen_repos
 
   # Rule 1: workspace.name required, matches [A-Za-z][A-Za-z0-9-]*
@@ -322,6 +323,31 @@ wsyml::validate() {
       print -u2 "$_path: bootstrap.git_author '$author' must match 'Name <email@host>'"
       ((errs++))
     fi
+  fi
+
+  # Rule 15: defaults.platforms and defaults.tests. Both optional — an absent block means the
+  # toolkit's own floor (ios 17.0, macos 14.0) and swift-testing; see wspkg::platform_floor.
+  plat_keys="$(wsyml::get '.defaults.platforms | keys | .[]?' 2>/dev/null || true)"
+  for pk in ${(f)plat_keys}; do
+    [[ -z "$pk" ]] && continue
+    case "$pk" in
+      ios|macos) ;;
+      *)
+        print -u2 "$_path: defaults.platforms.$pk rejected (ios|macos only)"
+        ((errs++))
+        continue
+        ;;
+    esac
+    pv="$(wsyml::get ".defaults.platforms.$pk" 2>/dev/null || true)"
+    if [[ ! "$pv" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+      print -u2 "$_path: defaults.platforms.$pk '$pv' must match semver M.m.p"
+      ((errs++))
+    fi
+  done
+  tests_kind="$(wsyml::get '.defaults.tests' 2>/dev/null || true)"
+  if [[ -n "$tests_kind" && ! "$tests_kind" =~ ^(swift-testing|xctest)$ ]]; then
+    print -u2 "$_path: defaults.tests '$tests_kind' must be swift-testing|xctest"
+    ((errs++))
   fi
 
   # Project block validation (P-rules 1, 2, 3, 3a, 4-8)
