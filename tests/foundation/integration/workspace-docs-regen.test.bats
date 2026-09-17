@@ -93,6 +93,14 @@ tree_hash() { find "$PARENT" -type f -not -path '*/.git/*' -exec md5 -q {} + | m
   [ "$(stat -f %Lp "$META/RegenWS.xcworkspace/contents.xcworkspacedata")" = 644 ]
 }
 
+@test "a newly created .code-workspace is world-readable" {
+  rm -f "$META/RegenWS.code-workspace"
+  cd "$META"
+  run "$REGEN"
+  [ "$status" -eq 0 ]
+  [ "$(stat -f %Lp "$META/RegenWS.code-workspace")" = 644 ] || return 1
+}
+
 @test "malformed markers exit 2 and leave the rest regenerated; --repair waits for --yes" {
   printf '%s\n' '<!-- WORKSPACE_LAYERS_BEGIN -->' >> "$META/ARCHITECTURE.md"
   printf '%s\n' '- stale' | zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::write '$META/README.md' PKG_LIST"
