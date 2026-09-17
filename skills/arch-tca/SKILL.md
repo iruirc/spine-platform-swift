@@ -35,7 +35,7 @@ Unidirectional, reducer-based state management for SwiftUI. State is a value typ
 
 **Versions assumed:** TCA 1.7+ baseline (macro-based `@Reducer` + `@ObservableState`). `@Shared` examples require 1.17+ (swift-sharing). System Observation is native on iOS 17+ and macOS 14+; on the `iOS 16+` and `macOS 13+` baselines TCA observes through its Perception backport.
 
-| OS | Observation property wrapper |
+| Deployment target | Observation property wrapper |
 |---|---|
 | iOS 17+ / macOS 14+ | `@Bindable var store: StoreOf<Feature>` (system Observation) |
 | iOS 16 / macOS 13 | `@Perception.Bindable var store: StoreOf<Feature>` + wrap body in `WithPerceptionTracking { … }` (TCA backport) |

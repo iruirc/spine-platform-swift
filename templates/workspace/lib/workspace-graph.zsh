@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # workspace-graph.zsh — graph operations over the package dep graph.
-# Foundation subset: cycle detection only. Cluster 2 adds topological sort.
+# Cycle detection only; no topological sort.
 
 wsgraph::check_acyclic() {
   if [[ -z "${_WSYML_STATE[json]:-}" ]]; then

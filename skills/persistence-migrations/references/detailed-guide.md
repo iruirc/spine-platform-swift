@@ -389,7 +389,7 @@ func migrateStore(at storeURL: URL, from start: Int, in models: [NSManagedObject
 }
 ```
 
-The helper infers every step whose mapping model is not in the bundle, which is what a lightweight step needs. A policy step whose mapping model is missing from the target is inferred too whenever its change is inferable, and migrates without the policy — the case step 4 turns inference off for. Here only that step's fixture test (*Testing / Migration tests*) catches it.
+The helper infers every step whose mapping model is not in the bundle, which is what a lightweight step needs. A policy step whose mapping model is missing from the target is inferred too whenever its change is inferable, and migrates without the policy — the case step 4 of *Core Data — lightweight vs heavyweight / Step-by-step* turns inference off for. Here only that step's fixture test (*Testing / Migration tests*) catches it.
 
 **Anti-pattern: one mega mapping model v1→vCurrent.** Looks economical (only one file), breaks every user who isn't exactly on v(current-1). Always adjacent pairs.
 

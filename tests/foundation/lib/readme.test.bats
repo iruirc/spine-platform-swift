@@ -13,7 +13,22 @@ setup() {
 }
 
 @test "the README's manifest table names every table the manifest declares" {
+  # Assumes the README's manifest table lists exactly the manifest's H2s, no more and no fewer.
   declared="$(grep -E '^## ' "$ROOT/skills/manifest/SKILL.md" | LC_ALL=C sort)"
-  listed="$(grep -oE '^\| `## [A-Za-z]+`' "$ROOT/README.md" | sed 's/^| `//; s/`$//' | LC_ALL=C sort)"
-  [ "$declared" = "$listed" ] || { printf 'manifest:\n%s\nREADME:\n%s\n' "$declared" "$listed"; return 1; }
+  listed="$(grep -oE '^\| `## [^`]+`' "$ROOT/README.md" | sed 's/^| `//; s/`$//' | LC_ALL=C sort)"
+  [ "$declared" = "$listed" ] || {
+    echo "assumption violated: the README's manifest table does not list exactly the manifest's H2s"
+    printf 'manifest:\n%s\nREADME:\n%s\n' "$declared" "$listed"
+    return 1
+  }
+}
+
+@test "every skill directory is named somewhere in the README" {
+  n="$(ls "$ROOT/skills" | wc -l | tr -d ' ')"
+  [ "$n" -ge 25 ] || { echo "found $n skills; the scan went vacuous"; return 1; }
+  missing=""
+  for s in $(ls "$ROOT/skills"); do
+    grep -qF -- "$s" "$ROOT/README.md" || missing="$missing $s"
+  done
+  [ -z "$missing" ] || { echo "skills missing from README.md:$missing"; return 1; }
 }

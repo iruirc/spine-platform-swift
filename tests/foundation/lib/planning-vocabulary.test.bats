@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 # "Cluster 2" and "P-rule" name stages of this plugin's own planning, which its reader never saw.
-# templates/ zsh libraries keep their P-rule comments: those address the validator's editor.
+# templates/ zsh libraries are excluded outright: they keep their P-rule comments, which address
+# the validator's editor, and the exclusion also lets any "Cluster <n>" in those files go unchecked.
 
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"

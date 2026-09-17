@@ -59,7 +59,7 @@ SPM package and hands the answers it collected to spine-toolkit's setup, which w
 | `swift-diagnostics` | diagnostics — bug hunting, reproduction, instrumentation |
 | `swift-init` | init — project bootstrap |
 
-**Knowledge skills**, grouped the way the manifest's `## Topics` table groups them:
+**Knowledge skills**, grouped by topic:
 
 - *Architecture* — `architecture-choice` (the compass, run once), then one of `arch-mvc`,
   `arch-mvvm`, `arch-viper`, `arch-clean`, `arch-mvi`, `arch-tca`.
@@ -73,6 +73,7 @@ SPM package and hands the answers it collected to spine-toolkit's setup, which w
 - *Binding tools* — `reactive-combine`, `reactive-rxswift`. Tools used inside an architecture, not
   architectures.
 - *Packaging* — `pkg-spm-design` (package boundaries), plus the workspace skills below.
+- *Release ops* — `release-ops`, the Apple-specific answers behind spine-toolkit's release-ops topic.
 
 `concurrency-architecture` covers where concurrency primitives sit across layers. Language-level
 questions — `Sendable`, isolation rules, Swift 6 migration, actor reentrancy — belong to the
@@ -131,8 +132,8 @@ scripts/lint-core-refs.sh . --core "$SPINE_TOOLKIT_CORE"
 `SPINE_TOOLKIT_CORE` is a checkout of core; the suite falls back to one sitting beside this
 repository, and skips the check when there is none.
 
-The five scripts under `scripts/` and `conventions/i18n.md` are **adapted forks** of spine-toolkit's,
-not copies: each records the core file it came from and that file's sha256, and CI goes red when the
-original moves, so a human decides whether the change belongs here. `lint-manifest.sh` checks this
-plugin's manifest against the contract it came from; the suite runs it too, so conformance is
-checked here rather than from core.
+The five forked scripts under `scripts/` and `conventions/i18n.md` are **adapted forks** of
+spine-toolkit's, not copies: each records the core file it came from and that file's sha256, and CI
+goes red when the original moves, so a human decides whether the change belongs here.
+`lint-manifest.sh` checks this plugin's manifest against the contract it came from; the suite runs
+it too, so conformance is checked here rather than from core.

@@ -7,7 +7,7 @@ description: "Use when implementing Coordinator navigation pattern in iOS apps. 
 
 Navigation pattern that extracts routing logic from ViewControllers into dedicated Coordinator objects. Orthogonal to architectural pattern — works with MVC, MVVM, VIPER, etc.
 
-**Scope:** this skill covers the **UIKit** Coordinator pattern (imperative `push`/`present` via `UINavigationController`). For SwiftUI-first apps use `arch-swiftui-navigation` instead — the SwiftUI equivalent is a state-driven `@Observable` Router holding a `NavigationPath`. For hybrid apps (UIKit Coordinators + embedded SwiftUI screens via `UIHostingController`), see the «Hybrid: SwiftUI ↔ UIKit Interop» section in `arch-swiftui-navigation`.
+**Scope:** this skill covers the **UIKit** Coordinator pattern (imperative `push`/`present` via `UINavigationController`). For SwiftUI-first apps use `arch-swiftui-navigation` instead — the SwiftUI equivalent is a state-driven `@Observable` Router holding a `NavigationPath`. For hybrid apps (UIKit Coordinators + embedded SwiftUI screens via `UIHostingController`), see `arch-swiftui-navigation` → "Hybrid: SwiftUI ↔ UIKit Interop".
 
 > **Related skills:**
 > - `arch-swiftui-navigation` — SwiftUI-native navigation (NavigationStack/Path, Router class, deep links, hybrid interop)

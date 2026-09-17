@@ -91,7 +91,7 @@ Cheap to introduce, but they have specific failure modes you must own:
 ### Anti-patterns at both extremes
 
 - **Entity for every value type** — the «proper Core Data» tutorial trap. You end up with 30 tables, multi-level JOINs on every fetch, N+1 deletes/inserts on every save, and per-table migrations to keep in sync. Often these entities have no identity, no shared usage, no queries — they're just bureaucracy.
-- **One mega-blob for everything** — store `Project` as a single Codable JSON in one row. No partial updates, no concurrent writes, no queries, migrations are total-rewrite. Works for a draft / prototype; fails the moment two screens edit the same project.
+- **One mega-blob for everything** — store `OrderSnapshot` as a single Codable JSON in one row. No partial updates, no concurrent writes, no queries, migrations are total-rewrite. Works for a draft / prototype; fails the moment two screens edit the same order.
 
 The healthy answer is **a deliberate hybrid**: separate entities for things with identity / queries / sharing, transformable Data for leaf value types.
 
@@ -619,7 +619,7 @@ ViewModel handles `RepositoryError.conflict` by re-fetching and prompting the us
 
 ### Anti-pattern: silent write failure
 
-Often hidden behind a completion-style API:
+Often hidden inside a background-context block:
 
 <!-- typecheck: core-data -->
 ```swift
