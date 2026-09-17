@@ -75,7 +75,7 @@ public struct HTTPResponse: Sendable {
 - `idempotencyKey` is a first-class field, not a magic header — retry policy uses it to decide what's safe to retry.
 - `requiresAuth` is a first-class field too — login and public endpoints set it to `false`, so the auth middleware leaves them alone instead of refreshing a token the user does not have.
 - `Sendable` throughout — actors (`TokenRefresher`, `ItemsPaginator`) hold the client and call it from their own isolation.
-- No `URLRequest` in the public surface — keeps the protocol portable to non-Foundation transports (e.g. `AsyncHTTPClient` on Linux for KMP/server-shared code).
+- No `URLRequest` in the public surface — keeps the protocol portable to non-Foundation transports (e.g. `AsyncHTTPClient` for code shared with a Swift server on Linux).
 
 ## Endpoint Design
 

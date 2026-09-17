@@ -370,7 +370,7 @@ Auto-retry rules of thumb:
 - ❌ 4xx (other than 429) → never auto-retry; client error won't fix itself
 - ❌ Auth (401) → trigger refresh flow once, then surface to user
 
-Networking-specific retry policy lives in the future `net-architecture` skill — this skill only enforces **where the decision is made**: in the Repository or HTTPClient layer, never in the ViewModel.
+Networking-specific retry policy lives in `net-architecture` → "Retry And Cancellation" — this skill only enforces **where the decision is made**: in the Repository or HTTPClient layer, never in the ViewModel.
 
 User-initiated retry: ViewModel exposes `retryAction: () -> Void` in `UserMessage`. The View renders a button; tapping calls the closure. Closure re-invokes the original UseCase.
 

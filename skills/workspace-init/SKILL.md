@@ -45,7 +45,7 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
    1. Ask `qa_pkg_name` as a free-text prompt that explicitly tells the user that an empty input ends the loop. The locale string already includes this hint — render it verbatim.
    2. If the input is empty:
       - If at least 1 package has been collected so far → exit the loop and continue to step 6.
-      - If 0 packages so far → reprompt (Require ≥ 1 package, per P-rule).
+      - If 0 packages so far → reprompt: `wsyml::validate` rejects a workspace without packages.
    3. Otherwise, for THIS package only, ask in sequence: `qa_pkg_archetype` (multi-choice), `group` (multi-choice from declared groups, if any), one git URL per declared remote, `qa_pkg_version`, `qa_pkg_deps` (multi-select from packages declared in PRIOR iterations), external deps (Y/N → nested loop), `allowed_deps` (default = archetype rule, override Y/N), `qa_pkg_example_app`. Record the package.
    4. **Go back to step 5.i** (ask `qa_pkg_name` again, with the same empty-input-ends hint). The loop has no upper bound; the user keeps adding packages until they enter empty input.
 
@@ -156,14 +156,14 @@ When multiple apps are declared in `project.apps` (e.g. ios + macos), execute **
 
 ### State file precedence
 
-The `.workspace-init.state` file is the authoritative record of completed steps. Idempotency checks in the table act as fallback when the state file is missing (e.g. manually deleted, or workspace migrated from Foundation Cluster 1 layout where state file did not yet exist).
+The `.workspace-init.state` file is the authoritative record of completed steps. Idempotency checks in the table act as fallback when the state file is missing (e.g. deleted by hand).
 
 Skip semantics:
 - Step ID present in `.workspace-init.state` → skip.
 - Step ID absent + idempotency check matches → mark as completed (write to state file) + skip.
 - Otherwise → execute, then on success write step ID to state file.
 
-State file is deleted only after `s14_local_skills` completes successfully (existing Foundation behavior).
+State file is deleted only after `s14_local_skills` completes successfully.
 
 ## --resume
 

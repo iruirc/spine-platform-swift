@@ -48,8 +48,6 @@ Read `## Language` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`.
 - Meta-repo: `README.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md`.
 - Per-package (under each package dir): `README.md`, `CLAUDE.md`.
 
-(Per-package `CHANGELOG.md` markers are written by Cluster 2 release tooling — Foundation initialises them empty.)
-
 ## --check semantics
 
 Same algorithm, but `wsmark::write` writes to a temp file instead of in-place. After all writes complete, run `diff -u` per file. If any diff non-empty → emit `report_drift_detected`, exit 1. Otherwise → emit `report_no_drift`, exit 0.
