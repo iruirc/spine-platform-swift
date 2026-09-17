@@ -10,6 +10,15 @@ workspace-init pre-flight:
 ## preflight_required_yq_missing
 - required: yq        ✗ (install: brew install yq)
 
+## preflight_required_swift_ok
+- required: swift     ✓ ({version})
+
+## preflight_required_swift_missing
+- required: swift     ✗ (install Xcode or a Swift toolchain)
+
+## preflight_required_swift_too_old
+- required: swift     ✗ ({version} < 6.0; a package is generated for Swift 6 language mode)
+
 ## preflight_optional_gh_ok
 - optional: gh        ✓
 
@@ -51,6 +60,15 @@ Workspace-internal deps (multiselect):
 
 ## qa_pkg_example_app
 Record an Example/ app for this package in workspace.yml? Nothing generates it yet.
+
+## qa_defaults_platforms
+Deployment floor of this workspace's packages: [ios 17.0 + macos 14.0 (default) | ios 16.0 + macos 13.0 | ios 17.0 | custom]
+
+## qa_defaults_platforms_custom
+Platforms as a comma-separated list, e.g. ios=17.0,macos=14.0:
+
+## qa_defaults_tests
+Test framework a new package is generated with: [swift-testing (default) | xctest]
 
 ## qa_tasks_enabled
 Provision a shared Tasks/ folder at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)

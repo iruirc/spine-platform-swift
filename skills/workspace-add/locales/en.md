@@ -32,6 +32,12 @@ Package {name} created at {path}. Workspace artifacts regenerated.
 ## report_success_incorporate
 Package {name} incorporated from {original_path}. Workspace artifacts regenerated.
 
+## preflight_required_swift_missing
+swift is not on PATH; a new package's manifest is generated for Swift 6. Install Xcode or a Swift toolchain. exit 3.
+
+## preflight_required_swift_too_old
+Swift {version} is older than 6.0; a new package's manifest is generated for Swift 6 language mode. Update the toolchain. exit 3.
+
 ## error_validation
 workspace.yml validation failed after add; rolled back.
 

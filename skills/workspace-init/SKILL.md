@@ -25,8 +25,9 @@ Bootstraps a new multi-package SPM workspace from an interactive Q&A or a suppli
 Always print the pre-flight summary first (using `preflight_*` locale keys):
 
 1. Check `command -v yq` → emit `preflight_required_yq_ok` (with `yq --version`) or `preflight_required_yq_missing`. If missing, exit 3.
-2. Check `command -v gh` → emit `preflight_optional_gh_ok` or `preflight_optional_gh_missing` (informational only).
-3. Check `command -v xcodegen` → same pattern (informational only at pre-flight time).
+2. Check `swift --version` → emit `preflight_required_swift_ok` (with the version) or, when there is no `swift`, `preflight_required_swift_missing`; a toolchain older than 6.0 emits `preflight_required_swift_too_old`. Either failure exits 3: a package manifest is rendered for Swift 6 language mode and never falls back to Swift 5.
+3. Check `command -v gh` → emit `preflight_optional_gh_ok` or `preflight_optional_gh_missing` (informational only).
+4. Check `command -v xcodegen` → same pattern (informational only at pre-flight time).
 
 ## Interactive flow
 
@@ -50,7 +51,11 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
    4. **Go back to step 5.i** (ask `qa_pkg_name` again, with the same empty-input-ends hint). The loop has no upper bound; the user keeps adding packages until they enter empty input.
 
    **Anti-pattern to avoid:** presenting "How many packages?" or "Add 1 / 2 / 3 packages?" as a single multi-choice question and then collecting that many in a fixed batch. Always loop with re-prompts.
-6. Ask defaults overrides (Y/N) for `default_branch`, `push_remotes`, `release_strategy`.
+6. Ask defaults overrides (Y/N) for `default_branch`, `push_remotes`, `release_strategy`. Then, always, ask the stack of the packages this workspace generates — both questions have a default, so accepting them is one keystroke each:
+   1. `qa_defaults_platforms` (multi-choice): `ios 17.0 + macos 14.0` (default) / `ios 16.0 + macos 13.0` / `ios 17.0` / custom. Custom asks once more for a comma-separated list (`ios=17.0,macos=14.0`); keys other than `ios` and `macos` are rejected and the question is asked again. Record `defaults.platforms` as a map.
+   2. `qa_defaults_tests` (multi-choice): `swift-testing` (default) / `xctest`. Record `defaults.tests`.
+
+   These are the deployment floor and the test stub of every package of this workspace, now and at every later `workspace-add --new`. The `Baseline` axis that `swift-init` asks per app at `s06b` belongs to the app and does not reach them: a package whose floor is above the app's breaks the app's build, so a workspace whose apps target iOS 16 answers `ios 16.0 + macos 13.0` here.
 7. Ask the Tasks/ block (Y/N, default Y) using `qa_tasks_enabled`. If Y, ask `qa_tasks_mode` (multi-choice: `sibling` / `path` / `symlink`, default `sibling`).
    - `sibling` → record `workspace.tasks.mode = sibling`, `workspace.tasks.path = ./Tasks`. No further prompt.
    - `path` → ask `qa_tasks_path` (text, default `./Tasks`). Validate path: must NOT be absolute (no leading `/`), must NOT contain `..` segments. Reprompt on validation failure. Record `workspace.tasks.mode = path`, `workspace.tasks.path = <answer>`.
@@ -89,12 +94,12 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | s03_meta_git | `git init -b <default-branch>` in meta-repo | `[[ -d .git ]]` |
 | s04_meta_yml | copy `workspace.yml` into meta-repo | `[[ -f workspace.yml ]]` |
 | s05_groups | mkdir each `package_groups[].dir` (or `packages/` if no groups) under workspace-parent | dir exists |
-| s06_pkg_<name> | per-package: mkdir, render `templates/workspace/package/`, recursively. Rename directory components named `PACKAGE_NAME` → `<name>`, `PACKAGE_NAMETests` → `<name>Tests`. `git init`. | dir + `.git` exist |
+| s06_pkg_<name> | per-package: mkdir, render `templates/workspace/package/`, recursively. Rename directory components named `PACKAGE_NAME` → `<name>`, `PACKAGE_NAMETests` → `<name>Tests`. Of the `Tests/` variants render only the one `wspkg::tests_kind` names. Substitute `{{SWIFT_TOOLS_VERSION}}` (`wspkg::tools_version`) and `{{PLATFORMS}}` (`wspkg::platforms_inline`) beside the other placeholders. `git init`. | dir + `.git` exist |
 | s06b_project_<app> | **Pre-condition:** `command -v xcodegen` — emit `error_xcodegen_missing` and exit 3 if missing. Then invoke `swift-init` per mode, **always passing `--main-target-name=<apps.<key>.repo>`** so the generated `.xcodeproj` is named after the repo (e.g. `SmokeApp-ios.xcodeproj`) and does NOT collide with the sibling platform's `.xcodeproj` when both are opened in the same xcworkspace: **Interactive mode** — invoke `swift-init --platform=<key> --main-target-name=<repo> --lang=<toolkit.lang> --mode=<toolkit.mode> --progress=<toolkit.progress> --tasks=skip` WITHOUT `--no-prompt` and without `--docs-map`, since whether a project repo keeps a documentation registry is its own question; the user goes through the full swift-init Q&A (UI framework, DI, architecture, async, min-platform). Stack overlay from `apps.<key>.stack` (if user pre-filled in `workspace.yml`) is NOT applied in interactive mode — swift-init owns those decisions. **Batch mode** — invoke `swift-init --no-prompt --platform=<key> --main-target-name=<repo> --lang=<toolkit.lang> --mode=<toolkit.mode> --progress=<toolkit.progress> --tasks=skip [stack-flags]` with values from `apps.<key>.stack` or per-platform defaults (overlay); `--no-prompt` already defaults `--docs-map` to `skip`. The `<toolkit.*>` values come from `wsyml::toolkit`. Output in `<workspace-parent>/<repo-name>/`. swift-init has finished this step once `spine-toolkit:setup` has written `<repo>/CLAUDE-spine-toolkit.md` beside `project.yml` — setup runs after the artifact is on disk, and nothing `s06c` needs comes later. main-target-name for downstream steps = `apps.<platform>.repo`. Per-project `Tasks/` MUST NOT be created — the shared `<workspace-parent>/Tasks/` repo is provisioned in s09 instead. | `[[ -f <repo>/project.yml ]] && grep -q '^## Platform$' <repo>/CLAUDE-spine-toolkit.md` |
 | s06c_project_inject_<app> | Source `wsproj::*` library. Read `wsyml::packages`. Run `wsproj::inject_deps <repo> <main-target-name>`. Run `xcodegen generate` in `<repo>/` (second xcodegen run regenerates `.xcodeproj` reflecting injected deps). | Always rerun (declarative; state file authoritative for skip — see "State file precedence" below) |
 | s06d_project_workspace_meta_<app> | Run `wsproj::append_workspace_meta <repo>` to add `## Workspace meta` section to `<repo>/CLAUDE-spine-toolkit.md`. | `grep -q '^## Workspace meta' <repo>/CLAUDE-spine-toolkit.md` |
 | s06e_project_git_<app> | `git init -b <default-branch>` in `<repo>`. | `[[ -d <repo>/.git ]]` |
-| s07_regen | Run `workspace-docs-regen` from `<meta>`. It writes `<workspace-name>.xcworkspace` with a `FileRef` per app repo and per package, sets the `folders` of `<workspace-name>.code-workspace`, and fills every marked section of the meta-repo and package docs. It runs after every package and project repo exists, so the refs and each package's `## Public API` are complete. | Always rerun (a run with nothing to change writes nothing) |
+| s07_regen | Run `workspace-docs-regen` from `<meta>`. It writes `<workspace-name>.xcworkspace` with a `FileRef` per app repo and per package, sets the `folders` of `<workspace-name>.code-workspace`, fills every marked section of the meta-repo and package docs, and fills the two dependency arrays of each package's `Package.swift`. It runs after every package and project repo exists, so the refs and each package's `## Public API` are complete. | Always rerun (a run with nothing to change writes nothing) |
 | s09_tasks | iff `workspace.tasks.enabled` (default `true`): provision Tasks/ per `workspace.tasks.mode`. See "Tasks/Docs provisioning" below for the per-mode behavior. | per-mode (see "Tasks/Docs idempotency") |
 | s09b_docs | iff `workspace.docs.enabled` (default `true`): provision Docs/ per `workspace.docs.mode`. See "Tasks/Docs provisioning" below for the per-mode behavior. Skip (mark complete) if the target path at `<workspace-parent>/<docs-link-name>` already exists as a folder, symlink, or file — preserves manually placed `Docs` symlinks already on disk. | per-mode (see "Tasks/Docs idempotency") |
 | s10_meta_initial_commit | iff `bootstrap.commit_after_init`: `git -c user.name=... -c user.email=... commit` | `git rev-list HEAD` non-empty |
@@ -179,8 +184,11 @@ For project-block workflows: interruption of swift-init Q&A (Ctrl-C during s06b 
 - `*.tmpl` files are rendered to their target location with the `.tmpl` suffix stripped.
 - The package template tree (`templates/workspace/package/`) is walked recursively. Directory components literally named `PACKAGE_NAME` are renamed to `<name>`, and `PACKAGE_NAMETests` to `<name>Tests` (the longer form must be substituted first).
 - Inside each rendered file, `{{...}}` placeholders are substituted via `sed`.
+- A template named `<base>.<variant>.tmpl` renders to `<base>` only when `<variant>` equals `defaults.tests`; the other variants are skipped. The `Tests/` stub is the only one that has variants today (`swift-testing`, `xctest`).
 - Known placeholders:
   - `{{WORKSPACE_NAME}}` — workspace name (`workspace.name` from `workspace.yml`).
   - `{{PACKAGE_NAME}}` — package name (per-package).
   - `{{VERSION}}` — package version (semver-like string).
+  - `{{SWIFT_TOOLS_VERSION}}` — the machine's toolchain, from `wspkg::tools_version`; never a hardcoded number.
+  - `{{PLATFORMS}}` — the value of `platforms:` on one line, from `wspkg::platforms_inline`.
 - Marker pairs render empty; `s07_regen` fills them.

@@ -8,7 +8,7 @@ description: |
 
 # workspace-docs-regen
 
-Rewrites what `workspace.yml` and the package sources determine: the content between `<!-- WORKSPACE_*_BEGIN -->` / `_END -->` markers in the meta-repo and package docs, `<workspace>.xcworkspace`, and the `folders` of `<workspace>.code-workspace`. Text outside the markers and the rest of the `.code-workspace` are never touched.
+Rewrites what `workspace.yml` and the package sources determine: the content between the `WORKSPACE_*_BEGIN` / `_END` markers of the meta-repo and package docs and of each package's `Package.swift`, `<workspace>.xcworkspace`, and the `folders` of `<workspace>.code-workspace`. A marker is an HTML comment in a markdown file and a `//` line comment in a Swift one. Text outside the markers, the rest of the `.code-workspace` and the rest of the manifest are never touched.
 
 ## Language Resolution
 
@@ -71,6 +71,11 @@ A workspace created before 1.14.0 keeps some of these sections outside markers, 
 
 - in the meta `README.md`, markers around the bodies of `## Quickstart`, `## Daily ops` and `## Schema`;
 - in the meta `CONTRIBUTING.md`, markers around the body of `## Archetype rules`, and removal of the `WORKSPACE_PROJECT_RULES` pair, keeping what it holds;
-- in each package `CLAUDE.md`, markers around the first paragraph under `## Boundary contract`, and around a `## Public API` section that has none.
+- in each package `CLAUDE.md`, markers around the first paragraph under `## Boundary contract`, and around a `## Public API` section that has none;
+- in each package `Package.swift`, both marker pairs, when the two arrays are still the empty ones the template rendered. An array that already holds lines is reported instead — only the user hands those over.
 
 After `--yes` the adopted sections are regenerated in the same run.
+
+## What it reports and never changes
+
+Every run and every `--check` also names each manifest that has fallen behind the stack this plugin generates today — an older `swift-tools-version`, a deployment floor below `defaults.platforms`, an `external_deps` entry with no version requirement (SwiftPM has no such form, so it is left out of the manifest). These lines change neither the counters nor the exit code: raising a tools version depends on the machine that happens to run regen, and a low floor may be deliberate. Show them as they are and let the user decide.

@@ -32,6 +32,12 @@ incorporate — включить существующий standalone-репо
 ## report_success_incorporate
 Пакет {name} включён из {original_path}. Артефакты workspace перегенерированы.
 
+## preflight_required_swift_missing
+swift не найден в PATH; манифест нового пакета генерируется под Swift 6. Установи Xcode или тулчейн Swift. exit 3.
+
+## preflight_required_swift_too_old
+Swift {version} старше 6.0; манифест нового пакета генерируется под языковой режим Swift 6. Обнови тулчейн. exit 3.
+
 ## error_validation
 Валидация workspace.yml после добавления упала; изменения откатаны.
 
