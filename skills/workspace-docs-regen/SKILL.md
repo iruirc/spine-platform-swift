@@ -1,57 +1,75 @@
 ---
 name: workspace-docs-regen
 description: |
-  Regenerate marker-delimited sections of workspace docs.
+  Regenerate the marker-delimited sections of workspace docs and the workspace files.
   Use when (en): "regen docs", "refresh workspace docs", "/workspace-docs-regen"
   Use when (ru): "обнови docs", "регенерация docs", "/workspace-docs-regen"
 ---
 
 # workspace-docs-regen
 
-Regenerates the content between `<!-- WORKSPACE_*_BEGIN -->` / `_END -->` markers across meta-repo + every package. User content outside markers is never touched.
+Rewrites what `workspace.yml` and the package sources determine: the content between `<!-- WORKSPACE_*_BEGIN -->` / `_END -->` markers in the meta-repo and package docs, `<workspace>.xcworkspace`, and the `folders` of `<workspace>.code-workspace`. Text outside the markers and the rest of the `.code-workspace` are never touched.
 
 ## Language Resolution
 
 Read `## Language` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`.
 
-## Modes
+## Run
 
-| Invocation | Behaviour |
-|------------|-----------|
-| (default) | Regenerate every marker section in place. Strict-fail on malformed markers. |
-| `--check` | Compare canonical regen with on-disk; exit 1 if drift; exit 2 if malformed markers. |
-| `--repair` | Run `wsmark::repair` interactively on every file with malformed markers; then run default regen. |
-| `--pkg <name>` | Restrict to one package + meta-repo sections referencing it. |
-| `--adopt --pkg <name>` | Wrap known section headings (`## Boundary contract`, `## Public API`) with markers if not already wrapped, then regen. |
+`scripts/workspace-docs-regen.zsh` holds every format. Run it; never write a marked section by hand:
 
-## Algorithm
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/workspace-docs-regen.zsh" [--check | --repair | --adopt] [--yes] [--pkg <name>]
+```
 
-1. Locate `workspace.yml` (cwd or ancestors). If absent → emit `error_missing_workspace_yml`, exit 1.
-2. Source libs: `workspace-yml-parser.zsh`, `workspace-graph.zsh`, `workspace-doc-markers.zsh`, `workspace-archetypes.zsh`.
-3. `wsyml::load` + `wsyml::validate` + `wsgraph::check_acyclic` on `workspace.yml`. On failure: emit error and exit 2.
-4. Build the per-marker content map:
-   - `WORKSPACE_PKG_LIST` (meta README): `wsyml::packages` → bullet list `- <name> (<archetype>) — <group>`.
-   - `WORKSPACE_LAYERS` (meta ARCH): histogram of archetypes per group → markdown table.
-   - `WORKSPACE_GRAPH` (meta ARCH): mermaid `graph TD; A --> B; ...` from deps.
-   - `WORKSPACE_PROJECT_RULES` (meta CONTRIBUTING): pre-filled archetype rule reminder + workspace name.
-   - Per-package `WORKSPACE_PKG_META`: 6-line key/value block from `wsyml::package_field`.
-   - Per-package `WORKSPACE_PKG_PUBLIC_API`: scan `Sources/<name>/**/*.swift` via `grep -E '^public (struct|class|enum|protocol|actor|extension|func|var|let|typealias)'` → bullet list of declarations (one per line, full match line).
-   - Per-package `WORKSPACE_PKG_HEADER`: title + archetype + version block.
-   - Per-package `WORKSPACE_PKG_DEPS`: two bullet lists (workspace deps + external deps).
-5. For each file in scope:
-   - `wsmark::lint`. If anomalies AND `--repair` flag: prompt `repair_prompt` → on Y, `wsmark::repair`; on N, count as drift and continue. If anomalies AND no `--repair`: count toward `error_malformed_markers` and skip.
-   - For each marker in the file: `wsmark::write` with the canonical content built in step 4.
-6. Tally regenerated/drifted/malformed files. Emit appropriate `report_*` / `error_*` locale string.
+It runs from the meta-repo or from any repository beside it, and finds `workspace.yml` itself.
 
-## Files in scope
+| Flag | Behaviour |
+|------|-----------|
+| (none) | Regenerate every section and workspace file. A file with malformed markers is skipped and reported. |
+| `--check` | Write nothing; print a unified diff per file that would change. |
+| `--repair` | Propose fixes for malformed markers. |
+| `--adopt` | Propose markers for sections an older workspace kept outside them, listed below. |
+| `--yes` | Apply what `--repair` or `--adopt` proposed, then regenerate. |
+| `--pkg <name>` | Only that package's files; the meta-repo files still run. |
 
-- Meta-repo: `README.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md`.
-- Per-package (under each package dir): `README.md`, `CLAUDE.md`.
+## Confirmation
 
-## --check semantics
+`--repair` and `--adopt` without `--yes` print their diffs and change nothing. Show the diffs, ask `repair_prompt`, and on yes run the same command with `--yes`.
 
-Same algorithm, but `wsmark::write` writes to a temp file instead of in-place. After all writes complete, run `diff -u` per file. If any diff non-empty → emit `report_drift_detected`, exit 1. Otherwise → emit `report_no_drift`, exit 0.
+## Result
 
-## --adopt semantics
+The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n> missing=<n> pending=<n>`; `missing` counts files of packages not cloned here.
 
-Per `--pkg <name>`: read the package's `CLAUDE.md`. If `## Boundary contract` heading exists without surrounding markers, prepend `<!-- WORKSPACE_PKG_BOUNDARY_BEGIN -->` and append `<!-- WORKSPACE_PKG_BOUNDARY_END -->` (interactive prompt with diff). Same logic for `## Public API`. Then run default regen on the package.
+| Exit | Emit |
+|------|------|
+| 0, no `--check` | `report_regenerated_files` with `regenerated` |
+| 0, `--check` | `report_no_drift` |
+| 1, `--check` | `report_drift_detected` with `drifted`, then the diffs |
+| 1, `--repair` / `--adopt` | the confirmation above |
+| 2, `malformed` > 0 | `error_malformed_markers` with `malformed` |
+| 2, otherwise | `error_validation`, then the script's stderr |
+| 3 | `yq` is missing: `brew install yq` |
+| 4 | `error_missing_workspace_yml` |
+
+## What it owns
+
+| File | Markers |
+|------|---------|
+| meta `README.md` | `PKG_LIST` under `## Packages`, `CLONE` under `## Quickstart`, `DAILY_OPS` under `## Daily ops`, `SCHEMA` under `## Schema` |
+| meta `ARCHITECTURE.md` | `LAYERS`, `GRAPH` |
+| meta `CONTRIBUTING.md` | `ARCHETYPE_RULES` under `## Archetype rules`; `## Project-specific rules` is the user's |
+| package `README.md` | `PKG_HEADER` (holds the title), `PKG_DEPS` (holds `## Dependencies`) |
+| package `CLAUDE.md` | `PKG_META`; `PKG_BOUNDARY`, the archetype paragraph under `## Boundary contract` — lines below its end marker are the package's own constraints; `PKG_PUBLIC_API` (holds `## Public API`) |
+| `<workspace>.xcworkspace` | the whole file |
+| `<workspace>.code-workspace` | `folders` only |
+
+## Older workspaces
+
+A workspace created before 1.14.0 keeps some of these sections outside markers, so regen cannot update them. `--adopt` proposes:
+
+- in the meta `README.md`, markers around the bodies of `## Quickstart`, `## Daily ops` and `## Schema`;
+- in the meta `CONTRIBUTING.md`, markers around the body of `## Archetype rules`, and removal of the `WORKSPACE_PROJECT_RULES` pair, keeping what it holds;
+- in each package `CLAUDE.md`, markers around the first paragraph under `## Boundary contract`, and around a `## Public API` section that has none.
+
+After `--yes` the adopted sections are regenerated in the same run.

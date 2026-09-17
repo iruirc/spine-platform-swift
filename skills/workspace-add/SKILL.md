@@ -29,9 +29,9 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 4. `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore from backup, emit `error_validation`, exit 2.
 5. Resolve target dir: `<workspace-parent>/<group-dir>/<name>/` (or `packages/<name>/` if no groups).
 6. mkdir + render `templates/workspace/package/` with placeholder substitution.
-7. `git init -b <default-branch>`. If `bootstrap.commit_after_init: true` (read from `workspace.yml`): `git add -A && git commit -m <msg>`.
-8. Optional: if `--push` flag AND `bootstrap.use_gh: true`: `gh repo create` + `git push -u remotes[0]`.
-9. Invoke `workspace-docs-regen` (subshell) to refresh `.xcworkspace`, `.code-workspace`, meta-repo README/ARCH marker sections.
+7. Run `workspace-docs-regen` from the meta-repo. It fills the new package's marked sections and adds the package to the meta-repo docs, the `.xcworkspace` and the `.code-workspace`; running it before the commit puts the filled sections in the package's first commit.
+8. `git init -b <default-branch>`. If `bootstrap.commit_after_init: true` (read from `workspace.yml`): `git add -A && git commit -m <msg>`.
+9. Optional: if `--push` flag AND `bootstrap.use_gh: true`: `gh repo create` + `git push -u remotes[0]`.
 10. Emit `report_success_new`.
 
 ## --incorporate <path>
@@ -43,9 +43,9 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 5. `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore + exit 2.
 6. Resolve target dir. If `--symlink` flag: create symlink. Else (default): `mv <original-path> <target-dir>`.
 7. **Soft mutate** target package files:
-   - If `<target-dir>/CLAUDE.md` does NOT exist → render template (with archetype boundary text), `git add` it (no commit).
+   - If `<target-dir>/CLAUDE.md` does NOT exist → render template, `git add` it (no commit).
    - If exists → emit `warn_existing_claude_md`.
-8. Invoke `workspace-docs-regen` (subshell) for derived artifacts.
+8. Run `workspace-docs-regen` from the meta-repo: it adds the package to the meta-repo docs and the workspace files, and fills the marked sections the package's docs have.
 9. Emit `report_success_incorporate`.
 
 ## Failure recovery

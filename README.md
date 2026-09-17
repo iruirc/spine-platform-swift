@@ -83,8 +83,8 @@ separately installed `swift-concurrency:swift-concurrency` skill
 **Multi-package SPM workspaces** — `workspace-init` bootstraps a workspace (interactive Q&A or batch
 from `workspace.yml`, optionally generating one git repo per platform with an xcodegen app project
 wired to local-path package dependencies), `workspace-add` adds or incorporates a package, and
-`workspace-docs-regen` regenerates marker-delimited doc sections. Templates live under
-`templates/workspace/`.
+`workspace-docs-regen` regenerates the marker-delimited doc sections and the workspace files.
+Templates live under `templates/workspace/`.
 
 ## The manifest
 

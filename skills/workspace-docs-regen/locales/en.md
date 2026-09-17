@@ -1,5 +1,5 @@
 ## description
-Regenerate marker-delimited sections of meta-repo and per-package docs from workspace.yml + sources.
+Regenerate the marked sections of meta-repo and package docs, and the workspace files, from workspace.yml and the package sources.
 
 ## report_regenerated_files
 Regenerated {n} files.
@@ -11,10 +11,13 @@ No drift; all marker sections in canonical form.
 Drift detected in {n} file(s):
 
 ## error_malformed_markers
-{n} file(s) have malformed markers; run with --repair to fix interactively. exit 2.
+{n} file(s) have malformed markers; run with --repair to see the proposed fix. exit 2.
+
+## error_validation
+workspace.yml is invalid; the errors are listed above. exit 2.
 
 ## error_missing_workspace_yml
-workspace.yml not found in cwd or ancestors; cd into a workspace meta-repo first.
+workspace.yml not found in this directory, its ancestors, or a *-meta directory beside one of them; cd into a repository of the workspace first.
 
 ## repair_prompt
 Apply? (y/N)
