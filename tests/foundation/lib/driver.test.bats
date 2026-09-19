@@ -23,13 +23,13 @@ setup() {
 }
 
 @test "the declared core floor reads everything this plugin relies on" {
-  # Core reads `surfaces` from 1.7.1, and the `tasks`, `docs_map` and `stack = —`
-  # answers workspace-init hands to setup from 1.9.0. Below that, setup asks instead.
-  # The agents pin no model: the `session` value and the validator's `sonnet` default
-  # exist from 1.12.0.
+  # The surfaces, the answers workspace-init hands to setup and the unpinned agent
+  # models all arrive by 1.12.0, but 2.0 is the floor: every config this plugin's
+  # skills and agents read names `[FIELD] = [value]` lines, and a 1.x core neither
+  # writes nor parses them.
   run python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))["dependencies"]; print([x["version"] for x in d if x["name"]=="spine-toolkit"][0])' "$ROOT/.claude-plugin/plugin.json"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  [ "$output" = ">=1.12.0 <2" ] || { echo "floor: $output"; return 1; }
+  [ "$output" = ">=2.0.0 <3" ] || { echo "floor: $output"; return 1; }
 }
 
 @test "the vendored manifest lint is the copy that knows the Driver block" {

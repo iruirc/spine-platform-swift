@@ -105,7 +105,7 @@ through it, or invoked by name by an agent.
 
 ## Requirements
 
-- `spine-toolkit` `>=1.12.0 <2`, declared as a dependency in `plugin.json`.
+- `spine-toolkit` `>=2.0.0 <3`, declared as a dependency in `plugin.json`.
   An installed core outside that range is not a warning: the host demotes this plugin and it does
   not load at all — no agents, no skills, no manifest.
 - The workspace skills need `yq` v4+ (`brew install yq`). `gh` is optional, needed only for
@@ -115,8 +115,8 @@ through it, or invoked by name by an agent.
 ## Internationalization
 
 English is the source of truth. User-facing strings live in `skills/<name>/locales/en.md` with a
-key-for-key `ru.md` beside it. The active language comes from the project config's `## Language`
-block. Whatever it is, the agents, `swift-setup` and the three workspace skills list their triggers
+key-for-key `ru.md` beside it. The active language comes from the project config's `[LANG]`
+field. Whatever it is, the agents, `swift-setup` and the three workspace skills list their triggers
 in both languages; the knowledge skills list English ones. Convention: `conventions/i18n.md`.
 
 ## Development

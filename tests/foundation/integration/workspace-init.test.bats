@@ -33,8 +33,10 @@ teardown() { ws_cleanup_tmpdirs; }
   run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
     "$(ws_fixture_path workspace-yml/toolkit-ru.yml)" "$parent"
   [ "$status" -eq 0 ]
-  run awk '/^## (Language|Mode|Progress)$/{f=1;next} f&&NF{print;f=0}' "$parent/ToolkitRu-meta/CLAUDE-spine-toolkit.md"
-  [ "$output" = $'ru\nmanual\nnormal' ] || { echo "got: $output"; return 1; }
+  local config="$parent/ToolkitRu-meta/CLAUDE-spine-toolkit.md"
+  grep -Fxq -- '[LANG] = [ru]' "$config"
+  grep -Fxq -- '[WORKFLOW_MODE] = [manual]' "$config"
+  grep -Fxq -- '[PROGRESS] = [normal]' "$config"
 }
 
 @test "a manifest regen filled builds with swift build (sanity)" {

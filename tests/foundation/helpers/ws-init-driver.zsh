@@ -43,21 +43,18 @@ if [[ ! -f "$config" ]]; then
   cat > "$config" <<EOF
 # CLAUDE-spine-toolkit.md — Toolkit Configuration
 
-## Language
+## Project settings
 
-$(wsyml::toolkit lang)
+[LANG] = [$(wsyml::toolkit lang)]
+[PROGRESS] = [$(wsyml::toolkit progress)]
+
+## Task defaults
+
+[WORKFLOW_MODE] = [$(wsyml::toolkit mode)]
 
 ## Platform
 
 spine-platform-swift
-
-## Mode
-
-$(wsyml::toolkit mode)
-
-## Progress
-
-$(wsyml::toolkit progress)
 EOF
 fi
 wsproj::append_workspace_meta "$meta_dir" meta
