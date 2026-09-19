@@ -59,9 +59,9 @@ spine-platform-swift
 
 (stub stack section — populated by swift-init in production)
 
-## Mode
+## Task defaults
 
-manual
+[WORKFLOW_MODE] = [manual]
 
 ## DeliveryMode
 

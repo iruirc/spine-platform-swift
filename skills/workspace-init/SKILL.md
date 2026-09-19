@@ -12,7 +12,7 @@ Bootstraps a new multi-package SPM workspace from an interactive Q&A or a suppli
 
 ## Language Resolution
 
-`toolkit.lang` comes first: the answer to `qa_toolkit_lang` once the dialog has it, `wsyml::toolkit lang` in batch and `--resume`. Otherwise read `## Language` from `<workspace-parent>/<meta-repo>/CLAUDE-spine-toolkit.md` if it exists. Fallback: `CLAUDE-spine-toolkit.md` in the cwd. Fallback: `en`. Use the resolved language for all user-facing strings via `locales/<lang>.md`.
+`toolkit.lang` comes first: the answer to `qa_toolkit_lang` once the dialog has it, `wsyml::toolkit lang` in batch and `--resume`. Otherwise read `[LANG]` from `<workspace-parent>/<meta-repo>/CLAUDE-spine-toolkit.md` if it exists. Fallback: `CLAUDE-spine-toolkit.md` in the cwd. Fallback: `en`. Use the resolved language for all user-facing strings via `locales/<lang>.md`.
 
 ## Modes
 

@@ -43,12 +43,12 @@ setup() {
 @test "every project config this plugin writes names its platform" {
   # spine-toolkit:setup writes every real config; a driver stub without ## Platform
   # lets a test pass on a config the orchestrator cannot route. Discovery keys on
-  # ## Stack / ## Mode: the project-init stub omits ## Language.
+  # ## Stack / ## Task defaults: the meta-repo stub has no stack to declare.
   found=0; missing=""
   while IFS= read -r f; do
     found=$((found + 1))
     grep -q '^## Platform$' "$f" || missing="$missing $f"
-  done < <(grep -rlE '^## (Stack|Mode)$' "$ROOT/templates" "$ROOT/tests/foundation/helpers")
+  done < <(grep -rlE '^## (Stack|Task defaults)$' "$ROOT/templates" "$ROOT/tests/foundation/helpers")
   [ "$found" -ge 2 ] || { echo "discovery matched $found file(s); the scan went vacuous"; return 1; }
   [ -z "$missing" ] || { echo "config template(s) with no ## Platform block:$missing"; return 1; }
 }
@@ -89,9 +89,9 @@ setup() {
   # spine-toolkit:setup writes the config; a copy here drifts from core's template
   # unseen. Three blocks only that config has are enough to spot one.
   [ "$(find "$ROOT/templates" -type f | wc -l)" -gt 10 ] || { echo "templates/ scan went vacuous"; return 1; }
-  offenders="$(grep -rlE '^## (Platform|Validation|Scale)$' "$ROOT/templates" || true)"
+  offenders="$(grep -rlE '^## (Platform|Agents|Orchestration)$' "$ROOT/templates" || true)"
   [ -z "$offenders" ] || { echo "core config block(s) in: $offenders"; return 1; }
   # The driver stubs legitimately carry ## Platform; no file in the plugin carries these two.
-  offenders="$(grep -rlE --exclude-dir=.git --exclude-dir=.superpowers '^## (Validation|Scale)$' "$ROOT" || true)"
+  offenders="$(grep -rlE --exclude-dir=.git --exclude-dir=.superpowers '^## (Agents|Orchestration)$' "$ROOT" || true)"
   [ -z "$offenders" ] || { echo "core config block(s) in: $offenders"; return 1; }
 }

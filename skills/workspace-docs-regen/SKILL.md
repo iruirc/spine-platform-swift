@@ -12,7 +12,7 @@ Rewrites what `workspace.yml` and the package sources determine: the content bet
 
 ## Language Resolution
 
-Read `## Language` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`.
+Read `[LANG]` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`.
 
 ## Run
 
