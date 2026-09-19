@@ -27,8 +27,11 @@ teardown() { ws_cleanup_tmpdirs; }
   [ "$status" -eq 0 ]
   local config="$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
   cp "$config" "$BATS_TEST_TMPDIR/full.md"
-  sed '/^## Workspace meta$/,$d' "$BATS_TEST_TMPDIR/full.md" | sed '$d' | sed 's/^manual$/auto/' > "$config"
-  sed 's/^manual$/auto/' "$BATS_TEST_TMPDIR/full.md" > "$BATS_TEST_TMPDIR/want.md"
+  sed '/^## Workspace meta$/,$d' "$BATS_TEST_TMPDIR/full.md" | sed '$d' \
+    | sed 's/^\[WORKFLOW_MODE\] = \[manual\]$/[WORKFLOW_MODE] = [auto]/' > "$config"
+  sed 's/^\[WORKFLOW_MODE\] = \[manual\]$/[WORKFLOW_MODE] = [auto]/' \
+    "$BATS_TEST_TMPDIR/full.md" > "$BATS_TEST_TMPDIR/want.md"
+  grep -Fxq -- '[WORKFLOW_MODE] = [auto]' "$config"
   run grep -c '^## Workspace meta$' "$config"
   [ "$output" = "0" ]
   run "$driver" "$yml" "$parent"
