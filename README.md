@@ -4,15 +4,18 @@
 [![license](https://img.shields.io/github/license/iruirc/spine-platform-swift?color=555)](LICENSE)
 [![requires spine-toolkit](https://img.shields.io/badge/requires-spine--toolkit-0969da)](https://github.com/iruirc/spine-toolkit)
 
-The Swift/Apple platform plugin for **spine-toolkit**. It carries the stack knowledge — nine
-specialized agents, architecture and infrastructure skills, and multi-package SPM workspace
-tooling — and declares all of it to the orchestrator through one manifest skill.
+The Swift/Apple platform plugin for **spine-toolkit**, with native manifests for Claude Code and
+Codex. It carries the stack knowledge — nine Claude Code agents, architecture and infrastructure
+skills, and multi-package SPM workspace tooling — and declares all of it to the orchestrator
+through one manifest skill.
 
 It is not a standalone toolkit: on its own it has skills you can invoke by hand, but nothing that
 runs a task. spine-toolkit supplies the process; this plugin supplies who does the work and what
 they know.
 
 ## Install
+
+### Claude Code
 
 ```
 /plugin marketplace add iruirc/claude-marketplace
@@ -42,6 +45,26 @@ this block leaves every other block the orchestrator reads missing.
 A project from scratch is this plugin's own command: `/swift-init` creates an iOS/macOS app or an
 SPM package and hands the answers it collected to spine-toolkit's setup, which writes both
 `CLAUDE.md` and the toolkit config and offers `Tasks/`.
+
+### Codex
+
+The repository includes `.codex-plugin/plugin.json`; `skills/`, `scripts/`, `templates/`, and
+`conventions/` are shared with Claude Code. Add a checkout as the `spine-platform-swift` source in
+a Codex personal or team marketplace, then install it:
+
+```bash
+codex plugin add spine-platform-swift@personal
+```
+
+Start a new Codex session after installation. Knowledge skills work directly. The nine files in
+`agents/` and four files in `commands/` remain Claude Code components; Codex does not expose them as
+subagents or slash commands. Orchestrated setup and task workflows also require a Codex-compatible
+`spine-toolkit`, installed separately because Codex does not consume Claude's `dependencies` field.
+
+For local development, keep the marketplace source pointed at the repository checkout. When a new
+release changes `version` in both plugin manifests, pull it and run the same `codex plugin add`
+command. For changes that intentionally retain the same release version, use Codex's local plugin
+cachebuster before reinstalling.
 
 ## What it provides
 
@@ -128,6 +151,11 @@ scripts/lint-locales.sh
 scripts/lint-manifest.sh .
 scripts/lint-core-refs.sh . --core "$SPINE_TOOLKIT_CORE"
 ```
+
+The foundation suite also checks that the Claude Code and Codex manifests have the same plugin
+identity and release version, and that shared skills contain no runtime-only
+`${CLAUDE_PLUGIN_ROOT}` dependency. Validate the Codex package with the validator bundled with
+Codex's `plugin-creator` skill before publishing a release.
 
 `SPINE_TOOLKIT_CORE` is a checkout of core; the suite falls back to one sitting beside this
 repository, and skips the check when there is none.

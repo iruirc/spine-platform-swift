@@ -10,16 +10,19 @@ description: |
 
 Rewrites what `workspace.yml` and the package sources determine: the content between the `WORKSPACE_*_BEGIN` / `_END` markers of the meta-repo and package docs and of each package's `Package.swift`, `<workspace>.xcworkspace`, and the `folders` of `<workspace>.code-workspace`. A marker is an HTML comment in a markdown file and a `//` line comment in a Swift one. Text outside the markers, the rest of the `.code-workspace` and the rest of the manifest are never touched.
 
+`<platform-root>` is the plugin root two directories above this `SKILL.md`. Resolve it from the
+loaded skill location, not from the project working directory.
+
 ## Language Resolution
 
 Read `[LANG]` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`.
 
 ## Run
 
-`scripts/workspace-docs-regen.zsh` holds every format. Run it; never write a marked section by hand:
+`<platform-root>/scripts/workspace-docs-regen.zsh` holds every format. Run it; never write a marked section by hand:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/workspace-docs-regen.zsh" [--check | --repair | --adopt] [--yes] [--pkg <name>]
+"<platform-root>/scripts/workspace-docs-regen.zsh" [--check | --repair | --adopt] [--yes] [--pkg <name>]
 ```
 
 It runs from the meta-repo or from any repository beside it, and finds `workspace.yml` itself.
