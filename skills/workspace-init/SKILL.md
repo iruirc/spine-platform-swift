@@ -18,18 +18,20 @@ Codex; every template and script path below is relative to that root. The `ws*::
 libraries in `<platform-root>/templates/workspace/lib/`, one prefix per file (`wsyml::` is
 `workspace-yml-parser.zsh`, `wsproj::` is `workspace-project.zsh`).
 
-Before the first `ws*::` call in **every** mode, source these libraries once in the same zsh process
-that performs the flow, and keep that process alive through shared execution:
+The functions, and the copy of `workspace.yml` that `wsyml::load` keeps, live only in the shell that
+sourced them, and the host starts a fresh shell for each command. Every command that calls a `ws*::`
+function therefore opens with:
 
 ```zsh
 source "<platform-root>/templates/workspace/lib/workspace-yml-parser.zsh"
 source "<platform-root>/templates/workspace/lib/workspace-graph.zsh"
 source "<platform-root>/templates/workspace/lib/workspace-package.zsh"
 source "<platform-root>/templates/workspace/lib/workspace-project.zsh"
+wsyml::load "<workspace.yml>"
 ```
 
-Batch and resume then call `wsyml::load <workspace.yml>` before any query or validation. Interactive
-mode loads the `workspace.yml` it writes in step 10 before entering shared execution.
+`<workspace.yml>` is the `--from` path in batch, and `<meta>/workspace.yml` on `--resume` and once
+interactive step 10 has written it.
 
 ## Language Resolution
 
@@ -100,7 +102,7 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 
 ## Batch flow
 
-1. Load the libraries listed under **Platform Root**. Run `wsyml::load`, `wsyml::validate`, `wsgraph::check_acyclic`. On any failure, emit `error_validation`, exit 2.
+1. Open the command as **Platform Root** shows, loading the `--from` path, and run `wsyml::validate`, `wsgraph::check_acyclic`. On any failure, emit `error_validation`, exit 2.
 2. Continue to **shared execution**.
 
 ## Shared execution
