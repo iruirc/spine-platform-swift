@@ -18,6 +18,19 @@ loaded skill location, not from the project working directory. The `ws*::` funct
 libraries in `<platform-root>/templates/workspace/lib/`, one prefix per file (`wsyml::` is
 `workspace-yml-parser.zsh`).
 
+Before reading or mutating the workspace, source the required libraries once in the same zsh
+process and load the resolved `workspace.yml`:
+
+```zsh
+source "<platform-root>/templates/workspace/lib/workspace-yml-parser.zsh"
+source "<platform-root>/templates/workspace/lib/workspace-graph.zsh"
+source "<platform-root>/templates/workspace/lib/workspace-package.zsh"
+wsyml::load "<resolved-workspace.yml>"
+```
+
+Keep that process alive through validation and package rendering so the loaded document and all
+three function namespaces remain available.
+
 ## Language Resolution
 
 Read `[LANG]` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`. All user-facing strings via `locales/<lang>.md`.

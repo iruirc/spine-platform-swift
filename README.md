@@ -60,12 +60,14 @@ codex plugin add spine-platform-swift@personal
 
 Start a new Codex session after installation. What Codex gets is a subset:
 
-- **Works:** every knowledge skill, plus `workspace-add` and `workspace-docs-regen` on an existing
-  workspace.
-- **Does not:** the nine `agents/` and four `commands/` are Claude Code components. `spine-toolkit`
-  ships no Codex manifest, so nothing orchestrates tasks, and the skills it drives do not run:
-  `manifest`, `swift-setup`, and `workspace-init`, which also calls the Claude-only `swift-init`.
-  Their `skills/<name>/agents/openai.yaml` keeps them out of Codex's implicit skill list.
+- **Works:** every standalone knowledge skill, plus `workspace-add` and `workspace-docs-regen` on an
+  existing workspace.
+- **Not supported in Codex yet:** the nine `agents/` and four `commands/` are Claude Code
+  components. `spine-toolkit` ships no Codex manifest, so nothing orchestrates tasks, and its
+  internal `manifest`, `swift-setup`, and `workspace-init` skills cannot complete their workflows;
+  `workspace-init` also calls the Claude-only `swift-init`. Codex still permits an explicit
+  `$skill-name` invocation, but `policy.allow_implicit_invocation: false` prevents these three
+  skills from being selected automatically and their UI metadata offers no starter prompt.
 
 Codex caches a plugin by version. To pick up a change, refresh the copy and reinstall; to
 reinstall at an unchanged version, run the `plugin-creator` cachebuster **on the copy**. The suffix

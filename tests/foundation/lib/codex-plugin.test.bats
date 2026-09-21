@@ -60,10 +60,28 @@ PY
   [ -z "$missing" ] || { echo "skills missing agents/openai.yaml:$missing"; return 1; }
 }
 
-@test "skills only spine-toolkit or Claude Code can drive stay out of Codex's implicit context" {
+@test "skills only spine-toolkit or Claude Code can drive require explicit Codex invocation" {
   # spine-toolkit ships no Codex manifest, and workspace-init also calls the Claude-only swift-init.
   for skill in manifest swift-setup workspace-init; do
     grep -qx '  allow_implicit_invocation: false' "$ROOT/skills/$skill/agents/openai.yaml" \
       || { echo "$skill: no policy.allow_implicit_invocation: false"; return 1; }
+    ! grep -q '^[[:space:]]*default_prompt:' "$ROOT/skills/$skill/agents/openai.yaml" \
+      || { echo "$skill: unsupported Codex workflow still advertises a default_prompt"; return 1; }
   done
+}
+
+@test "workspace skills load their zsh libraries before using ws namespaces" {
+  init="$ROOT/skills/workspace-init/SKILL.md"
+  add="$ROOT/skills/workspace-add/SKILL.md"
+
+  for lib in workspace-yml-parser workspace-graph workspace-package workspace-project; do
+    grep -qF "source \"<platform-root>/templates/workspace/lib/$lib.zsh\"" "$init" \
+      || { echo "workspace-init: $lib is not sourced"; return 1; }
+  done
+  for lib in workspace-yml-parser workspace-graph workspace-package; do
+    grep -qF "source \"<platform-root>/templates/workspace/lib/$lib.zsh\"" "$add" \
+      || { echo "workspace-add: $lib is not sourced"; return 1; }
+  done
+  grep -qF 'wsyml::load "<resolved-workspace.yml>"' "$add" \
+    || { echo "workspace-add: workspace.yml is not loaded"; return 1; }
 }

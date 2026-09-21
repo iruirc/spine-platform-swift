@@ -15,6 +15,7 @@ Read `.claude/CLAUDE.md` first; it is the shared development guide for this repo
   unless they are explicitly ported to Codex skills or workflows.
 - The Codex manifest intentionally omits the Claude dependency declaration, and `spine-toolkit` has
   no Codex manifest yet. A skill that only `spine-toolkit` or a Claude Code component can drive
-  carries `policy.allow_implicit_invocation: false` in its `skills/<name>/agents/openai.yaml`.
+  carries `policy.allow_implicit_invocation: false` in its `skills/<name>/agents/openai.yaml` and no
+  `default_prompt`. This prevents automatic selection but does not disable explicit `$skill` use.
 - Run the full foundation suite and the Codex plugin validator after changing plugin metadata or
   shared skills.
