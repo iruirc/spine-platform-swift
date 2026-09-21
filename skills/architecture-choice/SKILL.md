@@ -135,6 +135,6 @@ Cross-cutting (always, regardless of pattern):
 4. **Pick the matching row** from the Decision Matrix. If two rows fit — apply the When-in-Doubt defaults.
 5. **Write the choice into the active project guidance file's `## Stack`** from the table in Stack Cookbook: the `- Architecture:` line always, the `- UI:` line only when the block has none. Touch no other line and write nothing else into the block — no comment, no note: `swift-setup` reads every line there as an axis.
 6. **If user disagrees with the recommendation** — write their choice if it is a catalog value (otherwise ask again with the catalog's options), and state the objection, with its reason from the matrix or Fast Path, in your reply: the risk stays visible without a line the config cannot parse.
-7. **Hand control** to `swift-init` (new project) or `swift-architect` (existing project) with the skill list from Stack Cookbook.
+7. **Hand control** to `swift-init` (new project) or `swift-architect` (existing project) with the skill list from Stack Cookbook. A host without those agents, such as Codex, ends here with the skill list for the user to follow.
 
 The output of this skill is the `## Stack` lines above and a reply carrying the recommendation, any objection and the list of skills to follow next — nothing more. Don't generate code here.
