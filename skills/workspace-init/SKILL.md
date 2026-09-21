@@ -14,7 +14,9 @@ Bootstraps a new multi-package SPM workspace from an interactive Q&A or a suppli
 
 `<platform-root>` is the plugin root two directories above this `SKILL.md`. Resolve it from the
 loaded skill location, not from the project working directory. This works in both Claude Code and
-Codex; every template and script path below is relative to that root.
+Codex; every template and script path below is relative to that root. The `ws*::` functions are zsh
+libraries in `<platform-root>/templates/workspace/lib/`, one prefix per file (`wsyml::` is
+`workspace-yml-parser.zsh`, `wsproj::` is `workspace-project.zsh`).
 
 ## Language Resolution
 
@@ -85,7 +87,7 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 
 ## Batch flow
 
-1. Source `workspace-yml-parser.zsh`, `workspace-graph.zsh`. Run `wsyml::load`, `wsyml::validate`, `wsgraph::check_acyclic`. On any failure, emit `error_validation`, exit 2.
+1. Source `workspace-yml-parser.zsh` and `workspace-graph.zsh` from `<platform-root>/templates/workspace/lib/`. Run `wsyml::load`, `wsyml::validate`, `wsgraph::check_acyclic`. On any failure, emit `error_validation`, exit 2.
 2. Continue to **shared execution**.
 
 ## Shared execution
@@ -102,7 +104,7 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | s05_groups | mkdir each `package_groups[].dir` (or `packages/` if no groups) under workspace-parent | dir exists |
 | s06_pkg_<name> | per-package: mkdir, render `<platform-root>/templates/workspace/package/`, recursively. Rename directory components named `PACKAGE_NAME` → `<name>`, `PACKAGE_NAMETests` → `<name>Tests`. Of the `Tests/` variants render only the one `wspkg::tests_kind` names. Substitute `{{SWIFT_TOOLS_VERSION}}` (`wspkg::tools_version`) and `{{PLATFORMS}}` (`wspkg::platforms_inline`) beside the other placeholders. `git init`. | dir + `.git` exist |
 | s06b_project_<app> | **Pre-condition:** `command -v xcodegen` — emit `error_xcodegen_missing` and exit 3 if missing. Then invoke `swift-init` per mode, **always passing `--main-target-name=<apps.<key>.repo>`** so the generated `.xcodeproj` is named after the repo (e.g. `SmokeApp-ios.xcodeproj`) and does NOT collide with the sibling platform's `.xcodeproj` when both are opened in the same xcworkspace: **Interactive mode** — invoke `swift-init --platform=<key> --main-target-name=<repo> --lang=<toolkit.lang> --mode=<toolkit.mode> --progress=<toolkit.progress> --tasks=skip` WITHOUT `--no-prompt` and without `--docs-map`, since whether a project repo keeps a documentation registry is its own question; the user goes through the full swift-init Q&A (UI framework, DI, architecture, async, min-platform). Stack overlay from `apps.<key>.stack` (if user pre-filled in `workspace.yml`) is NOT applied in interactive mode — swift-init owns those decisions. **Batch mode** — invoke `swift-init --no-prompt --platform=<key> --main-target-name=<repo> --lang=<toolkit.lang> --mode=<toolkit.mode> --progress=<toolkit.progress> --tasks=skip [stack-flags]` with values from `apps.<key>.stack` or per-platform defaults (overlay); `--no-prompt` already defaults `--docs-map` to `skip`. The `<toolkit.*>` values come from `wsyml::toolkit`. Output in `<workspace-parent>/<repo-name>/`. swift-init has finished this step once `spine-toolkit:setup` has written `<repo>/CLAUDE-spine-toolkit.md` beside `project.yml` — setup runs after the artifact is on disk, and nothing `s06c` needs comes later. main-target-name for downstream steps = `apps.<platform>.repo`. Per-project `Tasks/` MUST NOT be created — the shared `<workspace-parent>/Tasks/` repo is provisioned in s09 instead. | `[[ -f <repo>/project.yml ]] && grep -q '^## Platform$' <repo>/CLAUDE-spine-toolkit.md` |
-| s06c_project_inject_<app> | Source `wsproj::*` library. Read `wsyml::packages`. Run `wsproj::inject_deps <repo> <main-target-name>`. Run `xcodegen generate` in `<repo>/` (second xcodegen run regenerates `.xcodeproj` reflecting injected deps). | Always rerun (declarative; state file authoritative for skip — see "State file precedence" below) |
+| s06c_project_inject_<app> | Source `<platform-root>/templates/workspace/lib/workspace-project.zsh` (`wsproj::*`). Read `wsyml::packages`. Run `wsproj::inject_deps <repo> <main-target-name>`. Run `xcodegen generate` in `<repo>/` (second xcodegen run regenerates `.xcodeproj` reflecting injected deps). | Always rerun (declarative; state file authoritative for skip — see "State file precedence" below) |
 | s06d_project_workspace_meta_<app> | Run `wsproj::append_workspace_meta <repo>` to add `## Workspace meta` section to `<repo>/CLAUDE-spine-toolkit.md`. | `grep -q '^## Workspace meta' <repo>/CLAUDE-spine-toolkit.md` |
 | s06e_project_git_<app> | `git init -b <default-branch>` in `<repo>`. | `[[ -d <repo>/.git ]]` |
 | s07_regen | Run `workspace-docs-regen` from `<meta>`. It writes `<workspace-name>.xcworkspace` with a `FileRef` per app repo and per package, sets the `folders` of `<workspace-name>.code-workspace`, fills every marked section of the meta-repo and package docs, and fills the two dependency arrays of each package's `Package.swift`. It runs after every package and project repo exists, so the refs and each package's `## Public API` are complete. | Always rerun (a run with nothing to change writes nothing) |

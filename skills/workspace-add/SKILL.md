@@ -14,7 +14,9 @@ Adds a package to an existing workspace. Two sub-modes:
 - `--incorporate <path>`: register an existing standalone package repo.
 
 `<platform-root>` is the plugin root two directories above this `SKILL.md`. Resolve it from the
-loaded skill location, not from the project working directory.
+loaded skill location, not from the project working directory. The `ws*::` functions are zsh
+libraries in `<platform-root>/templates/workspace/lib/`, one prefix per file (`wsyml::` is
+`workspace-yml-parser.zsh`).
 
 ## Language Resolution
 
