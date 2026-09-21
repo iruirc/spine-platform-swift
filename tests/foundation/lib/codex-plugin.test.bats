@@ -1,0 +1,61 @@
+#!/usr/bin/env bats
+# Codex and Claude Code share the same skills and release identity. These tests keep the two host
+# manifests aligned and reject a host-only runtime path in shared skill instructions.
+
+setup() {
+  ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
+  CLAUDE_MANIFEST="$ROOT/.claude-plugin/plugin.json"
+  CODEX_MANIFEST="$ROOT/.codex-plugin/plugin.json"
+}
+
+@test "the Codex plugin manifest has the required native shape" {
+  run python3 - "$CODEX_MANIFEST" <<'PY'
+import json
+import sys
+
+manifest = json.load(open(sys.argv[1]))
+required = ["name", "version", "description", "author", "skills", "interface"]
+missing = [key for key in required if key not in manifest]
+assert not missing, f"missing fields: {', '.join(missing)}"
+assert manifest["skills"] == "./skills/"
+assert manifest["author"].get("name")
+interface = manifest["interface"]
+for key in ("displayName", "shortDescription", "longDescription", "developerName", "category", "capabilities"):
+    assert interface.get(key), f"missing interface.{key}"
+PY
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "the Claude and Codex manifests publish the same identity and version" {
+  run python3 - "$CLAUDE_MANIFEST" "$CODEX_MANIFEST" <<'PY'
+import json
+import sys
+
+claude = json.load(open(sys.argv[1]))
+codex = json.load(open(sys.argv[2]))
+for path in (("name",), ("version",), ("repository",), ("author", "name")):
+    left, right = claude, codex
+    for key in path:
+        left, right = left[key], right[key]
+    assert left == right, f"{'.'.join(path)} differs: {left!r} != {right!r}"
+PY
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "shared skills do not depend on Claude-only plugin-root environment" {
+  run grep -R -n -F 'CLAUDE_PLUGIN_ROOT' "$ROOT/skills"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+}
+
+@test "Codex UI metadata exists for every user-facing skill" {
+  missing=""
+  count=0
+  for skill in "$ROOT"/skills/*; do
+    [ -d "$skill" ] || continue
+    [ "$(basename "$skill")" = manifest ] && continue
+    count=$((count + 1))
+    [ -f "$skill/agents/openai.yaml" ] || missing="$missing $(basename "$skill")"
+  done
+  [ "$count" -ge 25 ] || { echo "scan went vacuous: $count user-facing skills"; return 1; }
+  [ -z "$missing" ] || { echo "skills missing agents/openai.yaml:$missing"; return 1; }
+}

@@ -10,6 +10,12 @@ description: |
 
 Bootstraps a new multi-package SPM workspace from an interactive Q&A or a supplied `workspace.yml`. Strict trigger — only activates on the phrases listed in the `description` field.
 
+## Platform Root
+
+`<platform-root>` is the plugin root two directories above this `SKILL.md`. Resolve it from the
+loaded skill location, not from the project working directory. This works in both Claude Code and
+Codex; every template and script path below is relative to that root.
+
 ## Language Resolution
 
 `toolkit.lang` comes first: the answer to `qa_toolkit_lang` once the dialog has it, `wsyml::toolkit lang` in batch and `--resume`. Otherwise read `[LANG]` from `<workspace-parent>/<meta-repo>/CLAUDE-spine-toolkit.md` if it exists. Fallback: `CLAUDE-spine-toolkit.md` in the cwd. Fallback: `en`. Use the resolved language for all user-facing strings via `locales/<lang>.md`.
@@ -89,12 +95,12 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | Step | Action | Idempotency check |
 |------|--------|-------------------|
 | s01_meta_dir | mkdir `<workspace-parent>/<workspace-name>-meta/` | dir exists |
-| s02_meta_files | render meta-repo templates from `templates/workspace/meta-repo/`, recursively (preserves subdir layout). Substitutes `{{WORKSPACE_NAME}}`. Excludes `xcworkspace-contents.xml.tmpl` and `code-workspace.json.tmpl` — `s07_regen` writes those (NOT rendered by s02). | per-file `[[ -f ]]` |
+| s02_meta_files | render meta-repo templates from `<platform-root>/templates/workspace/meta-repo/`, recursively (preserves subdir layout). Substitutes `{{WORKSPACE_NAME}}`. Excludes `xcworkspace-contents.xml.tmpl` and `code-workspace.json.tmpl` — `s07_regen` writes those (NOT rendered by s02). | per-file `[[ -f ]]` |
 | s02b_meta_config | The config comes from core, never from a template here. (1) Only if `<meta>/CLAUDE-spine-toolkit.md` is absent: invoke `spine-toolkit:setup` with `<meta>` as the working directory, filling its `## Input` with `lang`, `mode` and `progress` from `wsyml::toolkit`, `platform = spine-platform-swift`, `stack = —` (a meta-repo has no stack to ask about), `tasks = skip` and `docs_map = skip` (Tasks/ and Docs/ are workspace siblings, provisioned by s09 / s09b). `CLAUDE.md` from s02 already imports the config, and setup leaves it as it is. The condition is for `--resume`: setup finding a config asks whether to overwrite it, and batch has nobody to answer. (2) `wsproj::append_workspace_meta <meta> meta`. | `grep -q '^## Workspace meta' <meta>/CLAUDE-spine-toolkit.md` |
 | s03_meta_git | `git init -b <default-branch>` in meta-repo | `[[ -d .git ]]` |
 | s04_meta_yml | copy `workspace.yml` into meta-repo | `[[ -f workspace.yml ]]` |
 | s05_groups | mkdir each `package_groups[].dir` (or `packages/` if no groups) under workspace-parent | dir exists |
-| s06_pkg_<name> | per-package: mkdir, render `templates/workspace/package/`, recursively. Rename directory components named `PACKAGE_NAME` → `<name>`, `PACKAGE_NAMETests` → `<name>Tests`. Of the `Tests/` variants render only the one `wspkg::tests_kind` names. Substitute `{{SWIFT_TOOLS_VERSION}}` (`wspkg::tools_version`) and `{{PLATFORMS}}` (`wspkg::platforms_inline`) beside the other placeholders. `git init`. | dir + `.git` exist |
+| s06_pkg_<name> | per-package: mkdir, render `<platform-root>/templates/workspace/package/`, recursively. Rename directory components named `PACKAGE_NAME` → `<name>`, `PACKAGE_NAMETests` → `<name>Tests`. Of the `Tests/` variants render only the one `wspkg::tests_kind` names. Substitute `{{SWIFT_TOOLS_VERSION}}` (`wspkg::tools_version`) and `{{PLATFORMS}}` (`wspkg::platforms_inline`) beside the other placeholders. `git init`. | dir + `.git` exist |
 | s06b_project_<app> | **Pre-condition:** `command -v xcodegen` — emit `error_xcodegen_missing` and exit 3 if missing. Then invoke `swift-init` per mode, **always passing `--main-target-name=<apps.<key>.repo>`** so the generated `.xcodeproj` is named after the repo (e.g. `SmokeApp-ios.xcodeproj`) and does NOT collide with the sibling platform's `.xcodeproj` when both are opened in the same xcworkspace: **Interactive mode** — invoke `swift-init --platform=<key> --main-target-name=<repo> --lang=<toolkit.lang> --mode=<toolkit.mode> --progress=<toolkit.progress> --tasks=skip` WITHOUT `--no-prompt` and without `--docs-map`, since whether a project repo keeps a documentation registry is its own question; the user goes through the full swift-init Q&A (UI framework, DI, architecture, async, min-platform). Stack overlay from `apps.<key>.stack` (if user pre-filled in `workspace.yml`) is NOT applied in interactive mode — swift-init owns those decisions. **Batch mode** — invoke `swift-init --no-prompt --platform=<key> --main-target-name=<repo> --lang=<toolkit.lang> --mode=<toolkit.mode> --progress=<toolkit.progress> --tasks=skip [stack-flags]` with values from `apps.<key>.stack` or per-platform defaults (overlay); `--no-prompt` already defaults `--docs-map` to `skip`. The `<toolkit.*>` values come from `wsyml::toolkit`. Output in `<workspace-parent>/<repo-name>/`. swift-init has finished this step once `spine-toolkit:setup` has written `<repo>/CLAUDE-spine-toolkit.md` beside `project.yml` — setup runs after the artifact is on disk, and nothing `s06c` needs comes later. main-target-name for downstream steps = `apps.<platform>.repo`. Per-project `Tasks/` MUST NOT be created — the shared `<workspace-parent>/Tasks/` repo is provisioned in s09 instead. | `[[ -f <repo>/project.yml ]] && grep -q '^## Platform$' <repo>/CLAUDE-spine-toolkit.md` |
 | s06c_project_inject_<app> | Source `wsproj::*` library. Read `wsyml::packages`. Run `wsproj::inject_deps <repo> <main-target-name>`. Run `xcodegen generate` in `<repo>/` (second xcodegen run regenerates `.xcodeproj` reflecting injected deps). | Always rerun (declarative; state file authoritative for skip — see "State file precedence" below) |
 | s06d_project_workspace_meta_<app> | Run `wsproj::append_workspace_meta <repo>` to add `## Workspace meta` section to `<repo>/CLAUDE-spine-toolkit.md`. | `grep -q '^## Workspace meta' <repo>/CLAUDE-spine-toolkit.md` |
@@ -129,7 +135,7 @@ For both `tasks` and `docs` blocks, two derived values are used elsewhere in the
 
 ### Tasks/Docs provisioning
 
-s09_tasks and s09b_docs share the same per-mode algorithm. Apply with `<block>` ∈ {`tasks`, `docs`}, `<name>` ∈ {`Tasks`, `Docs`}, and `<repo-template>` ∈ {`templates/workspace/tasks-repo/`, `templates/workspace/docs-repo/`}:
+s09_tasks and s09b_docs share the same per-mode algorithm. Apply with `<block>` ∈ {`tasks`, `docs`}, `<name>` ∈ {`Tasks`, `Docs`}, and `<repo-template>` ∈ {`<platform-root>/templates/workspace/tasks-repo/`, `<platform-root>/templates/workspace/docs-repo/`}:
 
 - mode `sibling`:
   1. `mkdir -p <workspace-parent>/<name>` (plus the conventional subfolders defined by `<repo-template>` — `TODO/ ACTIVE/ DONE/` for tasks, `architecture/ api/ guides/ notes/` for docs).
@@ -177,12 +183,12 @@ For project-block workflows: interruption of swift-init Q&A (Ctrl-C during s06b 
 
 ## Templates path
 
-`<platform-root>/templates/workspace/` — discoverable via plugin metadata. Skill body invokes zsh subshell to copy + interpolate placeholders (`{{WORKSPACE_NAME}}`, `{{PACKAGE_NAME}}`, etc.) using sed.
+`<platform-root>/templates/workspace/` — resolved from this skill as described above. Skill body invokes zsh subshell to copy + interpolate placeholders (`{{WORKSPACE_NAME}}`, `{{PACKAGE_NAME}}`, etc.) using sed.
 
 ## Template substitution rules
 
 - `*.tmpl` files are rendered to their target location with the `.tmpl` suffix stripped.
-- The package template tree (`templates/workspace/package/`) is walked recursively. Directory components literally named `PACKAGE_NAME` are renamed to `<name>`, and `PACKAGE_NAMETests` to `<name>Tests` (the longer form must be substituted first).
+- The package template tree (`<platform-root>/templates/workspace/package/`) is walked recursively. Directory components literally named `PACKAGE_NAME` are renamed to `<name>`, and `PACKAGE_NAMETests` to `<name>Tests` (the longer form must be substituted first).
 - Inside each rendered file, `{{...}}` placeholders are substituted via `sed`.
 - A template named `<base>.<variant>.tmpl` renders to `<base>` only when `<variant>` equals `defaults.tests`; the other variants are skipped. The `Tests/` stub is the only one that has variants today (`swift-testing`, `xctest`).
 - Known placeholders:
