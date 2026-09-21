@@ -59,3 +59,11 @@ PY
   [ "$count" -ge 25 ] || { echo "scan went vacuous: $count user-facing skills"; return 1; }
   [ -z "$missing" ] || { echo "skills missing agents/openai.yaml:$missing"; return 1; }
 }
+
+@test "skills only spine-toolkit or Claude Code can drive stay out of Codex's implicit context" {
+  # spine-toolkit ships no Codex manifest, and workspace-init also calls the Claude-only swift-init.
+  for skill in manifest swift-setup workspace-init; do
+    grep -qx '  allow_implicit_invocation: false' "$ROOT/skills/$skill/agents/openai.yaml" \
+      || { echo "$skill: no policy.allow_implicit_invocation: false"; return 1; }
+  done
+}

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Swift Platform Manifest"
+  short_description: "Data spine-toolkit reads to bind this platform"
+policy:
+  allow_implicit_invocation: false

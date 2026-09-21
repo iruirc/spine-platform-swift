@@ -2,8 +2,8 @@
 
 > This repo is a dual-runtime Claude Code and Codex plugin: `spine-platform-swift`, the Swift/Apple
 > knowledge and Claude agents that `spine-toolkit` dispatches to. Claude Code declares
-> `spine-toolkit` as a dependency; Codex loads the shared skills and requires a separately installed
-> compatible toolkit for orchestration. This file configures Claude when it works on the plugin itself.
+> `spine-toolkit` as a dependency; Codex loads the shared skills only, since `spine-toolkit` ships
+> no Codex manifest. This file configures Claude when it works on the plugin itself.
 
 ## Language
 
@@ -27,8 +27,8 @@ en
   `workspace-*`, `swift-setup`
 - `agents/` — nine `swift-*` Claude Code subagents, named by the manifest's `## Roles` table
 - `commands/` — `/swift-init`, `/workspace-*`
-- `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` — host manifests; their identity and
-  release version stay synchronized
+- `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` — host manifests with one identity
+  and one version, which `spine-ops: scripts/release.sh` moves in both
 - `AGENTS.md` — Codex repository guidance that points back to this shared development guide
 - `templates/workspace/`, `tests/foundation/`
 - `scripts/` plus `conventions/i18n.md` — six **adapted forks** of core's files, each recording the
