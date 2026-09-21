@@ -30,7 +30,7 @@
     "defaultPrompt": [
       "Design the architecture for this Swift feature.",
       "Review this iOS module and suggest improvements.",
-      "Help me structure this Swift package workspace."
+      "Split this Swift app into SPM packages."
     ],
     "brandColor": "#F05138"
   }

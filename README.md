@@ -49,22 +49,28 @@ SPM package and hands the answers it collected to spine-toolkit's setup, which w
 ### Codex
 
 The repository includes `.codex-plugin/plugin.json`; `skills/`, `scripts/`, `templates/`, and
-`conventions/` are shared with Claude Code. Add a checkout as the `spine-platform-swift` source in
-a Codex personal or team marketplace, then install it:
+`conventions/` are shared with Claude Code. Codex installs a plugin from a marketplace entry whose
+path is relative to the marketplace root: for the personal marketplace,
+`~/.agents/plugins/marketplace.json`, that is `~/plugins/spine-platform-swift`. Put a copy of this
+repository there, then install it:
 
 ```bash
 codex plugin add spine-platform-swift@personal
 ```
 
-Start a new Codex session after installation. Knowledge skills work directly. The nine files in
-`agents/` and four files in `commands/` remain Claude Code components; Codex does not expose them as
-subagents or slash commands. Orchestrated setup and task workflows also require a Codex-compatible
-`spine-toolkit`, installed separately because Codex does not consume Claude's `dependencies` field.
+Start a new Codex session after installation. What Codex gets is a subset:
 
-For local development, keep the marketplace source pointed at the repository checkout. When a new
-release changes `version` in both plugin manifests, pull it and run the same `codex plugin add`
-command. For changes that intentionally retain the same release version, use Codex's local plugin
-cachebuster before reinstalling.
+- **Works:** every knowledge skill, plus `workspace-add` and `workspace-docs-regen` on an existing
+  workspace.
+- **Does not:** the nine `agents/` and four `commands/` are Claude Code components. `spine-toolkit`
+  ships no Codex manifest, so nothing orchestrates tasks, and the skills it drives do not run:
+  `manifest`, `swift-setup`, and `workspace-init`, which also calls the Claude-only `swift-init`.
+  Their `skills/<name>/agents/openai.yaml` keeps them out of Codex's implicit skill list.
+
+Codex caches a plugin by version. To pick up a change, refresh the copy and reinstall; to
+reinstall at an unchanged version, run the `plugin-creator` cachebuster **on the copy**. The suffix
+it writes into `version` is not a release, and the foundation suite fails on a checkout that
+carries it.
 
 ## What it provides
 
@@ -154,8 +160,9 @@ scripts/lint-core-refs.sh . --core "$SPINE_TOOLKIT_CORE"
 
 The foundation suite also checks that the Claude Code and Codex manifests have the same plugin
 identity and release version, and that shared skills contain no runtime-only
-`${CLAUDE_PLUGIN_ROOT}` dependency. Validate the Codex package with the validator bundled with
-Codex's `plugin-creator` skill before publishing a release.
+`${CLAUDE_PLUGIN_ROOT}` dependency. `spine-ops: scripts/release.sh` moves the version in both
+manifests. Validate the Codex package with the validator bundled with Codex's `plugin-creator`
+skill before publishing a release.
 
 `SPINE_TOOLKIT_CORE` is a checkout of core; the suite falls back to one sitting beside this
 repository, and skips the check when there is none.
