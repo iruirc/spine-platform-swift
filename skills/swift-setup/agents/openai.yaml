@@ -1,6 +1,5 @@
 interface:
   display_name: "Swift Toolkit Setup"
   short_description: "Help with Swift Toolkit Setup tasks"
-  default_prompt: "Use $swift-setup to handle Swift Toolkit Setup work."
 policy:
   allow_implicit_invocation: false

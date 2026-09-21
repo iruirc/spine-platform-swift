@@ -18,6 +18,19 @@ Codex; every template and script path below is relative to that root. The `ws*::
 libraries in `<platform-root>/templates/workspace/lib/`, one prefix per file (`wsyml::` is
 `workspace-yml-parser.zsh`, `wsproj::` is `workspace-project.zsh`).
 
+Before the first `ws*::` call in **every** mode, source these libraries once in the same zsh process
+that performs the flow, and keep that process alive through shared execution:
+
+```zsh
+source "<platform-root>/templates/workspace/lib/workspace-yml-parser.zsh"
+source "<platform-root>/templates/workspace/lib/workspace-graph.zsh"
+source "<platform-root>/templates/workspace/lib/workspace-package.zsh"
+source "<platform-root>/templates/workspace/lib/workspace-project.zsh"
+```
+
+Batch and resume then call `wsyml::load <workspace.yml>` before any query or validation. Interactive
+mode loads the `workspace.yml` it writes in step 10 before entering shared execution.
+
 ## Language Resolution
 
 `toolkit.lang` comes first: the answer to `qa_toolkit_lang` once the dialog has it, `wsyml::toolkit lang` in batch and `--resume`. Otherwise read `[LANG]` from `<workspace-parent>/<meta-repo>/CLAUDE-spine-toolkit.md` if it exists. Fallback: `CLAUDE-spine-toolkit.md` in the cwd. Fallback: `en`. Use the resolved language for all user-facing strings via `locales/<lang>.md`.
@@ -83,11 +96,11 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
    When `project:` block is present, the summary additionally shows:
    - `{N} project repos: {ios=<repo>, macos=<repo>}`
    - `Will trigger /swift-init for: {apps_csv}` (interactive mode only — batch runs swift-init silently with `--no-prompt`)
-10. Ask `confirm_prompt` (Y/N). On N, emit `abort_no_changes`, exit 0. On Y, write `workspace.yml` to `<workspace-parent>/<workspace-name>-meta/workspace.yml` and continue to **shared execution**.
+10. Ask `confirm_prompt` (Y/N). On N, emit `abort_no_changes`, exit 0. On Y, write `workspace.yml` to `<workspace-parent>/<workspace-name>-meta/workspace.yml`, load it with `wsyml::load`, validate it with `wsyml::validate` and `wsgraph::check_acyclic`, then continue to **shared execution**.
 
 ## Batch flow
 
-1. Source `workspace-yml-parser.zsh` and `workspace-graph.zsh` from `<platform-root>/templates/workspace/lib/`. Run `wsyml::load`, `wsyml::validate`, `wsgraph::check_acyclic`. On any failure, emit `error_validation`, exit 2.
+1. Load the libraries listed under **Platform Root**. Run `wsyml::load`, `wsyml::validate`, `wsgraph::check_acyclic`. On any failure, emit `error_validation`, exit 2.
 2. Continue to **shared execution**.
 
 ## Shared execution
