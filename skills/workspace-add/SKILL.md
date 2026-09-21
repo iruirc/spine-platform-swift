@@ -18,8 +18,9 @@ loaded skill location, not from the project working directory. The `ws*::` funct
 libraries in `<platform-root>/templates/workspace/lib/`, one prefix per file (`wsyml::` is
 `workspace-yml-parser.zsh`).
 
-Before reading or mutating the workspace, source the required libraries once in the same zsh
-process and load the resolved `workspace.yml`:
+The functions, and the copy of `workspace.yml` that `wsyml::load` keeps, live only in the shell that
+sourced them, and the host starts a fresh shell for each command. Every command that calls a `ws*::`
+function therefore opens with:
 
 ```zsh
 source "<platform-root>/templates/workspace/lib/workspace-yml-parser.zsh"
@@ -28,8 +29,8 @@ source "<platform-root>/templates/workspace/lib/workspace-package.zsh"
 wsyml::load "<resolved-workspace.yml>"
 ```
 
-Keep that process alive through validation and package rendering so the loaded document and all
-three function namespaces remain available.
+`wsyml::validate` and `wsgraph::check_acyclic` read that copy, not the file: a copy loaded before
+this skill edits `workspace.yml` validates the document without the edit.
 
 ## Language Resolution
 
@@ -46,7 +47,7 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 1. Q&A: archetype, group (if `package_groups` non-empty), git URL per declared remote, version (default 0.1.0), deps (multi-select from existing packages), external_deps (Y/N → loop), allowed_deps (default = archetype rule), example_app + example_platform.
 2. Backup current `workspace.yml` to `.workspace-add.backup.yml`.
 3. Update `workspace.yml` (insert package entry under `packages:`).
-4. `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore from backup, emit `error_validation`, exit 2.
+4. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore from backup, emit `error_validation`, exit 2.
 5. Resolve target dir: `<workspace-parent>/<group-dir>/<name>/` (or `packages/<name>/` if no groups).
 6. mkdir + render `<platform-root>/templates/workspace/package/` with placeholder substitution, following the rules of `workspace-init` → `## Template substitution rules`: `{{SWIFT_TOOLS_VERSION}}` from `wspkg::tools_version`, `{{PLATFORMS}}` from `wspkg::platforms_inline`, and of the `Tests/` variants only the one `wspkg::tests_kind` names.
 7. Run `workspace-docs-regen` from the meta-repo. It fills the new package's marked sections and the two dependency arrays of its `Package.swift`, and adds the package to the meta-repo docs, the `.xcworkspace` and the `.code-workspace`; running it before the commit puts the filled sections in the package's first commit.
@@ -60,7 +61,7 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 2. Read target's `git remote -v` to detect existing remotes.
 3. Q&A: archetype, group (if applicable), allowed_deps, additional remotes (if existing remote count < declared in workspace).
 4. Backup `workspace.yml`. Update with new package entry.
-5. `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore + exit 2.
+5. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore + exit 2.
 6. Resolve target dir. If `--symlink` flag: create symlink. Else (default): `mv <original-path> <target-dir>`.
 7. **Soft mutate** target package files:
    - If `<target-dir>/CLAUDE.md` does NOT exist → render template, `git add` it (no commit).

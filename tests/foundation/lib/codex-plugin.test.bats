@@ -84,4 +84,14 @@ PY
   done
   grep -qF 'wsyml::load "<resolved-workspace.yml>"' "$add" \
     || { echo "workspace-add: workspace.yml is not loaded"; return 1; }
+  grep -qF 'wsyml::load "<workspace.yml>"' "$init" \
+    || { echo "workspace-init: workspace.yml is not loaded"; return 1; }
+}
+
+@test "workspace-add loads workspace.yml again before validating its own edit" {
+  # wsyml::validate reads the copy wsyml::load took; a copy taken before the edit checks the old file.
+  checks="$(grep -E '^[0-9]+\. .*wsyml::validate' "$ROOT/skills/workspace-add/SKILL.md")"
+  [ "$(printf '%s\n' "$checks" | grep -c .)" -ge 2 ] || { echo "scan went vacuous:"; echo "$checks"; return 1; }
+  stale="$(printf '%s\n' "$checks" | grep -v 'wsyml::load' || true)"
+  [ -z "$stale" ] || { echo "validates without loading the edit:"; echo "$stale"; return 1; }
 }
