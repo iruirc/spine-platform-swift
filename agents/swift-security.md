@@ -68,7 +68,7 @@ When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_
 
 ## Output Structure
 
-Your response MUST be structured with these top-level sections:
+As triage or lens, return only what the brief's schema asks for. In an audit, your response MUST be structured with these top-level sections:
 
 - `## Scope` — files, configs, dependencies covered
 - `## Summary` — one paragraph with headline findings
