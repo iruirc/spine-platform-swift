@@ -70,3 +70,16 @@ h2s() {
   hits="$(grep -oE 'XCTAssert[A-Za-z]*|XCTestCase|XCTUnwrap|setUp|tearDown|#expect|#require|@Suite|@Test\b|QuickSpec' <<<"$body" | sort -u | tr '\n' ' ')"
   [ -z "$hits" ] || { echo "the tester still spells a framework: $hits"; return 1; }
 }
+
+@test "the validator extracts failures of every value the axis allows" {
+  v="$ROOT/agents/swift-validator.md"
+  grep -qF 'XCTAssert' "$v" || { echo "the XCTest failure form is gone"; return 1; }
+  grep -qF 'recorded an issue' "$v" || { echo "the validator cannot see a Swift Testing issue"; return 1; }
+  grep -qF 'Executed' "$v" || { echo "the run summary is no longer read"; return 1; }
+}
+
+@test "the validator knows the Swift Testing summary does not count its own failures" {
+  v="$ROOT/agents/swift-validator.md"
+  grep -qF 'zero-width space' "$v" || { echo "nothing warns that the issue line may not start with the mark"; return 1; }
+  grep -qF 'XCTest only' "$v" || { echo "the validator may report a green run that failed"; return 1; }
+}
