@@ -33,3 +33,16 @@ setup() {
     grep -qF "$apple" "$t" || { echo "the tester lost its Apple-specific half: $apple"; return 1; }
   done
 }
+
+@test "the reviewer judges tests by the core section, not by a list of its own" {
+  r="$AGENTS/swift-reviewer.md"
+  grep -qF '`## Review`' "$r" || { echo "the reviewer does not name the core section"; return 1; }
+  grep -qF 'spine-toolkit:test-authoring' "$r" || { echo "the reviewer never names the skill"; return 1; }
+  # The heading stays — it is the reviewer's own checklist structure — but the four
+  # bullets under it were the copy, and "Mock abuse" is the one that cannot be
+  # rewritten without saying what a double is for, which is core's sentence now.
+  if grep -qF '**Mock abuse**' "$r"; then
+    echo "the reviewer still carries its own test criteria"
+    return 1
+  fi
+}
