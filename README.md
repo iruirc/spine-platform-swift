@@ -105,6 +105,9 @@ carries it.
   architectures.
 - *Packaging* — `pkg-spm-design` (package boundaries), plus the workspace skills below.
 - *Release ops* — `release-ops`, the Apple-specific answers behind spine-toolkit's release-ops topic.
+- *Testing* — `test-frameworks`, one section per value of the `tests` axis plus the surfaces that
+  force a framework. Which value a file takes is core's `test-authoring`; this is what it means in
+  code.
 
 `concurrency-architecture` covers where concurrency primitives sit across layers. Language-level
 questions — `Sendable`, isolation rules, Swift 6 migration, actor reentrancy — belong to the
@@ -136,7 +139,7 @@ through it, or invoked by name by an agent.
 
 ## Requirements
 
-- `spine-toolkit` `>=2.0.0 <3`, declared as a dependency in `plugin.json`.
+- `spine-toolkit` `>=2.5.0 <3`, declared as a dependency in `plugin.json`.
   An installed core outside that range is not a warning: the host demotes this plugin and it does
   not load at all — no agents, no skills, no manifest.
 - The workspace skills need `yq` v4+ (`brew install yq`). `gh` is optional, needed only for
