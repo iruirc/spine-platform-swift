@@ -71,9 +71,10 @@ setup() {
   # own i18n lint for the same reason.
   hits="$(grep -rnE --exclude-dir=.git --exclude-dir=.superpowers "$pat" "$ROOT" \
             | grep -vE '/\.claude/plugins/(cache|marketplaces)/' || true)"
-  # The two suites that look for a sibling checkout of core are the other deliberate
+  # The three suites that look for a sibling checkout of core are the other deliberate
   # exceptions: each skips rather than dangles when the checkout is absent.
-  offenders="$(grep -vF -e 'self-containment.test.bats' -e 'core-refs.test.bats' -e 'forks.test.bats' <<<"$hits" || true)"
+  offenders="$(grep -vF -e 'self-containment.test.bats' -e 'core-refs.test.bats' -e 'forks.test.bats' \
+                        -e 'test-discipline.test.bats' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "spine-platform-swift reference(s) to the core tree:"; echo "$offenders"; return 1; }
   # The self-exclusion is otherwise unbounded — a violation added to this file
   # would be invisible. Pin the count: a change here must be re-read.
