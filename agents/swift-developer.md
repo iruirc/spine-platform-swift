@@ -55,7 +55,7 @@ This step is not optional and not satisfied by "I followed the project style" in
 2. Read crash logs and stack traces carefully.
 3. Classify: logic error, memory issue, threading problem, or UI bug.
 4. Implement minimal fix with minimal side effects.
-5. Add regression test to prevent recurrence.
+5. Add a regression test to prevent recurrence, in the framework `spine-toolkit:test-authoring` picks for that file — the framework of the file you extend, else the project's `- Tests:` value. Its syntax is `test-frameworks`, the section named after that value.
 6. If crash is memory-related, check for retain cycles.
 
 ## Code Standards
@@ -92,6 +92,7 @@ This step is not optional and not satisfied by "I followed the project style" in
 ## Skills Reference (spine-platform-swift)
 
 Consult the appropriate skill based on the architecture in use:
+- `test-frameworks` — writing a test in the framework this project uses: declaration, assertions, lifecycle
 - `arch-mvvm` — MVVM pattern implementation
 - `arch-coordinator` — Coordinator navigation pattern (UIKit)
 - `arch-swiftui-navigation` — SwiftUI navigation (NavigationStack/Path, Router, deep links, hybrid interop)
@@ -116,6 +117,7 @@ Consult the appropriate skill based on the architecture in use:
 
 ## Skills Reference (core)
 
+- `spine-toolkit:test-authoring` — which framework a given file's tests are written in
 - `spine-toolkit:task-new`, `spine-toolkit:task-move` — task lifecycle management
 
 ## Related Agents (spine-platform-swift)

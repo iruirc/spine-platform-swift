@@ -83,3 +83,10 @@ h2s() {
   grep -qF 'zero-width space' "$v" || { echo "nothing warns that the issue line may not start with the mark"; return 1; }
   grep -qF 'XCTest only' "$v" || { echo "the validator may report a green run that failed"; return 1; }
 }
+
+@test "a regression test and its sketch name the framework they are written in" {
+  grep -qF 'test-frameworks' "$ROOT/agents/swift-developer.md" \
+    || { echo "the developer's regression test is in no particular framework"; return 1; }
+  grep -qF 'test-frameworks' "$ROOT/agents/swift-diagnostics.md" \
+    || { echo "the diagnostics sketch is in no particular framework"; return 1; }
+}
