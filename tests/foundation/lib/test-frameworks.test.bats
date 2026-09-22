@@ -63,3 +63,10 @@ h2s() {
   grep -qE '^testing[[:space:]]*→[[:space:]]*`test-frameworks`$' "$MANIFEST" \
     || { echo "no testing row in the manifest ## Topics"; return 1; }
 }
+
+@test "the tester names no framework construct in its own instructions" {
+  tester="$ROOT/agents/swift-tester.md"
+  body="$(awk '/^## Skills Reference/{exit} {print}' "$tester")"
+  hits="$(grep -oE 'XCTAssert[A-Za-z]*|XCTestCase|XCTUnwrap|setUp|tearDown|#expect|#require|@Suite|@Test\b|QuickSpec' <<<"$body" | sort -u | tr '\n' ' ')"
+  [ -z "$hits" ] || { echo "the tester still spells a framework: $hits"; return 1; }
+}
