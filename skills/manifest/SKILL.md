@@ -99,6 +99,7 @@ errors           → `error-architecture`
 deep links       → `nav-deeplinks`
 packaging        → `pkg-spm-design`, `workspace-init`
 release ops      → `release-ops`
+testing          → `test-frameworks`
 
 ## Entrypoints
 
