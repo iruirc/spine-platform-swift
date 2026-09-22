@@ -90,3 +90,30 @@ h2s() {
   grep -qF 'test-frameworks' "$ROOT/agents/swift-diagnostics.md" \
     || { echo "the diagnostics sketch is in no particular framework"; return 1; }
 }
+
+@test "init asks the tests axis and carries a flag for it" {
+  i="$ROOT/agents/swift-init.md"
+  grep -qF -- '--tests=' "$i" || { echo "no --tests flag"; return 1; }
+  grep -qE '^\| `--tests=' "$i" || { echo "the flag has no row in the flag-to-Stack table"; return 1; }
+}
+
+@test "init offers every value of the tests axis and restates none of them" {
+  i="$ROOT/agents/swift-init.md"
+  grep -qF 'the values `## Axes` lists for `tests`' "$i" \
+    || { echo "init does not take its options from the manifest"; return 1; }
+}
+
+@test "init writes the first test from the skill, not from its own memory" {
+  i="$ROOT/agents/swift-init.md"
+  grep -qF '`test-frameworks`' "$i" || { echo "the placeholder test is in no particular framework"; return 1; }
+}
+
+@test "every agent that writes test code takes the choice from core and the syntax from the skill" {
+  bad=""
+  for a in swift-tester swift-developer swift-diagnostics swift-init; do
+    f="$ROOT/agents/$a.md"
+    grep -qF 'spine-toolkit:test-authoring' "$f" || bad="$bad $a(choice)"
+    grep -qF '`test-frameworks`' "$f" || bad="$bad $a(syntax)"
+  done
+  [ -z "$bad" ] || { echo "agents not bound to the rule:$bad"; return 1; }
+}
