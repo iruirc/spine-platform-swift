@@ -191,10 +191,11 @@ Structure, the required fields of a case, and the two rules that make a case exe
 1. `session-show-defaults` — see if project/scheme/simulator are pre-set.
 2. If not set: `discover_projs` → `list_schemes` → `list_sims`. Pick the most recently used iOS simulator matching the project's deployment target. For macOS apps use the macOS workflow tools instead (if available).
 3. `build_sim` with `{ project|workspace, scheme, simulator }`. Capture full stdout into `Validation.md` under `## Build Log`. If exit != 0 → status FAILED; collect first 3 compile errors into the digest.
-4. `test_sim` with same params. Capture full output into `Validation.md` under `## Test Log`. Extract:
-   - `Test Suite ... passed/failed at ...` summary lines,
-   - every `XCTAssert*` failure with `file:line` and the assertion message,
-   - every `Test Case '...' failed (...)` line.
+4. `test_sim` with same params. Capture full output into `Validation.md` under `## Test Log`. A target may hold two frameworks at once and they report through two channels; extract both, per `test-frameworks` → "XCTest" and `test-frameworks` → "Swift Testing":
+   - `Test Suite ... passed/failed at ...` summary lines and `Executed N tests, with M failures` — these count XCTest only, Quick+Nimble included, and say nothing about Swift Testing;
+   - every `XCTAssert*` failure with `file:line` and the assertion message, and every `Test Case '...' failed (...)` line — XCTest's channel, which is also where Quick+Nimble reports, with the example path as the test name;
+   - every line carrying `✘`: `recorded an issue at <File.swift>:<line>:<col>: <what failed>`, the `↳` lines under it, and the final `✘ Test run with N tests ...`. These are Swift Testing's. Match on the `✘`, never on the start of the line — the line may begin with a zero-width space.
+   A run whose XCTest summary says `0 failures` is not a passing run until the `✘` lines have been read too.
 
 ### Driving the app
 
@@ -331,6 +332,7 @@ The caller (orchestrator) treats your return as authoritative — never embellis
 
 ## Skills Reference (spine-platform-swift)
 
+- `test-frameworks` — how a failure of each value of the `tests` axis reads in a run, and which channel it comes through
 - `concurrency-architecture` — when a test failure looks like a data race / cancellation issue, this skill helps you describe the symptom precisely (not to fix it — to classify it correctly in `Failures`).
 - `error-architecture` — to recognize the difference between a domain error surfacing correctly (PASSED with expected error path) and an unexpected error leaking (FAILED).
 - `persistence-migrations` — when a test failure looks migration-related (Core Data / SwiftData / GRDB schema mismatch), note that in the failure entry.
