@@ -43,11 +43,13 @@ For apps:
 - DI: four options. **Present them to the user in this exact display order — do NOT reorder by recommendation, default, or platform:** (1) **Swinject** (runtime container, autoregister, name-binding — see `di-swinject`); (2) **Factory** by hmlongco (compile-time DI, `@Injected` property wrapper, preview/test contexts — see `di-factory`); (3) **manual + Factory pattern** (hand-written `CoordinatorFactory`/`ModuleFactory` without a DI library, see `di-module-assembly` + `di-composition-root` → "DI: container vs manual graph"); (4) **plain manual** (no structure — for 1–3 screen prototypes). **Do not confuse the Factory pattern (an architectural pattern) with the Factory library (hmlongco/Factory)** — they are distinct: the Factory pattern exists everywhere, while the Factory library is a separate choice. **For options 1–3 the generated scaffold MUST follow the Module Assembly chain (see "Module Assembly Chain" section below) — only `AppDependencyContainer` knows about the DI library, every other layer talks to it through `AppDependencies` / `*FeatureDependencies` protocols. Option 4 opts out of the chain on purpose.** If the user is unsure, run `architecture-choice` (its Stack Cookbook contains a DI tiebreaker) — but the order in the UI stays Swinject → Factory → manual+Factory → plain. Project-type hints (informational only, NOT a reason to swap positions): SwiftUI-first projects often pick Factory; UIKit projects needing autoregister often pick Swinject; graphs under the threshold in `di-composition-root` often pick manual
 - Architecture: the options are the values `## Axes` lists for `architecture` in `spine-platform-swift:manifest` — never restated here. Navigation is not part of this answer: it follows the UI framework. **If the user is unsure or asks for advice**, run the `architecture-choice` skill (5-axis compass) and answer with a Decision Matrix row; do not guess from the project name
 - Platforms + minimum versions (iOS 16+, macOS 13+, etc.)
+- Test framework: the values `## Axes` lists for `tests` in `spine-platform-swift:manifest` — never restated here. Offer Swift Testing as the default, which is what the workspace generator writes too. Choosing Quick+Nimble adds those two packages, the way a DI choice adds Swinject or Factory
 
 For SPM packages:
 - Target platforms + minimum versions
 - `swift-tools-version`
 - Public module name(s) and purpose
+- Test framework: the values `## Axes` lists for `tests` in `spine-platform-swift:manifest`, default Swift Testing
 
 ## Non-Interactive Flags
 
@@ -60,6 +62,7 @@ swift-init [--no-prompt]
            [--di=factory|swinject|manual-factory|plain]
            [--architecture=mvvm|mvi|tca|viper|clean|mvc|mvvm-coordinator]
            [--async=async-await|combine|rxswift]
+           [--tests=swift-testing|xctest|quick-nimble]
            [--min-ios=<semver>]
            [--min-macos=<semver>]
            [--main-target-name=<name>]
@@ -89,6 +92,7 @@ swift-init [--no-prompt]
 | `di` | `factory` | `factory` |
 | `architecture` | `mvvm` | `mvvm` |
 | `async` | `async-await` | `async-await` |
+| `tests` | `swift-testing` | `swift-testing` |
 | `min_ios` | `17.0` | — |
 | `min_macos` | — | `14.0` |
 
@@ -110,6 +114,9 @@ An interactive answer for UI framework, async approach and architecture is alrea
 | `--di=factory` | `di` | `Factory` |
 | `--di=manual-factory` | `di` | `manual` |
 | `--di=plain` | `di` | — |
+| `--tests=swift-testing` | `tests` | `Swift Testing` |
+| `--tests=xctest` | `tests` | `XCTest` |
+| `--tests=quick-nimble` | `tests` | `Quick+Nimble` |
 | `--architecture=mvvm` | `architecture` | `MVVM` |
 | `--architecture=mvvm-coordinator` | `architecture` | `MVVM` |
 | `--architecture=mvi` | `architecture` | `MVI` |
@@ -165,7 +172,7 @@ For apps additionally:
 For SPM packages:
 - `Package.swift` with `platforms:`, `products:`, `targets:`, test target
 - `Sources/<Name>/` with a placeholder public API
-- `Tests/<Name>Tests/` with a placeholder test
+- `Tests/<Name>Tests/` with a placeholder test in the chosen framework — its declaration form comes from `test-frameworks`, the section named after the value, and so does whatever that framework needs in `Package.swift` (nothing for XCTest and Swift Testing; the two packages for Quick+Nimble)
 
 ## Module Assembly Chain (mandatory for DI options 1–3)
 
@@ -271,7 +278,7 @@ Always use the latest stable swift-tools-version and Swift language version avai
 Algorithm:
 
 1. **Check that `xcodegen` is installed**: `which xcodegen`. If missing, ask the user once whether to install it via `brew install xcodegen`. Never install silently.
-2. **Generate `project.yml`** at the project root — describe: project name, platforms + deployment target, app target (sources, resources, `Info.plist`), test target, schemes, build settings (Swift version, code signing — `Automatic`/none for a template).
+2. **Generate `project.yml`** at the project root — describe: project name, platforms + deployment target, app target (sources, resources, `Info.plist`), test target — whose placeholder test and package dependencies follow the same section of `test-frameworks` — schemes, build settings (Swift version, code signing — `Automatic`/none for a template).
 3. **Run `xcodegen generate`** at the root — produces the `.xcodeproj`.
 4. **Verify the build** via XcodeBuildMCP `discover_projs` + `list_schemes` — the correct scheme must appear. Optionally run `build_sim` as a smoke test.
 
@@ -285,6 +292,7 @@ Why XcodeGen and not Tuist: for single-artifact initialization Tuist's strong po
 
 Consult the relevant skill when scaffolding. The skill body defines the folder structure, protocol shape, and conventions that must be reflected in the generated scaffold:
 
+- `test-frameworks` — the placeholder test's declaration and what the chosen framework needs in the package or the project; the choice itself follows `spine-toolkit:test-authoring`
 - `architecture-choice` — meta-skill: pick the stack before scaffolding when the user is undecided or hesitates; runs the 5-axis questionnaire, writes the catalog value into `## Stack` and gives the justification in its reply. Use **before** any of the per-pattern skills below
 - `arch-mvvm` — MVVM module folder layout (View / ViewModel / bindings), binding setup
 - `arch-coordinator` — Coordinator module and Router abstraction, navigation wiring (UIKit)
