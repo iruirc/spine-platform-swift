@@ -65,6 +65,7 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 
 ## Skills Reference (spine-platform-swift)
 
+- `test-frameworks` — the shape of the regression test you sketch, per the project's `- Tests:` value
 - `reactive-rxswift`, `reactive-combine` — framework-specific leak/threading patterns
 - `concurrency-architecture` — diagnosing concurrency placement bugs: work continues after screen dies (missing `Task` storage / cancellation in `deinit` / `viewWillDisappear`); data race from background `Task` writing to `@Observable` ViewModel that lacks explicit `@MainActor`; deadlock from synchronous wait on main-actor work from main thread (Combine `.sink` calling `await MainActor.run` while already on main); retain cycle in long-running `Task` closure missing `[weak self]`; cancellation lost via `Task.detached` somewhere in the chain (HTTP request continues after cancel); `URLSession` task that should have been cancelled but wasn't (transport timeout fires instead); `actor` reentrancy bug — value read pre-suspension differs from value used post-suspension (delegate to AvdLee's `actors.md` reference for re-entrancy mechanics); `MainActor.assertIsolated()` failures in `swift-debug-checked` builds. Defer Swift 6 strict-concurrency diagnostics to `swift-concurrency:swift-concurrency` (AvdLee skill)
 - `error-architecture` — diagnosing leaked low-level errors, broken mapping, swallowed catches, CancellationError shown as user error
@@ -97,7 +98,7 @@ Your response MUST be structured with these top-level sections:
 - `## Root Cause` — precise explanation with file:line references
 - `## Why It Happens` — the chain from root cause to symptom
 - `## Proposed Fix` — unified diff plus explanation; no fix yet applied
-- `## Regression Test` — signature + assertion sketch of the test that will prevent recurrence
+- `## Regression Test` — signature + assertion sketch of the test that will prevent recurrence, written in the framework `spine-toolkit:test-authoring` picks for the file it would live in (`test-frameworks` for its syntax). A sketch in the wrong framework is rewritten by whoever picks it up, and its assertions are read as if they were that framework's
 - `## Confidence` — Low / Medium / High, with rationale
 
 ## Rules
