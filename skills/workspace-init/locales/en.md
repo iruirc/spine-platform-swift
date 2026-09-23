@@ -68,7 +68,7 @@ Deployment floor of this workspace's packages: [ios 17.0 + macos 14.0 (default) 
 Platforms as a comma-separated list, e.g. ios=17.0,macos=14.0:
 
 ## qa_defaults_tests
-Test framework a new package is generated with: [swift-testing (default) | xctest]
+Test framework this workspace is generated with — its packages, and the apps it creates: [swift-testing (default) | xctest | quick-nimble]
 
 ## qa_tasks_enabled
 Provision a shared Tasks/ folder at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)
