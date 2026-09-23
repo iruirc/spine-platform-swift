@@ -20,8 +20,14 @@ setup() {
   [ -z "$missing" ] || { echo "named but not shipped:$missing"; return 1; }
 }
 
-@test "both s06b branches hand the tests axis to swift-init" {
+@test "both s06b branches hand the tests axis to swift-init, each with its own precedence" {
   local s="$(ws_repo_root)/skills/workspace-init/SKILL.md"
-  local n; n="$(grep -o -- '--tests=' "$s" | wc -l | tr -d ' ')"
-  [ "$n" -ge 2 ] || { echo "s06b names --tests $n time(s); interactive and batch both need it"; return 1; }
+  # Counting occurrences would pass on two identical flags. Each branch is pinned to the value it
+  # must carry: interactive applies no overlay, so the workspace answer is what swift-init
+  # pre-answers with; batch is the only mode that applies one, so it is the only place the per-app
+  # override can take effect and the only place it must be named.
+  grep -qF -- '--tests=<defaults.tests>' "$s" \
+    || { echo "the interactive branch does not pass the workspace default"; return 1; }
+  grep -qF -- '--tests=<apps.<key>.stack.tests, else defaults.tests>' "$s" \
+    || { echo "the batch branch does not carry the per-app override"; return 1; }
 }
