@@ -21,9 +21,6 @@ table and fail without it.
 | `xctest` | `XCTest` | `## XCTest` |
 | `quick-nimble` | `Quick+Nimble` | `## Quick+Nimble` |
 
-The heading row is English like the rest of the file: this repo's source of truth is English, and
-only `locales/*.md` hold user-facing translations.
-
 ## Forced by surface
 
 Where only one framework can drive a surface, it wins over the axis value.
