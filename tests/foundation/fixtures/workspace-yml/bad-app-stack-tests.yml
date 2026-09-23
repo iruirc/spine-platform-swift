@@ -1,0 +1,9 @@
+workspace: { name: bast }
+remotes: [origin]
+packages:
+  - { name: A, archetype: engine, git: {origin: x}, version: "1.0.0" }
+project:
+  apps:
+    ios:
+      repo: A-ios
+      stack: { tests: spock }

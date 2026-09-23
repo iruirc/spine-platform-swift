@@ -372,6 +372,12 @@ EOF
   [[ "$output" == *"defaults.tests '*' must be swift-testing|xctest|quick-nimble"* ]]
 }
 
+@test "validate rejects an app stack.tests outside the accepted tokens" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-app-stack-tests.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"project.apps.ios.stack.tests 'spock' must be swift-testing|xctest|quick-nimble"* ]]
+}
+
 @test "validate rejects a defaults.platforms that is not a map" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-platforms-scalar.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]

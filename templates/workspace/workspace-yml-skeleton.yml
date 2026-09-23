@@ -30,7 +30,7 @@ defaults:
   platforms:              # floor of generated packages; keys: ios | macos
     ios: "17.0"
     macos: "14.0"
-  tests: swift-testing    # swift-testing | xctest — the test stub a new package gets
+  tests: swift-testing    # swift-testing | xctest | quick-nimble — packages, and the apps below
 
 bootstrap:
   use_gh: false

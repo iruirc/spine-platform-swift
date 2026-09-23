@@ -533,6 +533,12 @@ wsyml::validate() {
         print -u2 "$_path: project.apps.$ak.stack.async '$v' must be async-await|combine|rxswift"
         ((errs++))
       fi
+      # P-rule 9: tests. The app's own answer; absent, the app follows defaults.tests.
+      v="$(wsyml::get ".project.apps.$ak.stack.tests" 2>/dev/null || true)"
+      if [[ -n "$v" ]] && (( ! ${WSYML_TESTS_KINDS[(Ie)$v]} )); then
+        print -u2 "$_path: project.apps.$ak.stack.tests '$v' must be ${(j:|:)WSYML_TESTS_KINDS}"
+        ((errs++))
+      fi
       # P-rule 8: min_platforms.<sub-platform> semver (M.m.p flexible: 1, 1.0, 1.0.0)
       mp_keys="$(wsyml::get ".project.apps.$ak.stack.min_platforms | keys | .[]?" 2>/dev/null || true)"
       for mpk in ${(f)mp_keys}; do

@@ -68,7 +68,7 @@ Workspace-зависимости (мультивыбор):
 Платформы списком через запятую, например ios=17.0,macos=14.0:
 
 ## qa_defaults_tests
-Фреймворк тестов нового пакета: [swift-testing (по умолчанию) | xctest]
+Фреймворк тестов этого воркспейса — его пакетов и создаваемых им приложений: [swift-testing (по умолчанию) | xctest | quick-nimble]
 
 ## qa_tasks_enabled
 Создать общую Tasks/-папку на уровне workspace-parent (рядом с packages и project-репо)? (Y/N, по умолчанию Y)
