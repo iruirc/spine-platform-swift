@@ -163,8 +163,12 @@ table_rows() {
     [ -f "$stub" ] || { echo "no stub for token $tok"; return 1; }
     local body; body="$(awk -v s="## $section" '$0 == s {on = 1; next} on && /^## / {exit} on' "$SKILL")"
     [ -n "$body" ] || { echo "no '## $section' section in the skill"; return 1; }
+    # Split on commas only: unquoted word-splitting would also break on the spaces inside a
+    # fragment, turning `override class func spec()` into four needles, one of which (`class`)
+    # any Swift class satisfies.
+    local -a fl; IFS=, read -ra fl <<< "$frags"
     local f
-    for f in ${frags//,/ }; do
+    for f in "${fl[@]}"; do
       grep -qF -- "$f" "$stub" || { echo "the $tok stub does not use $f"; return 1; }
       printf '%s\n' "$body" | grep -qF -- "$f" || { echo "'## $section' does not declare $f"; return 1; }
     done

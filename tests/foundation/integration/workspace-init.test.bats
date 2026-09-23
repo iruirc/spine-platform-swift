@@ -85,6 +85,7 @@ teardown() { ws_cleanup_tmpdirs; }
   local manifest="$parent/packages/OnePkg/Package.swift"
   grep -Fq '.package(url: "https://github.com/Quick/Quick.git", from: "7.6.0"),' "$manifest"
   grep -Fq '.package(url: "https://github.com/Quick/Nimble.git", from: "13.8.0"),' "$manifest"
+  grep -Fq '.product(name: "Quick", package: "Quick"),' "$manifest"
   grep -Fq '.product(name: "Nimble", package: "Nimble"),' "$manifest"
   ! grep -Fq 'TEST_FRAMEWORK' "$manifest"
 }
