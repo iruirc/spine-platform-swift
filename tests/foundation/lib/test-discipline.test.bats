@@ -68,6 +68,8 @@ setup() {
   # bullet; a mention of "regression test" there without the qualifier promises one anyway.
   roster="$(awk '$0=="## Related Agents (spine-platform-swift)"{f=1;next} f&&/^#{2,3} /{exit} f' \
     "$AGENTS/swift-diagnostics.md")"
+  [ -n "$roster" ] \
+    || { echo "swift-diagnostics has no ## Related Agents (spine-platform-swift) section to check"; return 1; }
   if grep -qi 'regression test' <<<"$roster" && ! grep -qF '`## When the task owes no test`' <<<"$roster"; then
     echo "swift-diagnostics' roster still promises the regression test unconditionally"; return 1
   fi
