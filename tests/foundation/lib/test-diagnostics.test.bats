@@ -31,3 +31,30 @@ setup() {
       || { echo "$(basename "$f") names the flag but not where its reason lives"; return 1; }
   done
 }
+
+# The flag also stops a green run's diagnose, but a direct run without it still goes silent
+# after its summary line; the verdict is already in the log, so the run must not read as hung.
+@test "the validator says the collection runs on a green run too" {
+  v="$AGENTS/swift-validator.md"
+  ! grep -qF 'one failing test makes `xcodebuild` collect' "$v" \
+    || { echo "the validator still ties the collection to a failing test"; return 1; }
+  grep -qF 'on a green run too' "$v" || { echo "the validator does not say a green run collects too"; return 1; }
+}
+
+@test "the validator ends a direct run stalled on simctl diagnose with the verdict it already has" {
+  v="$AGENTS/swift-validator.md"
+  for phrase in '`stalled`' '`simctl diagnose`' '`long-run.sh stop`' 'not as hung' 'Do not rerun the tests'; do
+    grep -qF -- "$phrase" "$v" || { echo "the fallback lacks: $phrase"; return 1; }
+  done
+}
+
+@test "the other runners point at the rule and its fallback" {
+  for f in "$AGENTS"/*.md; do
+    [ "$(basename "$f")" = swift-validator.md ] && continue
+    grep -qF -- "$FLAG" "$f" || continue
+    ! grep -qF -- '(why: `swift-validator` → Tooling Procedure)' "$f" \
+      || { echo "$(basename "$f") still points at the reason only"; return 1; }
+    grep -qF -- '(rule and fallback: `swift-validator` → Tooling Procedure)' "$f" \
+      || { echo "$(basename "$f") does not point at the fallback"; return 1; }
+  done
+}

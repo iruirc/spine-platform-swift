@@ -197,7 +197,9 @@ Structure, the required fields of a case, and the two rules that make a case exe
    - every line carrying `✘`: `recorded an issue at <File.swift>:<line>:<col>: <what failed>`, the `↳` lines under it, and the final `✘ Test run with N tests ...`. These are Swift Testing's. Match on the `✘`, never on the start of the line — the line may begin with a zero-width space.
    A run whose XCTest summary says `0 failures` is not a passing run until the `✘` lines have been read too.
 
-   Every test run carries `-collect-test-diagnostics never`: `test_sim` gets `extraArgs: ["-collect-test-diagnostics", "never"]`, and a direct `xcodebuild test` or `test-without-building` (an SPM package has no `test_sim` path) gets the flag itself. Without it, one failing test makes `xcodebuild` collect simulator diagnostics for up to ten minutes after the last test, writing nothing to the log. Pass it on every XcodeBuildMCP version: newer ones add it themselves, older ones do not, and `xcodebuild` accepts it twice.
+   Every test run carries `-collect-test-diagnostics never`: `test_sim` gets `extraArgs: ["-collect-test-diagnostics", "never"]`, and a direct `xcodebuild test` or `test-without-building` (an SPM package has no `test_sim` path) gets the flag itself. Without it, `xcodebuild` collects simulator diagnostics after the last test — after a failure and on a green run too — and can sit silent for up to ten minutes on a hung `simctl diagnose`. Pass it on every XcodeBuildMCP version: newer ones add it themselves, older ones do not, and `xcodebuild` accepts it twice.
+
+   A direct run that went out without the flag can still stall that way. When `long-run.sh wait` returns `stalled` after the summary line (`Executed N tests, with M failures` or `Test run with N tests`) and the run's process tree holds a `simctl diagnose`, the tests have finished: end the run with `long-run.sh stop`, which stops this run's process group only, take the verdict from the summary lines, and report it as passed or failed, not as hung. Do not rerun the tests.
 
 ### Driving the app
 
