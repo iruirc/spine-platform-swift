@@ -371,7 +371,8 @@ wsyml::validate() {
     fi
   fi
   tests_kind="$(wsyml::get '.defaults.tests' 2>/dev/null || true)"
-  if [[ -n "$tests_kind" && -z "${WSYML_TESTS_KINDS[(r)$tests_kind]}" ]]; then
+  # (Ie) compares literally; (r) would match the value as a glob and accept `tests: "*"`.
+  if [[ -n "$tests_kind" ]] && (( ! ${WSYML_TESTS_KINDS[(Ie)$tests_kind]} )); then
     print -u2 "$_path: defaults.tests '$tests_kind' must be ${(j:|:)WSYML_TESTS_KINDS}"
     ((errs++))
   fi
