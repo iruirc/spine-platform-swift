@@ -146,6 +146,8 @@ table_rows() {
 @test "init's --tests flag rows are exactly the table's tokens" {
   flags="$(sed -n 's/^| `--tests=\([a-z][a-z-]*\)`.*/\1/p' "$ROOT/agents/swift-init.md" | sort -u)"
   tokens="$(table_rows | cut -f1 | sort -u)"
+  # Both sides empty compares equal: strip the rows and the table together and this would pass.
+  [ -n "$flags" ] || { echo "no --tests rows in swift-init.md; the scan went vacuous"; return 1; }
   [ "$flags" = "$tokens" ] || {
     echo "the flag rows and the token table disagree:"
     diff <(printf '%s\n' "$flags") <(printf '%s\n' "$tokens")
