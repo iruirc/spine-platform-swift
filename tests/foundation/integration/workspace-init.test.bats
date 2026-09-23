@@ -65,6 +65,28 @@ teardown() { ws_cleanup_tmpdirs; }
   [ -f "$test_file" ]
   grep -Fq 'import XCTest' "$test_file"
   ! grep -Fq 'import Testing' "$test_file"
+  # A toolchain framework leaves the manifest as it was: no framework lines, no empty placeholder.
+  local manifest="$parent/packages/OnePkg/Package.swift"
+  ! grep -Fq 'TEST_FRAMEWORK' "$manifest"
+  ! grep -Fq '.package(url:' "$manifest"
+}
+
+@test "defaults.tests quick-nimble renders the spec and puts both packages in the manifest" {
+  local parent="$(ws_mktemp_dir)"
+  run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+    "$(ws_fixture_path workspace-yml/defaults-tests-quick-nimble.yml)" "$parent"
+  [ "$status" -eq 0 ]
+  local test_file="$parent/packages/OnePkg/Tests/OnePkgTests/OnePkgTests.swift"
+  [ -f "$test_file" ]
+  grep -Fq 'import Quick' "$test_file"
+  grep -Fq 'QuickSpec' "$test_file"
+  ! grep -Fq 'import Testing' "$test_file"
+  # Resolving these two needs the network, so the manifest is read, never built.
+  local manifest="$parent/packages/OnePkg/Package.swift"
+  grep -Fq '.package(url: "https://github.com/Quick/Quick.git", from: "7.6.0"),' "$manifest"
+  grep -Fq '.package(url: "https://github.com/Quick/Nimble.git", from: "13.8.0"),' "$manifest"
+  grep -Fq '.product(name: "Nimble", package: "Nimble"),' "$manifest"
+  ! grep -Fq 'TEST_FRAMEWORK' "$manifest"
 }
 
 @test "ws-init-driver fails on cyclic.yml" {

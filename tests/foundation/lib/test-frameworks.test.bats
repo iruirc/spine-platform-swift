@@ -154,3 +154,23 @@ table_rows() {
     return 1
   }
 }
+
+@test "each stub variant declares a test the way its section of the skill does" {
+  local dir="$ROOT/templates/workspace/package/Tests/PACKAGE_NAMETests"
+  # token | section heading | the fragments that make a test collectable in that framework
+  while IFS='|' read -r tok section frags; do
+    local stub="$dir/PACKAGE_NAMETests.swift.$tok.tmpl"
+    [ -f "$stub" ] || { echo "no stub for token $tok"; return 1; }
+    local body; body="$(awk -v s="## $section" '$0 == s {on = 1; next} on && /^## / {exit} on' "$SKILL")"
+    [ -n "$body" ] || { echo "no '## $section' section in the skill"; return 1; }
+    local f
+    for f in ${frags//,/ }; do
+      grep -qF -- "$f" "$stub" || { echo "the $tok stub does not use $f"; return 1; }
+      printf '%s\n' "$body" | grep -qF -- "$f" || { echo "'## $section' does not declare $f"; return 1; }
+    done
+  done <<'EOF'
+swift-testing|Swift Testing|import Testing,@Test
+xctest|XCTest|import XCTest,XCTestCase
+quick-nimble|Quick+Nimble|import Quick,QuickSpec,override class func spec()
+EOF
+}

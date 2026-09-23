@@ -207,11 +207,18 @@ For project-block workflows: interruption of swift-init Q&A (Ctrl-C during s06b 
 - `*.tmpl` files are rendered to their target location with the `.tmpl` suffix stripped.
 - The package template tree (`<platform-root>/templates/workspace/package/`) is walked recursively. Directory components literally named `PACKAGE_NAME` are renamed to `<name>`, and `PACKAGE_NAMETests` to `<name>Tests` (the longer form must be substituted first).
 - Inside each rendered file, `{{...}}` placeholders are substituted via `sed`.
-- A template named `<base>.<variant>.tmpl` renders to `<base>` only when `<variant>` equals `defaults.tests`; the other variants are skipped. The `Tests/` stub is the only one that has variants today (`swift-testing`, `xctest`).
+- A template named `<base>.<variant>.tmpl` renders to `<base>` only when `<variant>` equals
+  `defaults.tests`; the other variants are skipped. The variants are the tokens of `## Spelling` in
+  `spine-platform-swift:test-frameworks`, and the `Tests/` stub is the only template that has them.
 - Known placeholders:
   - `{{WORKSPACE_NAME}}` — workspace name (`workspace.name` from `workspace.yml`).
   - `{{PACKAGE_NAME}}` — package name (per-package).
   - `{{VERSION}}` — package version (semver-like string).
   - `{{SWIFT_TOOLS_VERSION}}` — the machine's toolchain, from `wspkg::tools_version`; never a hardcoded number.
   - `{{PLATFORMS}}` — the value of `platforms:` on one line, from `wspkg::platforms_inline`.
+  - `{{TEST_FRAMEWORK_MANIFEST_DEPS}}` and `{{TEST_FRAMEWORK_TARGET_DEPS}}` — the packages the chosen
+    test framework needs, from `wspkg::test_framework_manifest_deps` and
+    `wspkg::test_framework_target_deps`. Each sits alone on its line, and unlike the placeholders
+    above, an empty value removes the line instead of blanking it: a framework that ships with the
+    toolchain leaves the manifest exactly as the template wrote it.
 - Marker pairs render empty; `s07_regen` fills them.

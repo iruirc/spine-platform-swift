@@ -10,12 +10,16 @@ let package = Package(
     dependencies: [
         // WORKSPACE_PKG_MANIFEST_DEPS_BEGIN
         // WORKSPACE_PKG_MANIFEST_DEPS_END
+{{TEST_FRAMEWORK_MANIFEST_DEPS}}
     ],
     targets: [
         .target(name: "{{PACKAGE_NAME}}", dependencies: [
             // WORKSPACE_PKG_TARGET_DEPS_BEGIN
             // WORKSPACE_PKG_TARGET_DEPS_END
         ]),
-        .testTarget(name: "{{PACKAGE_NAME}}Tests", dependencies: ["{{PACKAGE_NAME}}"])
+        .testTarget(name: "{{PACKAGE_NAME}}Tests", dependencies: [
+            "{{PACKAGE_NAME}}",
+{{TEST_FRAMEWORK_TARGET_DEPS}}
+        ])
     ]
 )

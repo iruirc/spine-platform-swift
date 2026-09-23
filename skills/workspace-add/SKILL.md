@@ -49,7 +49,7 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 3. Update `workspace.yml` (insert package entry under `packages:`).
 4. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore from backup, emit `error_validation`, exit 2.
 5. Resolve target dir: `<workspace-parent>/<group-dir>/<name>/` (or `packages/<name>/` if no groups).
-6. mkdir + render `<platform-root>/templates/workspace/package/` with placeholder substitution, following the rules of `workspace-init` → `## Template substitution rules`: `{{SWIFT_TOOLS_VERSION}}` from `wspkg::tools_version`, `{{PLATFORMS}}` from `wspkg::platforms_inline`, and of the `Tests/` variants only the one `wspkg::tests_kind` names.
+6. mkdir + render `<platform-root>/templates/workspace/package/` with placeholder substitution, following the rules of `workspace-init` → `## Template substitution rules`: `{{SWIFT_TOOLS_VERSION}}` from `wspkg::tools_version`, `{{PLATFORMS}}` from `wspkg::platforms_inline`, `{{TEST_FRAMEWORK_MANIFEST_DEPS}}` and `{{TEST_FRAMEWORK_TARGET_DEPS}}` from their `wspkg::` namesakes, and the `Tests/` variant those rules select.
 7. Run `workspace-docs-regen` from the meta-repo. It fills the new package's marked sections and the two dependency arrays of its `Package.swift`, and adds the package to the meta-repo docs, the `.xcworkspace` and the `.code-workspace`; running it before the commit puts the filled sections in the package's first commit.
 8. `git init -b <default-branch>`. If `bootstrap.commit_after_init: true` (read from `workspace.yml`): `git add -A && git commit -m <msg>`.
 9. Optional: if `--push` flag AND `bootstrap.use_gh: true`: `gh repo create` + `git push -u remotes[0]`.
