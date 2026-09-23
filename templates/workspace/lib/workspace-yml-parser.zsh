@@ -4,6 +4,11 @@
 
 typeset -gA _WSYML_STATE
 
+# The tokens of the tests axis. What each one means is the table in
+# skills/test-frameworks/SKILL.md; a guard keeps the two lists equal, so a value added to the axis
+# cannot land here and be missed in the templates, or the other way round.
+typeset -ga WSYML_TESTS_KINDS=(swift-testing xctest quick-nimble)
+
 wsyml::load() {
   # NOTE: do not name this local `path` — in zsh `path` is tied to `PATH`,
   # so `local path=...` clobbers the array used for command lookup and
@@ -366,8 +371,8 @@ wsyml::validate() {
     fi
   fi
   tests_kind="$(wsyml::get '.defaults.tests' 2>/dev/null || true)"
-  if [[ -n "$tests_kind" && ! "$tests_kind" =~ ^(swift-testing|xctest)$ ]]; then
-    print -u2 "$_path: defaults.tests '$tests_kind' must be swift-testing|xctest"
+  if [[ -n "$tests_kind" && -z "${WSYML_TESTS_KINDS[(r)$tests_kind]}" ]]; then
+    print -u2 "$_path: defaults.tests '$tests_kind' must be ${(j:|:)WSYML_TESTS_KINDS}"
     ((errs++))
   fi
 

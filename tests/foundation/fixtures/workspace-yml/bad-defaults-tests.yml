@@ -1,6 +1,6 @@
 workspace: { name: bdt }
 remotes: [origin]
 defaults:
-  tests: quick-nimble
+  tests: spock
 packages:
   - { name: A, archetype: engine, git: {origin: x}, version: "1.0.0" }

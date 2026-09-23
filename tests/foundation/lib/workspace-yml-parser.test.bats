@@ -361,10 +361,10 @@ EOF
   [[ "$output" == *"defaults.platforms.ios 'seventeen' must match semver"* ]]
 }
 
-@test "validate rejects a defaults.tests value outside swift-testing|xctest" {
+@test "validate rejects a defaults.tests value outside the accepted tokens" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-tests.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"defaults.tests 'quick-nimble' must be swift-testing|xctest"* ]]
+  [[ "$output" == *"defaults.tests 'spock' must be swift-testing|xctest|quick-nimble"* ]]
 }
 
 @test "validate rejects a defaults.platforms that is not a map" {
@@ -395,4 +395,17 @@ EOF
 @test "validate accepts a workspace that declares platforms and tests, and one that declares neither" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/minimal.yml)' && wsyml::validate"
   [ "$status" -eq 0 ]
+}
+
+@test "the parser accepts exactly the tokens of the canonical table" {
+  local skill="$(ws_repo_root)/skills/test-frameworks/SKILL.md"
+  local tokens accepted
+  tokens="$(awk -F'|' '$0 ~ /^\| `[a-z][a-z+-]*` \|/ { gsub(/[` ]/, "", $2); print $2 }' "$skill" | sort -u)"
+  accepted="$(zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; print -l \$WSYML_TESTS_KINDS" | sort -u)"
+  [ -n "$tokens" ] || { echo "no token table in the skill"; return 1; }
+  [ "$tokens" = "$accepted" ] || {
+    echo "the table and the parser disagree:"
+    diff <(printf '%s\n' "$tokens") <(printf '%s\n' "$accepted")
+    return 1
+  }
 }
