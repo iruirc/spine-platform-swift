@@ -365,6 +365,11 @@ EOF
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-tests.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
   [[ "$output" == *"defaults.tests 'spock' must be swift-testing|xctest|quick-nimble"* ]]
+
+  # A glob is not a token: membership is compared literally, so `*` must not pass as a member.
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-tests-glob.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"defaults.tests '*' must be swift-testing|xctest|quick-nimble"* ]]
 }
 
 @test "validate rejects a defaults.platforms that is not a map" {

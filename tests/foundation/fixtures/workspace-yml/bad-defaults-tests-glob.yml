@@ -1,0 +1,6 @@
+workspace: { name: bdtg }
+remotes: [origin]
+defaults:
+  tests: "*"
+packages:
+  - { name: A, archetype: engine, git: {origin: x}, version: "1.0.0" }
