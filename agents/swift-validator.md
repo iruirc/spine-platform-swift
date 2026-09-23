@@ -197,6 +197,8 @@ Structure, the required fields of a case, and the two rules that make a case exe
    - every line carrying `✘`: `recorded an issue at <File.swift>:<line>:<col>: <what failed>`, the `↳` lines under it, and the final `✘ Test run with N tests ...`. These are Swift Testing's. Match on the `✘`, never on the start of the line — the line may begin with a zero-width space.
    A run whose XCTest summary says `0 failures` is not a passing run until the `✘` lines have been read too.
 
+   Every test run carries `-collect-test-diagnostics never`: `test_sim` gets `extraArgs: ["-collect-test-diagnostics", "never"]`, and a direct `xcodebuild test` or `test-without-building` (an SPM package has no `test_sim` path) gets the flag itself. Without it, one failing test makes `xcodebuild` collect simulator diagnostics for up to ten minutes after the last test, writing nothing to the log. Pass it on every XcodeBuildMCP version: newer ones add it themselves, older ones do not, and `xcodebuild` accepts it twice.
+
 ### Driving the app
 
 Only when the profile rules require it and the driver resolved to `ok`. Read the driver's `## Procedure`
