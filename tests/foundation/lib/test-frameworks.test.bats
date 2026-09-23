@@ -157,8 +157,10 @@ table_rows() {
 
 @test "each stub variant declares a test the way its section of the skill does" {
   local dir="$ROOT/templates/workspace/package/Tests/PACKAGE_NAMETests"
+  local n=0
   # token | section heading | the fragments that make a test collectable in that framework
   while IFS='|' read -r tok section frags; do
+    n=$((n + 1))
     local stub="$dir/PACKAGE_NAMETests.swift.$tok.tmpl"
     [ -f "$stub" ] || { echo "no stub for token $tok"; return 1; }
     local body; body="$(awk -v s="## $section" '$0 == s {on = 1; next} on && /^## / {exit} on' "$SKILL")"
@@ -177,4 +179,5 @@ swift-testing|Swift Testing|import Testing,@Test
 xctest|XCTest|import XCTest,XCTestCase
 quick-nimble|Quick+Nimble|import Quick,QuickSpec,override class func spec()
 EOF
+  [ "$n" -eq 3 ] || { echo "scanned $n rows instead of 3; the heredoc scan went vacuous"; return 1; }
 }
