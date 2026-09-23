@@ -20,6 +20,8 @@ let package = Package(
             .product(name: "BEngine", package: "BEngine"),
             // WORKSPACE_PKG_TARGET_DEPS_END
         ]),
-        .testTarget(name: "CFeatureTests", dependencies: ["CFeature"])
+        .testTarget(name: "CFeatureTests", dependencies: [
+            "CFeature",
+        ])
     ]
 )

@@ -2,7 +2,8 @@
 # workspace-package.zsh — the package manifest: the stack it is generated with, and the two
 # dependency arrays regen owns. Needs workspace-yml-parser.zsh and workspace-docs.zsh loaded.
 # Public API: wspkg::tools_version, wspkg::platform_floor, wspkg::platforms_inline, wspkg::tests_kind,
-#   wspkg::rel_path, wspkg::manifest_deps, wspkg::target_deps, wspkg::adopt_to, wspkg::diagnose
+#   wspkg::rel_path, wspkg::manifest_deps, wspkg::target_deps, wspkg::test_framework_manifest_deps,
+#   wspkg::test_framework_target_deps, wspkg::adopt_to, wspkg::diagnose
 
 # The language mode is what matters, and any tools version from 6.0 up defaults to Swift 6.
 typeset -g _WSPKG_FLOOR=6.0
@@ -164,6 +165,22 @@ wspkg::target_deps() {
     [[ -n "$d" ]] || continue
     print -r -- "            .product(name: \"$d\", package: \"$d\"),"
   done
+}
+
+# XCTest and Swift Testing ship with the toolchain; Quick+Nimble is the one value that needs
+# packages. The versions live here, in the code that prints them — `skills/test-frameworks/SKILL.md`
+# names them in prose for whoever writes a test, and is not read by anything.
+wspkg::test_framework_manifest_deps() {
+  [[ "$(wspkg::tests_kind)" == quick-nimble ]] || return 0
+  print -r -- '        .package(url: "https://github.com/Quick/Quick.git", from: "7.6.0"),'
+  print -r -- '        .package(url: "https://github.com/Quick/Nimble.git", from: "13.8.0"),'
+}
+
+# The lines of the test target's `dependencies:` that the framework itself needs.
+wspkg::test_framework_target_deps() {
+  [[ "$(wspkg::tests_kind)" == quick-nimble ]] || return 0
+  print -r -- '            .product(name: "Quick", package: "Quick"),'
+  print -r -- '            .product(name: "Nimble", package: "Nimble"),'
 }
 
 # The floor a manifest declares for one platform, from either literal form.

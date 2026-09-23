@@ -17,6 +17,8 @@ let package = Package(
             // WORKSPACE_PKG_TARGET_DEPS_BEGIN
             // WORKSPACE_PKG_TARGET_DEPS_END
         ]),
-        .testTarget(name: "AKitTests", dependencies: ["AKit"])
+        .testTarget(name: "AKitTests", dependencies: [
+            "AKit",
+        ])
     ]
 )

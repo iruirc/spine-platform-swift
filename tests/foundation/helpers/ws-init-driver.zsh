@@ -123,6 +123,8 @@ ws_provision_block docs  Docs  docs-repo
 tools_version="$(wspkg::tools_version)"
 platforms_inline="$(wspkg::platforms_inline)"
 tests_kind="$(wspkg::tests_kind)"
+tf_manifest_deps="$(wspkg::test_framework_manifest_deps)"
+tf_target_deps="$(wspkg::test_framework_target_deps)"
 for p in $(wsyml::packages); do
   group="$(wsyml::package_field "$p" group 2>/dev/null || echo '')"
   ver="$(wsyml::package_field "$p" version)"
@@ -137,18 +139,24 @@ for p in $(wsyml::packages); do
     rel="${src#$templates_root/package/}"
     rel="${rel%.tmpl}"
     # A variant template renders only for the workspace's defaults.tests.
-    case "${rel##*.}" in
-      swift-testing|xctest)
-        [[ "${rel##*.}" == "$tests_kind" ]] || continue
-        rel="${rel%.*}"
-        ;;
-    esac
+    variant="${rel##*.}"
+    if (( ${WSYML_TESTS_KINDS[(Ie)$variant]} )); then
+      [[ "$variant" == "$tests_kind" ]] || continue
+      rel="${rel%.*}"
+    fi
     rel="${rel//PACKAGE_NAMETests/${p}Tests}"
     rel="${rel//PACKAGE_NAME/$p}"
     dst="$pkg_dir/$rel"
     mkdir -p "${dst:h}"
+    # ENVIRON, not -v: a multi-line value in a -v assignment trips "newline in string" on
+    # macOS's /usr/bin/awk (the one true awk), which runs -v assignments through the same
+    # escape processing as a string literal.
     sed -e "s|{{PACKAGE_NAME}}|$p|g" -e "s|{{VERSION}}|$ver|g" \
-        -e "s|{{SWIFT_TOOLS_VERSION}}|$tools_version|g" -e "s|{{PLATFORMS}}|$platforms_inline|g" "$src" > "$dst"
+        -e "s|{{SWIFT_TOOLS_VERSION}}|$tools_version|g" -e "s|{{PLATFORMS}}|$platforms_inline|g" "$src" \
+      | TF_MANIFEST_DEPS="$tf_manifest_deps" TF_TARGET_DEPS="$tf_target_deps" awk '
+          $0 == "{{TEST_FRAMEWORK_MANIFEST_DEPS}}" { if (ENVIRON["TF_MANIFEST_DEPS"] != "") print ENVIRON["TF_MANIFEST_DEPS"]; next }
+          $0 == "{{TEST_FRAMEWORK_TARGET_DEPS}}"   { if (ENVIRON["TF_TARGET_DEPS"] != "") print ENVIRON["TF_TARGET_DEPS"]; next }
+          { print }' > "$dst"
   done < <(find "$templates_root/package" -type f -name '*.tmpl')
   ( cd "$pkg_dir" && git init -q -b main )
 done

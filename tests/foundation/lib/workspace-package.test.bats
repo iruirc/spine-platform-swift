@@ -173,3 +173,39 @@ packages/Core/Package.swift: external dep https://github.com/apple/swift-testing
   run pkg "$(ws_fixture_path workspace-yml/pkg-manifest.yml)" "wspkg::adopt_to '$dir/Package.swift' '$dir/out.swift' Core"
   [ "$status" -eq 1 ]
 }
+
+@test "the Tests stub has one variant per accepted token" {
+  local dir="$(ws_repo_root)/templates/workspace/package/Tests/PACKAGE_NAMETests"
+  local variants tokens
+  variants="$(ls "$dir" | sed -n 's/^PACKAGE_NAMETests\.swift\.\(.*\)\.tmpl$/\1/p' | sort -u)"
+  tokens="$(zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; print -l \$WSYML_TESTS_KINDS" | sort -u)"
+  # Both sides empty compares equal, so a guard without this passes once the thing it guards is gone.
+  [ -n "$variants" ] || { echo "no stub variants found; the scan went vacuous"; return 1; }
+  [ "$variants" = "$tokens" ] || {
+    echo "the stub variants and the accepted tokens disagree:"
+    diff <(printf '%s\n' "$variants") <(printf '%s\n' "$tokens")
+    return 1
+  }
+}
+
+@test "the framework deps are empty for a toolchain framework and two packages for quick-nimble" {
+  run pkg "$(ws_fixture_path workspace-yml/defaults-tests-xctest.yml)" \
+    'wspkg::test_framework_manifest_deps; wspkg::test_framework_target_deps'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "xctest asked for packages: $output"; return 1; }
+  run pkg "$(ws_fixture_path workspace-yml/defaults-tests-quick-nimble.yml)" 'wspkg::test_framework_manifest_deps'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'.package(url: "https://github.com/Quick/Quick.git"'* ]]
+  [[ "$output" == *'.package(url: "https://github.com/Quick/Nimble.git"'* ]]
+  run pkg "$(ws_fixture_path workspace-yml/defaults-tests-quick-nimble.yml)" 'wspkg::test_framework_target_deps'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'.product(name: "Quick", package: "Quick"),'* ]]
+  [[ "$output" == *'.product(name: "Nimble", package: "Nimble"),'* ]]
+}
+
+@test "every framework placeholder of the manifest template sits alone on its line" {
+  local t="$(ws_repo_root)/templates/workspace/package/Package.swift.tmpl"
+  for ph in TEST_FRAMEWORK_MANIFEST_DEPS TEST_FRAMEWORK_TARGET_DEPS; do
+    grep -qxF -- "{{$ph}}" "$t" || { echo "{{$ph}} is missing or shares its line"; return 1; }
+  done
+}

@@ -1,0 +1,13 @@
+import Quick
+import Nimble
+@testable import {{PACKAGE_NAME}}
+
+final class {{PACKAGE_NAME}}Spec: QuickSpec {
+    override class func spec() {
+        describe("version") {
+            it("is not empty") {
+                expect({{PACKAGE_NAME}}.version.isEmpty).to(beFalse())
+            }
+        }
+    }
+}
