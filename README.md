@@ -139,7 +139,7 @@ through it, or invoked by name by an agent.
 
 ## Requirements
 
-- `spine-toolkit` `>=2.6.0 <3`, declared as a dependency in `plugin.json`.
+- `spine-toolkit` `>=2.7.0 <3`, declared as a dependency in `plugin.json`.
   An installed core outside that range is not a warning: the host demotes this plugin and it does
   not load at all — no agents, no skills, no manifest.
 - The workspace skills need `yq` v4+ (`brew install yq`). `gh` is optional, needed only for
