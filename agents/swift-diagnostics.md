@@ -86,7 +86,8 @@ When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_
 - `spine-platform-swift:swift-architect` — co-reviews root cause during the Diagnose consilium
 - `spine-platform-swift:swift-developer` — applies the fix after user approval
 - `spine-platform-swift:swift-security` — for vulnerabilities that overlap with bugs
-- `spine-platform-swift:swift-tester` — writes the regression test after the fix
+- `spine-platform-swift:swift-tester` — writes the regression test after the fix, when the task owes
+  one (`spine-toolkit:test-authoring`, `## When the task owes no test`)
 
 ## Output Structure
 

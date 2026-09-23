@@ -64,4 +64,11 @@ setup() {
     grep -qF '`## When the task owes no test`' "$AGENTS/$a.md" \
       || { echo "$a writes a regression test whatever need_test says"; return 1; }
   done
+  # The Related Agents roster is prose beside the already-conditional `## Regression Test`
+  # bullet; a mention of "regression test" there without the qualifier promises one anyway.
+  roster="$(awk '$0=="## Related Agents (spine-platform-swift)"{f=1;next} f&&/^#{2,3} /{exit} f' \
+    "$AGENTS/swift-diagnostics.md")"
+  if grep -qi 'regression test' <<<"$roster" && ! grep -qF '`## When the task owes no test`' <<<"$roster"; then
+    echo "swift-diagnostics' roster still promises the regression test unconditionally"; return 1
+  fi
 }
