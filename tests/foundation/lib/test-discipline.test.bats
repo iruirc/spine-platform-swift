@@ -54,7 +54,14 @@ setup() {
   floor="$(python3 -c 'import json,sys,re; d=json.load(open(sys.argv[1]))["dependencies"]; v=[x["version"] for x in d if x["name"]=="spine-toolkit"][0]; print(re.search(r">=\s*(\d+\.\d+\.\d+)", v).group(1))' "$ROOT/.claude-plugin/plugin.json")"
   git -C "$CORE" rev-parse -q --verify "$floor^{commit}" >/dev/null || skip "core has no tag $floor"
   skill="$(git -C "$CORE" show "$floor:skills/test-authoring/SKILL.md")"
-  for h in '## What a good test is' '## Test doubles' '## Before you deliver' '## Review'; do
+  for h in '## What a good test is' '## Test doubles' '## Before you deliver' '## Review' '## When the task owes no test'; do
     grep -qF "$h" <<<"$skill" || { echo "core $floor has no $h — the floor is too low"; return 1; }
+  done
+}
+
+@test "the regression test is owed only when the task owes one" {
+  for a in swift-diagnostics swift-developer; do
+    grep -qF '`## When the task owes no test`' "$AGENTS/$a.md" \
+      || { echo "$a writes a regression test whatever need_test says"; return 1; }
   done
 }
