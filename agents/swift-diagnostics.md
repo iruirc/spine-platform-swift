@@ -33,7 +33,7 @@ Read the files involved in the bug report. Look for:
 ### Phase 2: Auto-run commands
 
 Execute as needed without asking:
-- `xcodebuild` via XcodeBuildMCP (`build_sim`, `test_sim`) — confirm reproducer builds
+- `xcodebuild` via XcodeBuildMCP (`build_sim`, `test_sim` with `-collect-test-diagnostics never` (why: `swift-validator` → Tooling Procedure)) — confirm reproducer builds
 - Device logs and the UI state at the moment of failure, through whichever driver the project resolved — the capabilities to look for are `logs` and `ui_tree`. You resolve it yourself, by the chain `spine-platform-swift:swift-validator` documents and in that order: you are called before any Validation stage has run, so unlike `spine-platform-swift:swift-tester` there is no validator result for you to take one from
 - Crash symbolication — match stack frames to source
 - `git log -p <file>` — recent history of the file (when a regression is suspected)
@@ -60,7 +60,7 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 
 ## Validation Tooling
 
-- **XcodeBuildMCP**: `build_sim`, `test_sim`, `show_build_settings`, log streaming.
+- **XcodeBuildMCP**: `build_sim`, `test_sim` with `-collect-test-diagnostics never` (why: `swift-validator` → Tooling Procedure), `show_build_settings`, log streaming.
 - **The project's driver**, when one resolves and its server is connected: the capabilities worth reaching for here are `logs`, `screenshot`, `ui_tree` and `tap`. What those are called belongs to the server's own tool schemas, which are already in your context. A driver naming none of them leaves you the build, the test run and the crash log — a smaller set, and an honest one.
 
 ## Skills Reference (spine-platform-swift)

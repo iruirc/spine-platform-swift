@@ -78,7 +78,7 @@ Your response MUST be structured with these top-level sections:
 
 ## Validation Tooling
 
-- **XcodeBuildMCP** — primary tool for running tests (`test_sim`), building (`build_sim`), and inspecting build settings. Use it when the orchestrator asks for a Validation step.
+- **XcodeBuildMCP** — primary tool for running tests (`test_sim` with `-collect-test-diagnostics never` (why: `swift-validator` → Tooling Procedure)), building (`build_sim`), and inspecting build settings. Use it when the orchestrator asks for a Validation step.
 - **The project's driver** — E2E-style verification on the simulator, for FEATURE/BUG/TEST profiles where validation must confirm runtime behavior and not just that tests compile and pass. Which driver it is, and what it can do on this run's surface, is `spine-platform-swift:swift-validator`'s to resolve; that agent owns the drive. What you need back from it is the result, not the tooling.
 
 When `NEED_TEST = false` in the task, do not generate tests — validate behavior with XcodeBuildMCP, and where the app itself has to be driven, through the validator.
@@ -165,7 +165,7 @@ Define target values per operation:
 ### CI Integration
 
 Performance tests should support:
-- Execution via `xcodebuild test`
+- Execution via `xcodebuild test` with `-collect-test-diagnostics never` (why: `swift-validator` → Tooling Procedure)
 - `.xcresult` artifact generation
 - Metric extraction via `xcresulttool`
 - Automated build failure on metric degradation (latency, memory, FPS thresholds)
