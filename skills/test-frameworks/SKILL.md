@@ -8,6 +8,22 @@ description: Data for whoever writes or reads a test on this platform — one se
 `spine-toolkit:test-authoring` picks the framework for the file being written. This skill says what
 that pick means in code. Read the one section named after the value, not all three.
 
+## Spelling
+
+One token per value, and it is the same token everywhere a value is written down: the
+`swift-init --tests` flag, `defaults.tests` and `apps.<key>.stack.tests` of a workspace's
+`workspace.yml`. Whoever adds a value to the axis adds a row here first — three tests read this
+table and fail without it.
+
+| Token | Axis value | Section |
+|---|---|---|
+| `swift-testing` | `Swift Testing` | `## Swift Testing` |
+| `xctest` | `XCTest` | `## XCTest` |
+| `quick-nimble` | `Quick+Nimble` | `## Quick+Nimble` |
+
+The heading row is English like the rest of the file: this repo's source of truth is English, and
+only `locales/*.md` hold user-facing translations.
+
 ## Forced by surface
 
 Where only one framework can drive a surface, it wins over the axis value.
@@ -161,6 +177,9 @@ name. `AsyncSpec` is the async-capable base (Quick 7). Per-example state goes in
 is reset for every example.
 
 ```swift
+import Quick
+import Nimble
+
 final class CheckoutServiceSpec: QuickSpec {
     override class func spec() {
         @TestState var sut: CheckoutService!

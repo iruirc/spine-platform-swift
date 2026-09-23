@@ -19,6 +19,14 @@ h2s() {
   awk '/^[ \t]*(```|~~~)/ {fence = !fence; next} !fence && /^## / {sub(/^## /, ""); print}' "$1"
 }
 
+# The canonical token table: token in column 1, axis value in column 2, one row per line.
+# Rows of the `## Forced by surface` table do not start with a backticked lowercase cell.
+table_rows() {
+  awk -F'|' '$0 ~ /^\| `[a-z][a-z+-]*` \|/ {
+    gsub(/[` ]/, "", $2); gsub(/^ +| +$/, "", $3); gsub(/`/, "", $3); print $2 "\t" $3
+  }' "$SKILL"
+}
+
 @test "the skill exists and resolves under its own name" {
   [ -f "$SKILL" ] || { echo "no skills/test-frameworks/SKILL.md"; return 1; }
   grep -q '^name: test-frameworks$' "$SKILL" || { echo "frontmatter name is not test-frameworks"; return 1; }
@@ -38,6 +46,7 @@ h2s() {
   values="$(axis_values tests)"
   while IFS= read -r h; do
     [ "$h" = "Forced by surface" ] && continue
+    [ "$h" = "Spelling" ] && continue
     grep -qxF -- "$h" <<<"$values" || { echo "'## $h' is no value of the tests axis"; return 1; }
   done < <(h2s "$SKILL")
 }
@@ -116,4 +125,30 @@ h2s() {
     grep -qF '`test-frameworks`' "$f" || bad="$bad $a(syntax)"
   done
   [ -z "$bad" ] || { echo "agents not bound to the rule:$bad"; return 1; }
+}
+
+@test "the token table names every value of the tests axis, and nothing else" {
+  rows="$(table_rows)"
+  [ -n "$rows" ] || { echo "the skill has no token table"; return 1; }
+  while IFS= read -r v; do
+    [ -n "$v" ] || continue
+    printf '%s\n' "$rows" | cut -f2 | grep -qxF -- "$v" \
+      || { echo "no token row for axis value $v"; return 1; }
+  done < <(axis_values tests)
+  while IFS=$'\t' read -r tok val; do
+    axis_values tests | grep -qxF -- "$val" \
+      || { echo "token $tok names '$val', which is not a value of the tests axis"; return 1; }
+  done <<< "$rows"
+  n="$(printf '%s\n' "$rows" | wc -l | tr -d ' ')"
+  [ "$n" -ge 3 ] || { echo "the table has $n rows; the scan went vacuous"; return 1; }
+}
+
+@test "init's --tests flag rows are exactly the table's tokens" {
+  flags="$(sed -n 's/^| `--tests=\([a-z][a-z-]*\)`.*/\1/p' "$ROOT/agents/swift-init.md" | sort -u)"
+  tokens="$(table_rows | cut -f1 | sort -u)"
+  [ "$flags" = "$tokens" ] || {
+    echo "the flag rows and the token table disagree:"
+    diff <(printf '%s\n' "$flags") <(printf '%s\n' "$tokens")
+    return 1
+  }
 }
