@@ -31,9 +31,10 @@ setup() {
   # developer and diagnostics at one 2.6.0 does not have, and test-discipline.test.bats
   # checks them all at this floor. 2.8.0: the validator's fallback for a stalled direct test
   # run names `long-run.sh` and its `stalled` status.
+  # 2.12.0: the reviewer reviews the ranges core computes, per conventions/task-ranges.md.
   run python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))["dependencies"]; print([x["version"] for x in d if x["name"]=="spine-toolkit"][0])' "$ROOT/.claude-plugin/plugin.json"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-  [ "$output" = ">=2.8.0 <3" ] || { echo "floor: $output"; return 1; }
+  [ "$output" = ">=2.12.0 <3" ] || { echo "floor: $output"; return 1; }
 }
 
 @test "the vendored manifest lint is the copy that knows the Driver block" {
