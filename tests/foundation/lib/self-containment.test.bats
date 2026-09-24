@@ -24,6 +24,10 @@ setup() {
       platform/*) ;;
       *) continue ;;
     esac
+    # conventions/task-ranges.md is core's own file, pointed at from a required peer
+    # (spine-toolkit) rather than forked; the floor test in review-scope.test.bats
+    # checks it resolves there.
+    [ "$p" = "conventions/task-ranges.md" ] && continue
     # bash 3.2's `compgen -G` succeeds on any pattern ending in `/`, existing or not,
     # so the trailing slash has to go before the glob is what decides.
     q="$(printf '%s' "$p" | sed 's/<[^>]*>/*/g')"
@@ -74,7 +78,7 @@ setup() {
   # The three suites that look for a sibling checkout of core are the other deliberate
   # exceptions: each skips rather than dangles when the checkout is absent.
   offenders="$(grep -vF -e 'self-containment.test.bats' -e 'core-refs.test.bats' -e 'forks.test.bats' \
-                        -e 'test-discipline.test.bats' <<<"$hits" || true)"
+                        -e 'test-discipline.test.bats' -e 'review-scope.test.bats' <<<"$hits" || true)"
   [ -z "$offenders" ] || { echo "spine-platform-swift reference(s) to the core tree:"; echo "$offenders"; return 1; }
   # The self-exclusion is otherwise unbounded — a violation added to this file
   # would be invisible. Pin the count: a change here must be re-read.
