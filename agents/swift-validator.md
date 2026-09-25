@@ -203,6 +203,8 @@ Structure, the required fields of a case, and the two rules that make a case exe
 
    **A build of the app and a run of the whole suite go through `long-run.sh`**, not through XcodeBuildMCP, whatever its own instructions prefer: `build_sim` and `test_sim` above and in the profile rules name the step, and it runs as `xcodebuild build` / `xcodebuild test` with the same project, scheme and destination, started and waited on as the `Long-running commands:` line of your brief says. A call to an MCP tool has no `--stall` and no `--max`: a `test_sim` that went silent after `Writing result bundle` held a stage for fifteen minutes until a person noticed. `test_sim` itself stays for one class or target, with `-only-testing:<target>/<class>` in `extraArgs`.
 
+   **One `test_sim` package per stage.** A `test_sim` without `testProductsPath` builds a new package of a gigabyte or more, named by the `Test Products` line of its result, and XcodeBuildMCP keeps it for days. Pass that path as `testProductsPath`, with the simulator and `-only-testing`, to every later `test_sim` of the stage while no source or test file has changed since it was built; after an edit, call without it. When the stage ends, `rm -rf` each package the stage built and its completion marker, `<path>.*-completed` — only paths from your own results.
+
 ### Driving the app
 
 Only when the profile rules require it and the driver resolved to `ok`. Read the driver's `## Procedure`
