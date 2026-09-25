@@ -120,6 +120,10 @@ wired to local-path package dependencies), `workspace-add` adds or incorporates 
 `workspace-docs-regen` regenerates the marker-delimited doc sections and the workspace files.
 Templates live under `templates/workspace/`.
 
+**A `SessionStart` hook** — in a spine project, once a day, deletes XcodeBuildMCP `test_sim` packages
+older than a day from every workspace on the machine; an agent removes its own when its stage ends.
+Silent in other projects; runs `mobilebuildmcp` and `xcodebuildmcp`, whichever is installed.
+
 ## The manifest
 
 `skills/manifest/SKILL.md` is the contract surface. Five required tables and `## Driver`, read by
