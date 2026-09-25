@@ -190,7 +190,7 @@ Structure, the required fields of a case, and the two rules that make a case exe
 
 1. `session-show-defaults` — see if project/scheme/simulator are pre-set.
 2. If not set: `discover_projs` → `list_schemes` → `list_sims`. Pick the most recently used iOS simulator matching the project's deployment target. For macOS apps use the macOS workflow tools instead (if available).
-3. `build_sim` with `{ project|workspace, scheme, simulator }`. Capture full stdout into `Validation.md` under `## Build Log`. If exit != 0 → status FAILED; collect first 3 compile errors into the digest.
+3. `build_sim` with `{ project|workspace, scheme, simulator }` — for a build of the app this step runs as `xcodebuild build` under `long-run.sh`, as the paragraph after step 4 says. Capture full stdout into `Validation.md` under `## Build Log`. If exit != 0 → status FAILED; collect first 3 compile errors into the digest.
 4. `test_sim` with same params. Capture full output into `Validation.md` under `## Test Log`. A target may hold two frameworks at once and they report through two channels; extract both, per `test-frameworks` → "XCTest" and `test-frameworks` → "Swift Testing":
    - `Test Suite ... passed/failed at ...` summary lines and `Executed N tests, with M failures` — these count XCTest only, Quick+Nimble included, and say nothing about Swift Testing;
    - every `XCTAssert*` failure with `file:line` and the assertion message, and every `Test Case '...' failed (...)` line — XCTest's channel, which is also where Quick+Nimble reports, with the example path as the test name;
