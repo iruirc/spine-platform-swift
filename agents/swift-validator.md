@@ -201,6 +201,8 @@ Structure, the required fields of a case, and the two rules that make a case exe
 
    A direct run that went out without the flag can still stall that way. When `long-run.sh wait` returns `stalled` after the summary line (`Executed N tests, with M failures` or `Test run with N tests`) and the run's process tree holds a `simctl diagnose`, the tests have finished: end the run with `long-run.sh stop`, which stops this run's process group only, take the verdict from the summary lines, and report it as passed or failed, not as hung. Do not rerun the tests.
 
+   **A build of the app and a run of the whole suite go through `long-run.sh`**, not through XcodeBuildMCP, whatever its own instructions prefer: `build_sim` and `test_sim` above and in the profile rules name the step, and it runs as `xcodebuild build` / `xcodebuild test` with the same project, scheme and destination, started and waited on as the `Long-running commands:` line of your brief says. A call to an MCP tool has no `--stall` and no `--max`: a `test_sim` that went silent after `Writing result bundle` held a stage for fifteen minutes until a person noticed. `test_sim` itself stays for one class or target, with `-only-testing:<target>/<class>` in `extraArgs`.
+
 ### Driving the app
 
 Only when the profile rules require it and the driver resolved to `ok`. Read the driver's `## Procedure`
