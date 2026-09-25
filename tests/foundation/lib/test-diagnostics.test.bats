@@ -67,6 +67,8 @@ setup() {
                 '`test_sim` itself stays for one class or target' '-only-testing:'; do
     grep -qF -- "$phrase" "$v" || { echo "the validator lacks: $phrase"; return 1; }
   done
+  step3="$(grep -E '^3\. `build_sim`' "$v")"
+  [[ "$step3" == *'long-run.sh'* ]] || { echo "step 3 still reads as a build_sim call: $step3"; return 1; }
   ! grep -qF 'primary tool for running tests' "$AGENTS/swift-tester.md" \
     || { echo "the tester still sends every test run through XcodeBuildMCP"; return 1; }
 }
