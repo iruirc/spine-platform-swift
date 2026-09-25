@@ -58,3 +58,15 @@ setup() {
       || { echo "$(basename "$f") does not point at the fallback"; return 1; }
   done
 }
+
+# A test_sim went silent after "Writing result bundle" and held a stage for fifteen minutes: an MCP
+# call has no --stall and no --max, so a long run goes where long-run.sh can watch it.
+@test "a build of the app and a whole-suite run go through long-run.sh, test_sim only for one class" {
+  v="$AGENTS/swift-validator.md"
+  for phrase in 'go through `long-run.sh`' 'Long-running commands' 'no `--stall` and no `--max`' \
+                '`test_sim` itself stays for one class or target' '-only-testing:'; do
+    grep -qF -- "$phrase" "$v" || { echo "the validator lacks: $phrase"; return 1; }
+  done
+  ! grep -qF 'primary tool for running tests' "$AGENTS/swift-tester.md" \
+    || { echo "the tester still sends every test run through XcodeBuildMCP"; return 1; }
+}
