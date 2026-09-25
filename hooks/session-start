@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# SessionStart hook: deletes test_sim packages older than a day that no stage removed, in every
+# XcodeBuildMCP workspace (#526 leaves a removed worktree's forever). Spine projects only, once a day.
+
+set -uo pipefail
+
+stdin_payload=""
+if [ ! -t 0 ]; then
+  stdin_payload="$(cat || true)"
+fi
+project_dir="$(printf '%s' "$stdin_payload" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+[ -n "$project_dir" ] || project_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
+
+[ -f "${project_dir}/CLAUDE-spine-toolkit.md" ] || [ -d "${project_dir}/Tasks/ACTIVE" ] || exit 0
+
+stamp_dir="${HOME}/Library/Caches/spine-platform-swift"
+mkdir -p "$stamp_dir" 2>/dev/null || exit 0
+
+# 2.7.1 renamed the binary and its confirmation word; read the word, never hardcode it.
+for bin in mobilebuildmcp xcodebuildmcp; do
+  command -v "$bin" >/dev/null 2>&1 || continue
+  stamp="${stamp_dir}/purge-${bin}.stamp"
+  [ -n "$(find "$stamp" -mmin -1440 2>/dev/null)" ] && continue
+  word="$("$bin" purge --help 2>/dev/null | sed -n 's/.*Required for --delete: \([A-Za-z0-9-]*\).*/\1/p' | head -1)"
+  [ -n "$word" ] || continue
+  touch "$stamp"
+  "$bin" purge --scope all --classes testProducts --older-than 1d --delete --confirm "$word" >/dev/null 2>&1
+done
+
+exit 0
