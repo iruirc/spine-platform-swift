@@ -78,7 +78,7 @@ Your response MUST be structured with these top-level sections:
 
 ## Validation Tooling
 
-- **XcodeBuildMCP** — for running one test class or target (`test_sim` with `-collect-test-diagnostics never`) and inspecting build settings; a build of the app and a run of the whole suite go through `long-run.sh` instead (rule, flag and fallback: `swift-validator` → Tooling Procedure). Use it when the orchestrator asks for a Validation step.
+- **XcodeBuildMCP** — for running one test class or target (`test_sim` with `-collect-test-diagnostics never`, reusing the stage's package through `testProductsPath`) and inspecting build settings; a build of the app and a run of the whole suite go through `long-run.sh` instead (rule, flag and fallback: `swift-validator` → Tooling Procedure). Use it when the orchestrator asks for a Validation step.
 - **The project's driver** — E2E-style verification on the simulator, for FEATURE/BUG/TEST profiles where validation must confirm runtime behavior and not just that tests compile and pass. Which driver it is, and what it can do on this run's surface, is `spine-platform-swift:swift-validator`'s to resolve; that agent owns the drive. What you need back from it is the result, not the tooling.
 
 When `NEED_TEST = false` in the task, do not generate tests — validate behavior with XcodeBuildMCP, and where the app itself has to be driven, through the validator.

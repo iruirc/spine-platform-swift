@@ -60,7 +60,7 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 
 ## Validation Tooling
 
-- **XcodeBuildMCP**: `build_sim`, `test_sim` with `-collect-test-diagnostics never` (rule and fallback: `swift-validator` → Tooling Procedure), `show_build_settings`, log streaming.
+- **XcodeBuildMCP**: `build_sim`, `test_sim` with `-collect-test-diagnostics never`, reusing the stage's package through `testProductsPath` (rule and fallback: `swift-validator` → Tooling Procedure), `show_build_settings`, log streaming.
 - **The project's driver**, when one resolves and its server is connected: the capabilities worth reaching for here are `logs`, `screenshot`, `ui_tree` and `tap`. What those are called belongs to the server's own tool schemas, which are already in your context. A driver naming none of them leaves you the build, the test run and the crash log — a smaller set, and an honest one.
 
 ## Skills Reference (spine-platform-swift)
