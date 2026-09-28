@@ -147,7 +147,7 @@ wsdocs::pkg_meta() {
   print -r -- "**Archetype**: $(wsyml::package_field "$p" archetype)"
   print -r -- "**Group**: $(wsyml::package_field "$p" group 2>/dev/null || print -- —)"
   print -r -- "**Workspace**: $ws (${up}$ws-meta)"
-  print -r -- "**Public deps allowed**: ${${(j:, :)${(f)allowed}}:-—}"
+  print -r -- "**Archetype rule exceptions**: ${${(j:, :)${(f)allowed}}:-—}"
   print -r -- "**External deps**: ${${(j:, :)${(f)ext}}:-—}"
   print -r -- "**Version**: $(wsyml::package_field "$p" version)"
 }

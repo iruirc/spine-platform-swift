@@ -10,8 +10,9 @@
 | library | feature | api-contract, engine, library |
 | feature | nothing else | api-contract, engine, library |
 
-`allowed_deps` per package overrides defaults. No tool checks imports against these rules: validating
-`workspace.yml` rejects only a `deps` entry that a non-empty `allowed_deps` does not list.
+Validating `workspace.yml` checks every `deps` entry against this table. A package lists in
+`allowed_deps` the packages it may depend on despite the table; nothing checks the imports in the
+sources.
 <!-- WORKSPACE_ARCHETYPE_RULES_END -->
 
 ## Project-specific rules

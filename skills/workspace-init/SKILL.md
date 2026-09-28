@@ -70,7 +70,7 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
    2. If the input is empty:
       - If at least 1 package has been collected so far → exit the loop and continue to step 6.
       - If 0 packages so far → exit the loop when step 2 declared at least one app (a workspace of apps alone is valid), otherwise reprompt: `wsyml::validate` rejects a workspace with neither.
-   3. Otherwise, for THIS package only, ask in sequence: `qa_pkg_archetype` (multi-choice), `group` (multi-choice from declared groups, if any), one git URL per declared remote, reprompting on an empty answer, `qa_pkg_version`, `qa_pkg_deps` (multi-select from packages declared in PRIOR iterations), external deps (Y/N → nested loop), `allowed_deps` (default = archetype rule, override Y/N). Record the package.
+   3. Otherwise, for THIS package only, ask in sequence: `qa_pkg_archetype` (multi-choice), `group` (multi-choice from declared groups, if any), one git URL per declared remote, reprompting on an empty answer, `qa_pkg_version`, `qa_pkg_deps` (multi-select from packages declared in PRIOR iterations), external deps (Y/N → nested loop), `allowed_deps` — packages exempt from the archetype rule, default none. Record the package.
    4. **Go back to step 5.i** (ask `qa_pkg_name` again, with the same empty-input-ends hint). The loop has no upper bound; the user keeps adding packages until they enter empty input.
 
    **Anti-pattern to avoid:** presenting "How many packages?" or "Add 1 / 2 / 3 packages?" as a single multi-choice question and then collecting that many in a fixed batch. Always loop with re-prompts.

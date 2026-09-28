@@ -44,7 +44,7 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 
 ## --new <name>
 
-1. Q&A: archetype, group (if `package_groups` non-empty), git URL per declared remote (reprompt on empty), version (default 0.1.0), deps (multi-select from existing packages), external_deps (Y/N → loop), allowed_deps (default = archetype rule).
+1. Q&A: archetype, group (if `package_groups` non-empty), git URL per declared remote (reprompt on empty), version (default 0.1.0), deps (multi-select from existing packages), external_deps (Y/N → loop), allowed_deps (exceptions to the archetype rule, default none).
 2. Backup current `workspace.yml` to `.workspace-add.backup.yml`.
 3. Update `workspace.yml` (insert package entry under `packages:`).
 4. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore from backup, emit `error_validation`, exit 2.
@@ -59,7 +59,7 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 
 1. Read target's `Package.swift` to extract package name. If `--name <override>` supplied, use that; else use parsed name.
 2. Read target's `git remote -v` to detect existing remotes.
-3. Q&A: archetype, group (if applicable), allowed_deps, additional remotes (if existing remote count < declared in workspace).
+3. Q&A: archetype, group (if applicable), allowed_deps (exceptions to the archetype rule), additional remotes (if existing remote count < declared in workspace).
 4. Backup `workspace.yml`. Update with new package entry.
 5. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore + exit 2.
 6. Resolve target dir. If `--symlink` flag: create symlink. Else (default): `mv <original-path> <target-dir>`.

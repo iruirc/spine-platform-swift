@@ -4,7 +4,7 @@
 **Archetype**: engine
 **Group**: common
 **Workspace**: RegenWS (../../RegenWS-meta)
-**Public deps allowed**: AKit
+**Archetype rule exceptions**: AKit
 **External deps**: —
 **Version**: 0.2.0
 <!-- WORKSPACE_PKG_META_END -->

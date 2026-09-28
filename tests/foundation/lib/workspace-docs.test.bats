@@ -30,7 +30,7 @@ docs() {
 **Archetype**: api-contract
 **Group**: —
 **Workspace**: minimal-ws (../../minimal-ws-meta)
-**Public deps allowed**: —
+**Archetype rule exceptions**: —
 **External deps**: —
 **Version**: 0.1.0" ] || { echo "$output"; return 1; }
 }

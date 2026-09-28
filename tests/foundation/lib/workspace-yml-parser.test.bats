@@ -107,10 +107,27 @@ teardown() {
   [[ "$output" == *"invalid version 'v1'"* ]]
 }
 
-@test "validate rejects deps not in allowed_deps when allowed_deps non-empty" {
+@test "validate enforces archetype rules, with allowed_deps as exceptions" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/disallowed-deps.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"package 'C' dep 'A' not in allowed_deps"* ]]
+  [[ "$output" == *"package 'C' (engine) may not depend on 'F' (feature); list 'F' in allowed_deps to allow it"* ]]
+  [[ "$output" == *"package 'E' allowed_deps entry 'library' is not a package"* ]]
+  [[ "$output" != *"package 'B'"* ]]
+  [[ "$output" != *"package 'D'"* ]]
+  [[ "$output" == *"2 error(s)."* ]]
+}
+
+@test "every archetype's default rule is what ARCHETYPE_RULES.md tabulates" {
+  local lib="$(ws_lib_path workspace-archetypes.zsh)" doc="$(ws_repo_root)/templates/workspace/sections/ARCHETYPE_RULES.md"
+  local a allowed row
+  for a in api-contract engine library feature; do
+    allowed="$(zsh -c "source '$lib'; wsarch::default_allowed $a")"
+    row="$(grep -E "^\| $a \|" "$doc")"
+    [ -n "$row" ] || { echo "no row for $a"; return 1; }
+    for d in $allowed; do
+      awk -F'|' '{print $4}' <<<"$row" | grep -qw -- "$d" || { echo "$a: '$d' allowed by code, not by the table"; return 1; }
+    done
+  done
 }
 
 @test "validate rejects tasks.path that is absolute" {
