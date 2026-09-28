@@ -97,6 +97,7 @@ trap 'rm -rf -- "$tmpdir"' EXIT
 tmp="$tmpdir/scratch"
 scratch=0
 regenerated=0 drifted=0 malformed=0 missing=0 pending=0
+lint_out=
 
 summary() { print "workspace-docs-regen: regenerated=$regenerated drifted=$drifted malformed=$malformed missing=$missing pending=$pending"; }
 
@@ -120,7 +121,8 @@ if [[ "$mode" == adopt || "$mode" == repair ]]; then
     [[ -f "$f" ]] || continue
     (( scratch++ )); tmp="$tmpdir/$scratch.${f:t}"
     if [[ "$mode" == repair ]]; then
-      wsmark::lint "$f" 2>/dev/null && continue
+      lint_out="$(wsmark::lint "$f" 2>&1)" && continue
+      print -r -u2 -- "$lint_out"
       wsmark::repair_to "$f" "$tmp" || { (( malformed++ )); continue; }
     else
       wsmark::lint "$f" 2>/dev/null || { (( malformed++ )); continue; }

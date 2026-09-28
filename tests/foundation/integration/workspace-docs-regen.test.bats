@@ -164,13 +164,21 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   cd "$META"
   run "$REGEN" --repair --yes
   [ "$status" -eq 0 ]
+  [[ "$output" == *"CFeature/Package.swift: PKG_TARGET_DEPS — "*" line(s) left below the restored _END; check for duplicates"* ]]
   grep -Fq '.testTarget(name: "CFeatureTests"' "$m"
   [ "$(tail -n 1 "$m")" = ")" ]
-  # Repair displaces what the lost END swallowed, so the line appears twice today:
-  # once inside the restored pair, once below it. This is the current behaviour, not the desired one.
+  # Repair keeps what the lost END swallowed below the restored pair and says so; regen fills the pair again.
   [ "$(grep -Fxc '            .product(name: "AKit", package: "AKit"),' "$m")" -eq 2 ]
   run "$REGEN" --check
   [ "$status" -eq 0 ]
+}
+
+@test "--repair prints why a file is malformed" {
+  printf '%s\n' '<!-- WORKSPACE_LAYERS_BEGIN -->' >> "$META/ARCHITECTURE.md"
+  cd "$META"
+  run "$REGEN" --repair
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"missing WORKSPACE_LAYERS_END"* ]]
 }
 
 @test "a workspace.yml beside the meta-repo does not hijack discovery" {

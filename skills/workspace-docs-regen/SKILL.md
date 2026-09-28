@@ -31,7 +31,7 @@ It runs from the meta-repo or from any repository beside it, and finds `workspac
 |------|-----------|
 | (none) | Regenerate every section and workspace file. A file with malformed markers is skipped and reported. |
 | `--check` | Write nothing; print a unified diff per file that would change. |
-| `--repair` | Propose fixes for malformed markers. |
+| `--repair` | Propose fixes for malformed markers. A repair only adds or removes marker lines: a lost `_END` is restored right after its `_BEGIN`, a duplicate pair loses its markers and keeps its text, and each move is reported by file and marker so the duplicates regen then writes can be found. |
 | `--adopt` | Propose markers for sections an older workspace kept outside them, listed below. |
 | `--yes` | Apply what `--repair` or `--adopt` proposed, then regenerate. |
 | `--pkg <name>` | Only that package's files; the meta-repo files still run. |
