@@ -58,9 +58,6 @@ Version (default 0.1.0):
 ## qa_pkg_deps
 Workspace-internal deps (multiselect):
 
-## qa_pkg_example_app
-Record an Example/ app for this package in workspace.yml? Nothing generates it yet.
-
 ## qa_defaults_platforms
 Deployment floor of this workspace's packages: [ios 17.0 + macos 14.0 (default) | ios 16.0 + macos 13.0 | ios 17.0 | custom]
 
