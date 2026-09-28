@@ -3,10 +3,12 @@
 # dependency arrays regen owns. Needs workspace-yml-parser.zsh and workspace-docs.zsh loaded.
 # Public API: wspkg::tools_version, wspkg::platform_floor, wspkg::platforms_inline, wspkg::tests_kind,
 #   wspkg::rel_path, wspkg::manifest_deps, wspkg::target_deps, wspkg::test_framework_manifest_deps,
-#   wspkg::test_framework_target_deps, wspkg::adopt_to, wspkg::diagnose
+#   wspkg::test_framework_target_deps, wspkg::adopt_to, wspkg::diagnose, wspkg::render_to
 
 # The language mode is what matters, and any tools version from 6.0 up defaults to Swift 6.
 typeset -g _WSPKG_FLOOR=6.0
+
+typeset -g _WSPKG_TEMPLATE="${${(%):-%x}:A:h:h}/package"
 
 # a >= b over dotted numbers.
 _wspkg_ge() {
@@ -181,6 +183,37 @@ wspkg::test_framework_target_deps() {
   [[ "$(wspkg::tests_kind)" == quick-nimble ]] || return 0
   print -r -- '            .product(name: "Quick", package: "Quick"),'
   print -r -- '            .product(name: "Nimble", package: "Nimble"),'
+}
+
+# Renders the package template into <dir>: placeholders, the Tests/ variant wspkg::tests_kind names,
+# PACKAGE_NAME path components. The dependency marker pairs stay empty for regen; git is the caller's.
+wspkg::render_to() {
+  local p="$1" dir="$2" ver tools plats kind tfm tft src rel variant dst
+  [[ -n "$p" && -n "$dir" ]] || { print -u2 "wspkg::render_to: usage: <package> <dir>"; return 4; }
+  ver="$(wsyml::package_field "$p" version 2>/dev/null)" || { print -u2 "wspkg::render_to: workspace.yml declares no package '$p'"; return 4; }
+  tools="$(wspkg::tools_version)" || return $?
+  plats="$(wspkg::platforms_inline)" || return 4
+  kind="$(wspkg::tests_kind)"
+  tfm="$(wspkg::test_framework_manifest_deps)"
+  tft="$(wspkg::test_framework_target_deps)"
+  while IFS= read -r src; do
+    rel="${${src#$_WSPKG_TEMPLATE/}%.tmpl}"
+    variant="${rel##*.}"
+    if (( ${WSYML_TESTS_KINDS[(Ie)$variant]} )); then
+      [[ "$variant" == "$kind" ]] || continue
+      rel="${rel%.*}"
+    fi
+    rel="${${rel//PACKAGE_NAMETests/${p}Tests}//PACKAGE_NAME/$p}"
+    dst="$dir/$rel"
+    mkdir -p -- "${dst:h}" || return 4
+    # ENVIRON, not -v: macOS awk runs -v values through string-literal escapes and rejects newlines.
+    sed -e "s|{{PACKAGE_NAME}}|$p|g" -e "s|{{VERSION}}|$ver|g" \
+        -e "s|{{SWIFT_TOOLS_VERSION}}|$tools|g" -e "s|{{PLATFORMS}}|$plats|g" "$src" \
+      | TF_MANIFEST_DEPS="$tfm" TF_TARGET_DEPS="$tft" awk '
+          $0 == "{{TEST_FRAMEWORK_MANIFEST_DEPS}}" { if (ENVIRON["TF_MANIFEST_DEPS"] != "") print ENVIRON["TF_MANIFEST_DEPS"]; next }
+          $0 == "{{TEST_FRAMEWORK_TARGET_DEPS}}"   { if (ENVIRON["TF_TARGET_DEPS"] != "") print ENVIRON["TF_TARGET_DEPS"]; next }
+          { print }' > "$dst" || return 4
+  done < <(find "$_WSPKG_TEMPLATE" -type f -name '*.tmpl')
 }
 
 # The floor a manifest declares for one platform, from either literal form.

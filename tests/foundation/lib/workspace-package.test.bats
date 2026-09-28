@@ -209,3 +209,33 @@ packages/Core/Package.swift: external dep https://github.com/apple/swift-testing
     grep -qxF -- "{{$ph}}" "$t" || { echo "{{$ph}} is missing or shares its line"; return 1; }
   done
 }
+
+@test "render_to renders one package: placeholders, the tests variant, .gitignore, empty dep pairs" {
+  local d="$(ws_mktemp_dir)/Core"
+  run pkg "$(ws_fixture_path workspace-yml/defaults-tests-xctest.yml)" \
+    "p=\$(wsyml::packages | head -1); wspkg::render_to \"\$p\" '$d' && print -r -- \$p"
+  [ "$status" -eq 0 ]
+  local p="$output"
+  [ -f "$d/Package.swift" ] && [ -f "$d/Sources/$p/$p.swift" ] && [ -f "$d/Tests/${p}Tests/${p}Tests.swift" ]
+  [ -f "$d/.gitignore" ] && grep -qx '.build/' "$d/.gitignore" && grep -qx '.swiftpm/' "$d/.gitignore"
+  ! grep -rq '{{' "$d"
+  grep -q 'import XCTest' "$d/Tests/${p}Tests/${p}Tests.swift"
+  [ "$(ls "$d/Tests/${p}Tests" | wc -l | tr -d ' ')" -eq 1 ]
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::read '$d/Package.swift' PKG_MANIFEST_DEPS"
+  [ "$status" -eq 0 ] && [ -z "$output" ]
+  [ ! -d "$d/.git" ]
+}
+
+@test "render_to refuses a package workspace.yml does not declare" {
+  run pkg "$(ws_fixture_path workspace-yml/minimal.yml)" "wspkg::render_to Nope '$(ws_mktemp_dir)/x'"
+  [ "$status" -eq 4 ]
+}
+
+@test "a package rendered then regenerated has both dependency arrays filled" {
+  local parent="$(ws_mktemp_dir)"
+  "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+    "$(ws_fixture_path workspace-yml/docs-regen.yml)" "$parent" >/dev/null 2>&1
+  local m="$parent/domainPackages/CFeature/Package.swift"
+  grep -qF '.package(path: "../../sharedPackages/AKit"),' "$m"
+  grep -qF '            .product(name: "AKit", package: "AKit"),' "$m"
+}
