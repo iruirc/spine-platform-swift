@@ -302,7 +302,7 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   run repair "$d/in.md" "$d/out.md"
   [ "$status" -eq 0 ]
   diff <(printf '%s\n' '# T' '<!-- WORKSPACE_X_BEGIN -->' '<!-- WORKSPACE_X_END -->' 'generated a' 'user note' 'tail') "$d/out.md"
-  [[ "$output" == *"in.md: X — 1 line(s) left below the restored _END; check for duplicates"* ]]
+  [[ "$output" == *"in.md: X — 1 line(s) left below the restored _END; check for duplicates"* ]] || return 1
   [[ "$output" == *"in.md: X — duplicate pair unwrapped, its text kept"* ]]
 }
 
@@ -317,8 +317,8 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$d/out.md'"
   [ "$status" -eq 0 ]
   run repair "$d/in.md" "$d/out.md"
-  [[ "$output" == *"A — 2 line(s) left below"* ]]
-  [[ "$output" == *"C — 1 line(s) left below"* ]]
+  [[ "$output" == *"A — 2 line(s) left below"* ]] || return 1
+  [[ "$output" == *"C — 1 line(s) left below"* ]] || return 1
   [[ "$output" == *"B — duplicate pair unwrapped"* ]]
 }
 
@@ -326,6 +326,7 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   local d="$(ws_mktemp_dir)"
   printf '%s\n' 'x' '<!-- WORKSPACE_A_BEGIN -->' 'a' '<!-- WORKSPACE_A_END -->' > "$d/in.md"
   run repair "$d/in.md" "$d/out.md"
-  [ "$status" -eq 0 ] && [ -z "$output" ]
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
   cmp "$d/in.md" "$d/out.md"
 }

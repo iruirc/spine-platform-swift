@@ -164,7 +164,7 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   cd "$META"
   run "$REGEN" --repair --yes
   [ "$status" -eq 0 ]
-  [[ "$output" == *"CFeature/Package.swift: PKG_TARGET_DEPS — "*" line(s) left below the restored _END; check for duplicates"* ]]
+  [[ "$output" == *"CFeature/Package.swift: PKG_TARGET_DEPS — "*" line(s) left below the restored _END; check for duplicates"* ]] || return 1
   grep -Fq '.testTarget(name: "CFeatureTests"' "$m"
   [ "$(tail -n 1 "$m")" = ")" ]
   # Repair keeps what the lost END swallowed below the restored pair and says so; regen fills the pair again.
