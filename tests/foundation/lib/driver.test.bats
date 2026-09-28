@@ -122,3 +122,14 @@ setup() {
   done
   [ -z "$bad" ] || { echo "file chain not subordinate to the brief:$bad"; return 1; }
 }
+
+@test "the owner's directive outranks the files, and picks the simulator" {
+  # Core puts the owner's words for one run into the brief (spine-toolkit
+  # conventions/stage-dispatch.md → Owner's directive); a simulator they name must beat the session's
+  # pre-set one and the project's, for packages too.
+  V="$ROOT/agents/swift-validator.md"
+  grep -qF "and so does the owner's directive it carries, on everything it names" "$V" || { echo "inputs"; return 1; }
+  x="$(sed -n '/^### XcodeBuildMCP$/,/^### /p' "$V")"
+  grep -qF "A simulator or device the brief's owner's directive names wins" <<<"$x" || { echo "XcodeBuildMCP"; return 1; }
+  grep -qF 'packages included' <<<"$x" || { echo "packages"; return 1; }
+}
