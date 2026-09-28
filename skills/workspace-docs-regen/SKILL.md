@@ -52,7 +52,7 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | 1, `--repair` / `--adopt` | the confirmation above |
 | 2, `malformed` > 0 | `error_malformed_markers` with `malformed` |
 | 2, otherwise | `error_validation`, then the script's stderr — unless it opens with `usage:`, a bug in the call: show that line instead |
-| 3 | `error_yq_missing` |
+| 3 | `error_yq_missing` when stderr names yq (`yq not on PATH`); otherwise jq is missing or older than 1.7 — the script's stderr names what was found, show that line as is |
 | 4 | `error_missing_workspace_yml` when stderr names the search (`no workspace.yml`, `several workspaces`, `is not inside`); otherwise a write failed — the script's stderr names the file, show that line as is |
 
 ## What it owns
@@ -66,7 +66,7 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | package `CLAUDE.md` | `PKG_META`; `PKG_BOUNDARY`, the archetype paragraph under `## Boundary contract` — lines below its end marker are the package's own constraints; `PKG_PUBLIC_API` (holds `## Public API`) |
 | package `Package.swift` | `PKG_MANIFEST_DEPS` inside `dependencies:` of the package, `PKG_TARGET_DEPS` inside `dependencies:` of its main target. The tools version, `platforms`, `products` and every other target are the user's |
 | `<workspace>.xcworkspace` | the whole file |
-| `<workspace>.code-workspace` | `folders` only |
+| `<workspace>.code-workspace` | `folders` only. The `.code-workspace` must be plain JSON: a `//` comment, which VS Code allows, stops regen for that file with "is not plain JSON". |
 
 ## Older workspaces
 

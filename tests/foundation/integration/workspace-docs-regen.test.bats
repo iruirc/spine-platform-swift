@@ -229,6 +229,29 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   cmp "$GOLDEN/sharedPackages/BEngine/CLAUDE.md" "$PARENT/sharedPackages/BEngine/CLAUDE.md"
 }
 
+@test "the .code-workspace keeps numbers regen does not change, byte for byte" {
+  local cw="$META/RegenWS.code-workspace"
+  yq -i -p=json -o=json -I=2 'del(.folders[1])' "$cw"
+  # yq would print 1.5 and round the integer; write the literals in by hand.
+  sed -i '' 's|"settings": {}|"settings": { "zoom": 1.50, "big": 100000000000000000001 }|' "$cw"
+  grep -qF '1.50' "$cw" || { echo "setup did not place the literals"; return 1; }
+  cd "$META"
+  run "$REGEN"
+  [ "$status" -eq 0 ]
+  grep -qF '"zoom": 1.50' "$cw"
+  grep -qF '"big": 100000000000000000001' "$cw"
+  [ "$(yq -p=json -o=json -I=0 '.folders' "$cw")" = "$(yq -p=json -o=json -I=0 '.folders' "$GOLDEN/RegenWS-meta/RegenWS.code-workspace")" ]
+}
+
+@test "regen refuses a jq older than 1.7 instead of rewriting numbers" {
+  local bin="$(ws_mktemp_dir)"
+  printf '#!/bin/sh\necho jq-1.6\n' > "$bin/jq"; chmod +x "$bin/jq"
+  cd "$META"
+  PATH="$bin:$PATH" run "$REGEN"
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"jq 1.7 or newer is required"*"found: jq-1.6"* ]]
+}
+
 @test "the .code-workspace keeps its settings; one that is not plain JSON is reported" {
   local cw="$META/RegenWS.code-workspace"
   yq -i -p=json -o=json -I=2 '.settings."editor.tabSize" = 4 | del(.folders[1])' "$cw"

@@ -8,7 +8,7 @@
 # Runs from the meta-repo or any repository beside it. --repair and --adopt propose changes and
 # write nothing until rerun with --yes. --pkg limits package files; meta-repo files always run.
 # Exit: 0 done or no drift; 1 drift under --check, or changes awaiting --yes; 2 invalid workspace.yml
-# or malformed markers; 3 yq missing; 4 workspace.yml not found.
+# or malformed markers; 3 yq missing, or jq missing or older than 1.7; 4 workspace.yml not found.
 # Last line: workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n> missing=<n> pending=<n>
 set -uo pipefail
 
@@ -47,6 +47,14 @@ fi
 wsyml::load "$ws_yml" || exit $?
 wsyml::validate || exit 2
 wsgraph::check_acyclic || exit 2
+# jq, not yq, writes the .code-workspace: from 1.7 it prints every number it does not change as written.
+if [[ "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
+  jqv="$(jq --version 2>/dev/null)" || jqv=none
+  if [[ "$jqv" == none ]] || ! _wspkg_ge "${${jqv#jq-}%%-*}" 1.7; then
+    print -u2 "workspace-docs-regen: jq 1.7 or newer is required to keep .code-workspace numbers intact (found: $jqv)"
+    exit 3
+  fi
+fi
 if [[ -n "$only" ]] && ! wsyml::packages | grep -qxF -- "$only"; then
   print -u2 "workspace-docs-regen: workspace.yml declares no package '$only'"
   exit 2
@@ -185,7 +193,7 @@ if [[ "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
         diff -u --label "$f folders" --label "$f folders (regenerated)" \
           <(print -r -- "$have" | yq -p=json -o=json -I=2 '.') <(print -r -- "$want" | yq -p=json -o=json -I=2 '.')
       else
-        WANT="$want" yq -p=json -o=json -I=2 '.folders = env(WANT)' "$f" > "$tmp" && cp -- "$tmp" "$f" || exit 4
+        jq --indent 2 --argjson want "$want" '.folders = $want' "$f" > "$tmp" && cp -- "$tmp" "$f" || exit 4
         (( regenerated++ ))
       fi
     fi
@@ -195,7 +203,7 @@ if [[ "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
       print -r -- "$f: would be created"
     else
       sed "s|{{WORKSPACE_NAME}}|$ws|g" "${lib:h}/meta-repo/code-workspace.json.tmpl" \
-        | WANT="$want" yq -p=json -o=json -I=2 '.folders = env(WANT)' - > "$tmp" && cat -- "$tmp" > "$f" || exit 4
+        | jq --indent 2 --argjson want "$want" '.folders = $want' > "$tmp" && cat -- "$tmp" > "$f" || exit 4
       (( regenerated++ ))
     fi
   fi
