@@ -40,7 +40,7 @@ The orchestrator passes:
 In this order:
 
 1. `CLAUDE-spine-toolkit.md` — project stack, conventions, test layout, and the project's `[DRIVE_APP]`, `[MANUAL_CHECKS]` and `[DRIVER]` fields.
-2. `<task_path>/Task.md` — `[TASK_TYPE]`, scope, files involved, and `[DRIVE_APP]` or `[DRIVER]` if this task overrides a project default (see "The drive_app switch" and "The driver"). For `[DRIVE_APP]` and `[MANUAL_CHECKS]` the stage brief outranks both files.
+2. `<task_path>/Task.md` — `[TASK_TYPE]`, scope, files involved, and `[DRIVE_APP]` or `[DRIVER]` if this task overrides a project default (see "The drive_app switch" and "The driver"). For `[DRIVE_APP]` and `[MANUAL_CHECKS]` the stage brief outranks both files, and so does the owner's directive it carries, on everything it names — the simulator or device included.
 3. `<task_path>/Plan.md` — what was supposed to be done.
 4. The record of what actually landed. The implementing stage (Execute / Fix / Refactor / Write) writes no artifact file of its own — `Plan.md`'s per-phase checkboxes say what was supposed to land, and the task's per-phase git commits say what did. For BUG, also `<task_path>/Reproduce.md` — mandatory, you will replay that scenario.
 5. Project root: locate `.xcodeproj` / `.xcworkspace` / `Package.swift`. If multiple, prefer the workspace.
@@ -190,7 +190,7 @@ Structure, the required fields of a case, and the two rules that make a case exe
 
 ### XcodeBuildMCP
 
-1. `session-show-defaults` — see if project/scheme/simulator are pre-set.
+1. `session-show-defaults` — see if project/scheme/simulator are pre-set. A simulator or device the brief's owner's directive names wins over a pre-set one and over the project's files: use it for every `build_sim`, `test_sim` and `xcodebuild -destination`, packages included.
 2. If not set: `discover_projs` → `list_schemes` → `list_sims`. Pick the most recently used iOS simulator matching the project's deployment target. For macOS apps use the macOS workflow tools instead (if available).
 3. `build_sim` with `{ project|workspace, scheme, simulator }` — for a build of the app this step runs as `xcodebuild build` under `long-run.sh`, as the paragraph after step 4 says. Capture full stdout into `Validation.md` under `## Build Log`. If exit != 0 → status FAILED; collect first 3 compile errors into the digest.
 4. `test_sim` with same params. Capture full output into `Validation.md` under `## Test Log`. A target may hold two frameworks at once and they report through two channels; extract both, per `test-frameworks` → "XCTest" and `test-frameworks` → "Swift Testing":
