@@ -253,7 +253,7 @@ wsmark::repair_to() {
     m="${insert_after[$i]}" n="${inner[$m]:-0}"
     (( n > 0 )) && print -r -- "$file: $m — $n line(s) left below the restored _END; check for duplicates"
   done
-  for m in $unwrapped; do print -r -- "$file: $m — duplicate pair unwrapped, its text kept"; done
+  for m in ${(u)unwrapped}; do print -r -- "$file: $m — duplicate pair unwrapped, its text kept"; done
   for ((i=1; i<=${#kept[@]}; i++)); do
     print -r -- "${kept[$i]}" >> "$out"
     if (( ${+insert_after[$i]} )); then
