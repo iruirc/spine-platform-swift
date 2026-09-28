@@ -20,7 +20,7 @@ Archetype:
 Group:
 
 ## qa_allowed_deps
-Allowed deps (default = archetype rule):
+Exceptions to the archetype rule (packages, default none):
 
 ## warn_existing_claude_md
 warning: {path}/CLAUDE.md already exists; not overwritten.

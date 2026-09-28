@@ -2,6 +2,8 @@
 # workspace-yml-parser.zsh — load + query + validate workspace.yml.
 # Public API: wsyml::load, wsyml::get, wsyml::validate, wsyml::packages, wsyml::package_field, wsyml::groups, wsyml::remotes, wsyml::toolkit
 
+source "${${(%):-%x}:A:h}/workspace-archetypes.zsh"
+
 typeset -gA _WSYML_STATE
 
 # The tokens of the tests axis. What each one means is the table in
@@ -104,7 +106,7 @@ wsyml::validate() {
   local _path="${_WSYML_STATE[path]}"
   local ws_name pkg_count app_count pkgs groups remote_list
   local known_archs="api-contract engine library feature"
-  local p g d r k pg deps git_keys arch ver allowed a
+  local p g d r k pg deps git_keys arch ver allowed a rule dep_arch
   local tasks_path tasks_enabled tasks_mode tasks_symlink_target author
   local docs_path docs_enabled docs_mode docs_symlink_target
   local toolkit_lang toolkit_mode toolkit_progress
@@ -205,17 +207,26 @@ wsyml::validate() {
       ((errs++))
     fi
 
-    # Rule 10: deps subset of allowed_deps when allowed_deps non-empty
+    # Rule 10: a dep's archetype is one this package's archetype may depend on, unless allowed_deps
+    # names the dep as an exception. An allowed_deps entry must itself be a package.
     allowed="$(wsyml::get ".packages[] | select(.name == \"$p\") | .allowed_deps[]?" 2>/dev/null || true)"
-    if [[ -n "$allowed" ]]; then
-      # Reset per-package allowed_set (assoc arrays don't auto-clear in loop).
-      allowed_set=()
-      for a in ${(f)allowed}; do allowed_set[$a]=1; done
+    allowed_set=()
+    for a in ${(f)allowed}; do
+      if (( ! ${+seen[$a]} )); then
+        print -u2 "$_path: package '$p' allowed_deps entry '$a' is not a package"
+        ((errs++))
+      fi
+      allowed_set[$a]=1
+    done
+    if [[ " $known_archs " == *" $arch "* ]]; then
+      rule=" $(wsarch::default_allowed "$arch") "
       for d in ${(f)deps}; do
-        if (( ! ${+allowed_set[$d]} )); then
-          print -u2 "$_path: package '$p' dep '$d' not in allowed_deps"
-          ((errs++))
-        fi
+        (( ${+seen[$d]} )) || continue
+        (( ${+allowed_set[$d]} )) && continue
+        dep_arch="$(wsyml::package_field "$d" archetype || true)"
+        [[ "$rule" == *" $dep_arch "* ]] && continue
+        print -u2 "$_path: package '$p' ($arch) may not depend on '$d' ($dep_arch); list '$d' in allowed_deps to allow it"
+        ((errs++))
       done
     fi
   done
