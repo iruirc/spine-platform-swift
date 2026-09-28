@@ -434,3 +434,16 @@ EOF
     return 1
   }
 }
+
+@test "validate accepts zero packages when project.apps declares an app" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-zero-packages.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validate rejects an empty git URL and only that one" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/empty-git-url.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"package 'A' has empty git URL for remote 'origin'"* ]]
+  [[ "$output" != *"package 'B'"* ]]
+  [[ "$output" == *"1 error(s)."* ]]
+}

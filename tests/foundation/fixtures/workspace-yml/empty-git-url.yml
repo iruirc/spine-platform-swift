@@ -1,0 +1,5 @@
+workspace: { name: eg }
+remotes: [origin, mirror]
+packages:
+  - { name: A, archetype: library, git: { origin: "", mirror: git@x:A.git }, version: 0.1.0 }
+  - { name: B, archetype: library, git: { origin: git@x:B.git }, version: 0.1.0 }

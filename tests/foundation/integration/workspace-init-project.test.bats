@@ -70,3 +70,20 @@ teardown() { ws_cleanup_tmpdirs; }
   run yq eval '.targets."ShortApp-iOS".dependencies | length' "$parent/ShortApp-iOS/project.yml"
   [ "$output" -eq 1 ]
 }
+
+@test "a workspace with an app and no packages generates and regenerates cleanly" {
+  local parent="$(ws_mktemp_dir)"
+  run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+    "$(ws_fixture_path workspace-yml/with-project-zero-packages.yml)" "$parent"
+  [ "$status" -eq 0 ]
+  [ -d "$parent/AppOnly-meta" ]
+  [ -f "$parent/AppOnly-ios/project.yml" ]
+  [ ! -d "$parent/packages" ]
+  xc="$parent/AppOnly-meta/AppOnly.xcworkspace/contents.xcworkspacedata"
+  # The package pair stays empty: no blank line between its markers.
+  awk '/WORKSPACE_PKG_REFS_BEGIN/ {getline n; print n; exit}' "$xc" | grep -q 'WORKSPACE_PKG_REFS_END'
+  grep -qF 'AppOnly-ios/AppOnly-ios.xcodeproj' "$xc"
+  cd "$parent/AppOnly-meta"
+  run "$(ws_repo_root)/scripts/workspace-docs-regen.zsh" --check
+  [ "$status" -eq 0 ]
+}

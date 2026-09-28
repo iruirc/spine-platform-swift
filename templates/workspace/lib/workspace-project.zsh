@@ -55,7 +55,7 @@ wsproj::inject_deps() {
     return 2
   fi
   local pkgs
-  pkgs="$(wsyml::packages)"
+  pkgs="$(wsyml::packages || true)"
   local p path_rel already
   for p in ${(f)pkgs}; do
     [[ -z "$p" ]] && continue

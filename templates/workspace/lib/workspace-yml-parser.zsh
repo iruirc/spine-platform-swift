@@ -102,7 +102,7 @@ wsyml::validate() {
   # already declared in the same function prints `name=value` to stdout.
   local errs=0
   local _path="${_WSYML_STATE[path]}"
-  local ws_name pkg_count pkgs groups remote_list
+  local ws_name pkg_count app_count pkgs groups remote_list
   local known_archs="api-contract engine library feature"
   local p g d r k pg deps git_keys arch ver allowed a
   local tasks_path tasks_enabled tasks_mode tasks_symlink_target author
@@ -125,10 +125,11 @@ wsyml::validate() {
     ((errs++))
   fi
 
-  # Rule 2: packages required, >= 1
+  # Rule 2: packages required, >= 1 — unless project.apps declares an app, which needs no package.
   pkg_count="$(wsyml::get '.packages | length' || echo 0)"
-  if (( pkg_count < 1 )); then
-    print -u2 "$_path: packages must have at least 1 entry"
+  app_count="$(wsyml::get '.project.apps | length' 2>/dev/null || echo 0)"
+  if (( pkg_count < 1 && app_count < 1 )); then
+    print -u2 "$_path: packages must have at least 1 entry (or project.apps at least 1 app)"
     ((errs++))
   fi
 
@@ -181,6 +182,11 @@ wsyml::validate() {
     for k in ${(f)git_keys}; do
       if (( ! ${+remote_set[$k]} )); then
         print -u2 "$_path: package '$p' uses unknown remote '$k' (declare in top-level remotes[])"
+        ((errs++))
+      fi
+      v="$(wsyml::get ".packages[] | select(.name == \"$p\") | .git.\"$k\"" 2>/dev/null || true)"
+      if [[ -z "${v//[[:space:]]/}" ]]; then
+        print -u2 "$_path: package '$p' has empty git URL for remote '$k'"
         ((errs++))
       fi
     done

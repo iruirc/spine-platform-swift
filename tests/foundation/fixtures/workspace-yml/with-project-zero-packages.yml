@@ -1,0 +1,9 @@
+workspace:
+  name: AppOnly
+remotes: [origin]
+project:
+  name: AppOnly
+  apps:
+    ios:
+      repo: AppOnly-ios
+packages: []
