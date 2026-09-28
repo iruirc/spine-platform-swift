@@ -289,3 +289,43 @@ SWIFT
   [ "$status" -eq 0 ]
   [[ "$output" == *"WORKSPACE_PKG_MANIFEST_DEPS_END"* ]]
 }
+
+repair() {
+  zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::repair_to '$1' '$2'"
+}
+unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( -->)?$' "$1"; }
+
+@test "a duplicate BEGIN of an open marker keeps both texts and is reported" {
+  local d="$(ws_mktemp_dir)"
+  printf '%s\n' '# T' '<!-- WORKSPACE_X_BEGIN -->' 'generated a' '<!-- WORKSPACE_X_BEGIN -->' 'user note' \
+    '<!-- WORKSPACE_X_END -->' 'tail' > "$d/in.md"
+  run repair "$d/in.md" "$d/out.md"
+  [ "$status" -eq 0 ]
+  diff <(printf '%s\n' '# T' '<!-- WORKSPACE_X_BEGIN -->' '<!-- WORKSPACE_X_END -->' 'generated a' 'user note' 'tail') "$d/out.md"
+  [[ "$output" == *"in.md: X — 1 line(s) left below the restored _END; check for duplicates"* ]]
+  [[ "$output" == *"in.md: X — duplicate pair unwrapped, its text kept"* ]]
+}
+
+@test "repair keeps every unmarked line when it restores two pairs and unwraps a third" {
+  local d="$(ws_mktemp_dir)"
+  printf '%s\n' '<!-- WORKSPACE_A_BEGIN -->' 'a1' 'a2' '<!-- WORKSPACE_B_BEGIN -->' 'b1' \
+    '<!-- WORKSPACE_B_END -->' 'mid' '<!-- WORKSPACE_B_BEGIN -->' 'b2' '<!-- WORKSPACE_B_END -->' \
+    '<!-- WORKSPACE_C_BEGIN -->' 'c1' > "$d/in.md"
+  run repair "$d/in.md" "$d/out.md"
+  [ "$status" -eq 0 ]
+  diff <(unmarked "$d/in.md") <(unmarked "$d/out.md")
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$d/out.md'"
+  [ "$status" -eq 0 ]
+  run repair "$d/in.md" "$d/out.md"
+  [[ "$output" == *"A — 2 line(s) left below"* ]]
+  [[ "$output" == *"C — 1 line(s) left below"* ]]
+  [[ "$output" == *"B — duplicate pair unwrapped"* ]]
+}
+
+@test "a well-formed file repairs to itself and reports nothing" {
+  local d="$(ws_mktemp_dir)"
+  printf '%s\n' 'x' '<!-- WORKSPACE_A_BEGIN -->' 'a' '<!-- WORKSPACE_A_END -->' > "$d/in.md"
+  run repair "$d/in.md" "$d/out.md"
+  [ "$status" -eq 0 ] && [ -z "$output" ]
+  cmp "$d/in.md" "$d/out.md"
+}

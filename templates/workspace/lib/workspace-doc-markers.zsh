@@ -177,7 +177,7 @@ wsmark::lint() {
 }
 
 wsmark::repair_to() {
-  local file="$1" out="$2" lineno line name top ws m i found bre ere
+  local file="$1" out="$2" lineno line name top ws m i found bre ere cur n
   if [[ ! -r "$file" || -z "$out" ]]; then
     print -u2 "wsmark::repair_to: usage: <readable-file> <out-file>"
     return 4
@@ -195,8 +195,8 @@ wsmark::repair_to() {
   # where each still-open BEGIN sits among them, and only then emit — closing each right after its
   # own line instead of swallowing everything below it.
   local -a lines kept
-  local -a open_stack
-  local -A closed seconds begin_at begin_ws
+  local -a open_stack unwrapped
+  local -A closed seconds begin_at begin_ws restored inner
   while IFS= read -r line || [[ -n "$line" ]]; do
     lines+=("$line")
   done < "$file"
@@ -206,18 +206,25 @@ wsmark::repair_to() {
       name="${match[1]}"
       found=0
       for ((i=1; i<=${#open_stack[@]}; i++)); do
-        if [[ "${open_stack[$i]}" == "$name" ]]; then found=1; break; fi
+        if [[ "${open_stack[$i]}" == "$name" ]]; then found=$i; break; fi
       done
-      (( found )) && continue
-      # A second pair loses its markers and keeps its text.
-      if (( ${+closed[$name]} )); then seconds[$name]=1; continue; fi
+      if (( found )); then
+        open_stack[$found]=()
+        restored[$name]=1
+        closed[$name]=1
+      fi
+      # A copy of an open BEGIN closes that pair where it began and takes the second-pair path, so
+      # no text is folded into a pair regen will overwrite.
+      if (( ${+closed[$name]} )); then seconds[$name]=1; unwrapped+=("$name"); cur=""; continue; fi
       open_stack+=("$name")
       kept+=("$line")
       [[ "$line" =~ '^([[:space:]]*)' ]] && ws="${match[1]}" || ws=""
       begin_at[$name]=${#kept[@]}
       begin_ws[$name]="$ws"
+      cur="$name"; inner[$name]=0
     elif [[ "$line" =~ $ere ]]; then
       name="${match[1]}"
+      cur=""
       if (( ${+seconds[$name]} )); then unset "seconds[$name]"; continue; fi
       (( ${#open_stack[@]} == 0 )) && continue
       top="${open_stack[-1]}"
@@ -229,14 +236,24 @@ wsmark::repair_to() {
       open_stack[-1]=()
       kept+=("$line")
     else
+      [[ -n "$cur" ]] && inner[$cur]=$(( ${inner[$cur]} + 1 ))
       kept+=("$line")
     fi
   done
   local -A insert_after
+  for m in ${(k)restored}; do
+    insert_after[${begin_at[$m]}]="$m"
+  done
   for ((i=1; i<=${#open_stack[@]}; i++)); do
     m="${open_stack[$i]}"
     insert_after[${begin_at[$m]}]="$m"
   done
+  for ((i=1; i<=${#kept[@]}; i++)); do
+    (( ${+insert_after[$i]} )) || continue
+    m="${insert_after[$i]}" n="${inner[$m]:-0}"
+    (( n > 0 )) && print -r -- "$file: $m — $n line(s) left below the restored _END; check for duplicates"
+  done
+  for m in $unwrapped; do print -r -- "$file: $m — duplicate pair unwrapped, its text kept"; done
   for ((i=1; i<=${#kept[@]}; i++)); do
     print -r -- "${kept[$i]}" >> "$out"
     if (( ${+insert_after[$i]} )); then
