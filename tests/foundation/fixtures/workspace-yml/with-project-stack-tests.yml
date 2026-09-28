@@ -1,0 +1,12 @@
+workspace: { name: StackTests }
+remotes: [origin]
+defaults: { tests: xctest }
+toolkit: { lang: ru, mode: auto, progress: quiet }
+project:
+  name: ST
+  apps:
+    ios:
+      repo: ST-ios
+      stack: { tests: quick-nimble, di: plain }
+    macos: ST-macos
+packages: []

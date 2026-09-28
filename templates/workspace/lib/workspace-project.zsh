@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 # workspace-project.zsh — project-repo helpers (deps injection + workspace meta append).
-# Public API: wsproj::package_path, wsproj::inject_deps, wsproj::append_workspace_meta
+# Public API: wsproj::package_path, wsproj::inject_deps, wsproj::append_workspace_meta, wsproj::swift_init_flags
+# swift_init_flags needs workspace-package.zsh loaded (wspkg::tests_kind).
 
 wsproj::package_path() {
   local pkg="$1"
@@ -114,4 +115,32 @@ EOF
 - This project is part of a multi-package SPM workspace
 EOF
   return 0
+}
+
+# The flags s06b invokes swift-init with. Interactive pre-answers only what the workspace itself asked;
+# batch adds what apps.<key>.stack sets, and swift-init supplies its own defaults for the rest.
+wsproj::swift_init_flags() {
+  local key="$1" mode="$2" repo v ax flag tests
+  local -a out
+  if [[ ! "$key" =~ ^(ios|macos)$ || ! "$mode" =~ ^(interactive|batch)$ ]]; then
+    print -u2 "wsproj::swift_init_flags: usage: ios|macos interactive|batch"
+    return 4
+  fi
+  repo="$(wsyml::get ".project.apps.$key.repo" 2>/dev/null || wsyml::get ".project.apps.$key" 2>/dev/null)" \
+    || { print -u2 "wsproj::swift_init_flags: workspace.yml declares no project.apps.$key"; return 4; }
+  tests="$(wspkg::tests_kind)"
+  [[ "$mode" == batch ]] && out+=(--no-prompt)
+  out+=(--platform=$key --main-target-name=$repo)
+  if [[ "$mode" == batch ]]; then
+    for ax flag in ui_framework ui-framework di di architecture architecture async async; do
+      v="$(wsyml::get ".project.apps.$key.stack.$ax" 2>/dev/null)" && out+=(--$flag=$v)
+    done
+    for ax in ios macos; do
+      v="$(wsyml::get ".project.apps.$key.stack.min_platforms.$ax" 2>/dev/null)" && out+=(--min-$ax=$v)
+    done
+    v="$(wsyml::get ".project.apps.$key.stack.tests" 2>/dev/null)" && tests="$v"
+  fi
+  out+=(--tests=$tests --lang=$(wsyml::toolkit lang) --mode=$(wsyml::toolkit mode)
+        --progress=$(wsyml::toolkit progress) --tasks=skip)
+  print -r -- "${(j: :)out}"
 }

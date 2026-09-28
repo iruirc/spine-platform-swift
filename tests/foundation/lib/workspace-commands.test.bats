@@ -22,14 +22,13 @@ setup() {
 
 @test "both s06b branches hand the tests axis to swift-init, each with its own precedence" {
   local s="$(ws_repo_root)/skills/workspace-init/SKILL.md"
-  # Counting occurrences would pass on two identical flags. Each branch is pinned to the value it
-  # must carry: interactive applies no overlay, so the workspace answer is what swift-init
-  # pre-answers with; batch is the only mode that applies one, so it is the only place the per-app
-  # override can take effect and the only place it must be named.
-  grep -qF -- '--tests=<wspkg::tests_kind>' "$s" \
-    || { echo "the interactive branch does not pass the workspace default"; return 1; }
-  grep -qF -- '--tests=<apps.<key>.stack.tests, else wspkg::tests_kind>' "$s" \
-    || { echo "the batch branch does not carry the per-app override"; return 1; }
+  # The precedence itself is now pinned by Task 6's wsproj::swift_init_flags tests; this only
+  # checks the row still names both calls.
+  local row; row="$(grep -E '^\| s06b_project_<app> \|' "$s")"
+  grep -qF -- 'wsproj::swift_init_flags <key> interactive' <<<"$row" \
+    || { echo "the row does not name the interactive call"; return 1; }
+  grep -qF -- 'wsproj::swift_init_flags <key> batch' <<<"$row" \
+    || { echo "the row does not name the batch call"; return 1; }
 }
 
 @test "the qa_defaults_tests locale strings enumerate exactly the accepted tests tokens" {
