@@ -2,6 +2,8 @@
 # The config writers here hand everything to spine-toolkit:setup through its
 # `## Input`. No zsh driver can run that call, so these pin what each one passes.
 
+load "$(dirname "$BATS_TEST_FILENAME")/../helpers/ws-test-helpers"
+
 setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   WS="$ROOT/skills/workspace-init/SKILL.md"
@@ -43,10 +45,10 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
 }
 
 @test "workspace-init keeps Tasks/ out of the project repo in both modes" {
-  row="$(step_row 's06b_project_<app>')"
-  [ -n "$row" ] || { echo "no s06b row"; return 1; }
-  [ "$(grep -oF -- '--tasks=skip' <<<"$row" | wc -l | tr -d ' ')" -eq 2 ] \
-    || { echo "--tasks=skip is not in both invocations"; return 1; }
+  run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" ios interactive
+  [[ "$output" == *"--tasks=skip"* ]] || { echo "interactive flags lack --tasks=skip"; return 1; }
+  run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" ios batch
+  [[ "$output" == *"--tasks=skip"* ]] || { echo "batch flags lack --tasks=skip"; return 1; }
 }
 
 @test "no file names the flag that --tasks replaced" {

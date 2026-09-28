@@ -143,3 +143,13 @@ ticks() { tr -d '`'; }
   grep -qF '| `async` | `ui` | `baseline` | Approach |' "$ROOT/skills/arch-mvvm/SKILL.md" || { echo "the scan did not reach arch-mvvm"; return 1; }
   ! grep -qF 'async/await + @Published' "$ROOT/skills/arch-mvvm/SKILL.md"
 }
+
+@test "every DI flag lands on a catalog value, so setup never asks DI again" {
+  n=0
+  while IFS= read -r row; do
+    [ "$(cell 2 <<<"$row" | ticks)" = di ] || continue
+    [ "$(cell 3 <<<"$row" | ticks)" != "—" ] || { echo "$(cell 1 <<<"$row") has no catalog value"; return 1; }
+    n=$((n + 1))
+  done < <(table_rows '| Flag | Axis | `## Stack` value |' "$INIT")
+  [ "$n" -eq 4 ] || { echo "checked $n DI rows"; return 1; }
+}

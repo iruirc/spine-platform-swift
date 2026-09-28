@@ -174,3 +174,40 @@ EOF
   [ "$status" -eq 4 ]
   [[ "$output" == *"role must be project|meta; got 'package'"* ]]
 }
+
+@test "batch flags carry every axis the app's stack sets, and nothing it leaves out" {
+  run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" ios batch
+  [ "$status" -eq 0 ]
+  [ "$output" = "--no-prompt --platform=ios --main-target-name=FullApp-iOS --ui-framework=swiftui --di=factory --architecture=mvvm-coordinator --async=async-await --min-ios=17.0 --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip" ]
+}
+
+@test "interactive flags pre-answer only the workspace's own questions" {
+  run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" ios interactive
+  [ "$status" -eq 0 ]
+  [ "$output" = "--platform=ios --main-target-name=FullApp-iOS --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip" ]
+}
+
+@test "tests: the app's own answer in batch, the workspace's otherwise; short-form repo resolves" {
+  local y="$(ws_fixture_path workspace-yml/with-project-stack-tests.yml)"
+  run ws_swift_init_flags "$y" ios batch
+  [ "$output" = "--no-prompt --platform=ios --main-target-name=ST-ios --di=plain --tests=quick-nimble --lang=ru --mode=auto --progress=quiet --tasks=skip" ]
+  run ws_swift_init_flags "$y" ios interactive
+  [[ "$output" == *"--tests=xctest "* ]]
+  run ws_swift_init_flags "$y" macos batch
+  [ "$output" = "--no-prompt --platform=macos --main-target-name=ST-macos --tests=xctest --lang=ru --mode=auto --progress=quiet --tasks=skip" ]
+}
+
+@test "swift_init_flags refuses an app workspace.yml does not declare" {
+  run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" macos batch
+  [ "$status" -eq 4 ]
+}
+
+@test "every flag swift_init_flags can print is one swift-init accepts" {
+  local init="$(ws_repo_root)/agents/swift-init.md" f
+  for args in "with-project-full.yml ios batch" "with-project-stack-tests.yml ios batch"; do
+    set -- $args
+    for f in $(ws_swift_init_flags "$(ws_fixture_path workspace-yml/$1)" $2 $3); do
+      grep -qF -- "[${f%%=*}" "$init" || { echo "$f: not in swift-init's flag list"; return 1; }
+    done
+  done
+}

@@ -113,7 +113,7 @@ An interactive answer for UI framework, async approach and architecture is alrea
 | `--di=swinject` | `di` | `Swinject` |
 | `--di=factory` | `di` | `Factory` |
 | `--di=manual-factory` | `di` | `manual` |
-| `--di=plain` | `di` | — |
+| `--di=plain` | `di` | `manual` |
 | `--tests=swift-testing` | `tests` | `Swift Testing` |
 | `--tests=xctest` | `tests` | `XCTest` |
 | `--tests=quick-nimble` | `tests` | `Quick+Nimble` |
