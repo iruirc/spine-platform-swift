@@ -1,4 +1,4 @@
-# workspace.yml — single source of truth for this workspace.
+## workspace.yml — single source of truth. "## " lines explain; "# " lines are examples to uncomment.
 
 workspace:
   name: PLACEHOLDER_WS_NAME
@@ -23,6 +23,11 @@ toolkit:
 remotes:
   - origin
 
+## once package_groups exists, every package must name one.
+# package_groups:
+#   - name: common
+#     dir: sharedPackages
+
 defaults:
   default_branch: main
   push_remotes: all
@@ -40,12 +45,29 @@ bootstrap:
   initial_commit_message: Initial commit
   git_author: null
 
+## a workspace with an app may have no packages.
+# project:
+#   name: MyApp
+#   apps:
+#     ios:
+#       repo: MyApp-iOS
+#       stack:
+#         ui_framework: swiftui       ## swiftui | uikit | appkit
+#         di: factory                 ## factory | swinject | manual-factory | plain
+#         architecture: mvvm          ## mvvm | mvi | tca | viper | clean | mvc
+#         async: async-await          ## async-await | combine | rxswift
+#         tests: swift-testing        ## swift-testing | xctest | quick-nimble
+#         min_platforms: { ios: "17.0" }
+
 packages:
   # - name: Example
   #   archetype: library       # api-contract | engine | library | feature
+  #   group: common
   #   version: "0.1.0"         # M.m.p semver
   #   git: { origin: git@github.com:user/Example.git }
   #   deps: []
+  ## packages exempt from the archetype rule that ARCHETYPE_RULES.md in the meta-repo tabulates.
+  #   allowed_deps: []
   #   external_deps:           # version kinds: from | exact | branch | revision; semver is M.m.p
   #     - url: https://github.com/user/Dep1.git
   #       version: { from: "1.0.0" }

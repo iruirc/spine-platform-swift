@@ -464,3 +464,25 @@ EOF
   [[ "$output" != *"package 'B'"* ]]
   [[ "$output" == *"1 error(s)."* ]]
 }
+
+# The skeleton with its example keys switched on: prose lines (##) dropped, example lines (#) uncommented.
+skeleton_live() {
+  sed -e '/^[[:space:]]*## /d' -e '/^[[:space:]]*##$/d' \
+      -e 's/^\([[:space:]]*\)# /\1/' -e 's/PLACEHOLDER_WS_NAME/Skel/' \
+      "$(ws_repo_root)/templates/workspace/workspace-yml-skeleton.yml"
+}
+
+@test "the skeleton with its examples switched on is a valid workspace.yml" {
+  local d="$(ws_mktemp_dir)"
+  skeleton_live > "$d/ws.yml"
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$d/ws.yml' && wsyml::validate"
+  [ "$status" -eq 0 ] || { cat "$d/ws.yml"; return 1; }
+}
+
+@test "the skeleton names every key the parser reads" {
+  local s="$(ws_repo_root)/templates/workspace/workspace-yml-skeleton.yml" k
+  for k in package_groups group allowed_deps external_deps project apps repo stack ui_framework di \
+           architecture async tests min_platforms; do
+    grep -qE "(^|[[:space:]#])$k:" "$s" || { echo "the skeleton never shows $k"; return 1; }
+  done
+}
