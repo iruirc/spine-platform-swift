@@ -110,10 +110,10 @@ teardown() {
 @test "validate enforces archetype rules, with allowed_deps as exceptions" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/disallowed-deps.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"package 'C' (engine) may not depend on 'F' (feature); list 'F' in allowed_deps to allow it"* ]]
-  [[ "$output" == *"package 'E' allowed_deps entry 'library' is not a package"* ]]
-  [[ "$output" != *"package 'B'"* ]]
-  [[ "$output" != *"package 'D'"* ]]
+  [[ "$output" == *"package 'C' (engine) may not depend on 'F' (feature); list 'F' in allowed_deps to allow it"* ]] || return 1
+  [[ "$output" == *"package 'E' allowed_deps entry 'library' is not a package"* ]] || return 1
+  [[ "$output" != *"package 'B'"* ]] || return 1
+  [[ "$output" != *"package 'D'"* ]] || return 1
   [[ "$output" == *"2 error(s)."* ]]
 }
 
@@ -460,8 +460,8 @@ EOF
 @test "validate rejects an empty git URL and only that one" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/empty-git-url.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"package 'A' has empty git URL for remote 'origin'"* ]]
-  [[ "$output" != *"package 'B'"* ]]
+  [[ "$output" == *"package 'A' has empty git URL for remote 'origin'"* ]] || return 1
+  [[ "$output" != *"package 'B'"* ]] || return 1
   [[ "$output" == *"1 error(s)."* ]]
 }
 

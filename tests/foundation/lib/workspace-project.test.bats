@@ -195,7 +195,7 @@ EOF
   run ws_swift_init_flags "$y" ios batch
   [ "$output" = "--no-prompt --platform=ios --main-target-name=ST-ios --di=plain --tests=quick-nimble --lang=ru --mode=auto --progress=quiet --tasks=skip" ]
   run ws_swift_init_flags "$y" ios interactive
-  [[ "$output" == *"--tests=xctest "* ]]
+  [[ "$output" == *"--tests=xctest "* ]] || return 1
   run ws_swift_init_flags "$y" macos batch
   [ "$output" = "--no-prompt --platform=macos --main-target-name=ST-macos --tests=xctest --lang=ru --mode=auto --progress=quiet --tasks=skip" ]
 }
