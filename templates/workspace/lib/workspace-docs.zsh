@@ -185,7 +185,9 @@ wsdocs::xcworkspace() {
   if [[ -n "$projects" ]]; then
     print -r -- "${projects%$'\n'}" | wsmark::write "$tmp" PROJECT_REFS || { rm -f -- "$tmp"; return 4; }
   fi
-  print -r -- "${pkgs%$'\n'}" | wsmark::write "$tmp" PKG_REFS || { rm -f -- "$tmp"; return 4; }
+  if [[ -n "$pkgs" ]]; then
+    print -r -- "${pkgs%$'\n'}" | wsmark::write "$tmp" PKG_REFS || { rm -f -- "$tmp"; return 4; }
+  fi
   cat -- "$tmp"
   rm -f -- "$tmp"
 }

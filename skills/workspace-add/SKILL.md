@@ -44,7 +44,7 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 
 ## --new <name>
 
-1. Q&A: archetype, group (if `package_groups` non-empty), git URL per declared remote, version (default 0.1.0), deps (multi-select from existing packages), external_deps (Y/N → loop), allowed_deps (default = archetype rule).
+1. Q&A: archetype, group (if `package_groups` non-empty), git URL per declared remote (reprompt on empty), version (default 0.1.0), deps (multi-select from existing packages), external_deps (Y/N → loop), allowed_deps (default = archetype rule).
 2. Backup current `workspace.yml` to `.workspace-add.backup.yml`.
 3. Update `workspace.yml` (insert package entry under `packages:`).
 4. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore from backup, emit `error_validation`, exit 2.
