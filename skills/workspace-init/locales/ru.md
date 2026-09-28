@@ -58,9 +58,6 @@ workspace-init pre-flight:
 ## qa_pkg_deps
 Workspace-зависимости (мультивыбор):
 
-## qa_pkg_example_app
-Записать в workspace.yml Example/-приложение для пакета? Пока его ничто не генерирует.
-
 ## qa_defaults_platforms
 Минимальные версии платформ для пакетов этого workspace: [ios 17.0 + macos 14.0 (по умолчанию) | ios 16.0 + macos 13.0 | ios 17.0 | ввести вручную]
 

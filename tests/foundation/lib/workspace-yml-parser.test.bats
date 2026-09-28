@@ -170,10 +170,24 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
-@test "validate rejects example_app without example_platform" {
-  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/example-app-no-platform.yml)' && wsyml::validate"
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"example_app: true requires example_platform"* ]]
+@test "an example_app key left in an old workspace.yml is ignored" {
+  local d="$(ws_mktemp_dir)"
+  cat > "$d/ws.yml" <<'YML'
+workspace: { name: old }
+remotes: [origin]
+packages:
+  - { name: A, archetype: library, git: {origin: x}, version: 0.1.0, example_app: true }
+YML
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$d/ws.yml' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "nothing but this test names the Example/ keys" {
+  local root="$(ws_repo_root)"
+  hits="$(cd "$root" && grep -rlE --exclude-dir=.git --exclude-dir=.superpowers 'example_app|example_platform|qa_pkg_example' . || true)"
+  grep -qF 'workspace-yml-parser.test.bats' <<<"$hits" || { echo "the scan did not reach this file"; return 1; }
+  rest="$(grep -vF 'workspace-yml-parser.test.bats' <<<"$hits" || true)"
+  [ -z "$rest" ] || { echo "$rest"; return 1; }
 }
 
 @test "validate rejects malformed git_author" {

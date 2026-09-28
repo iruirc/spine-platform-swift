@@ -105,7 +105,7 @@ wsyml::validate() {
   local ws_name pkg_count pkgs groups remote_list
   local known_archs="api-contract engine library feature"
   local p g d r k pg deps git_keys arch ver allowed a
-  local example_app example_platform tasks_path tasks_enabled tasks_mode tasks_symlink_target author
+  local tasks_path tasks_enabled tasks_mode tasks_symlink_target author
   local docs_path docs_enabled docs_mode docs_symlink_target
   local toolkit_lang toolkit_mode toolkit_progress
   local has_project proj_name app_keys ak app_repo
@@ -211,16 +211,6 @@ wsyml::validate() {
           ((errs++))
         fi
       done
-    fi
-
-    # Rule 13: example_app/example_platform pairing
-    example_app="$(wsyml::package_field "$p" example_app 2>/dev/null || echo '')"
-    if [[ "$example_app" == "true" ]]; then
-      example_platform="$(wsyml::package_field "$p" example_platform 2>/dev/null || echo '')"
-      if [[ ! "$example_platform" =~ ^(ios|macos|both)$ ]]; then
-        print -u2 "$_path: package '$p' example_app: true requires example_platform (ios|macos|both); got '$example_platform'"
-        ((errs++))
-      fi
     fi
   done
 
