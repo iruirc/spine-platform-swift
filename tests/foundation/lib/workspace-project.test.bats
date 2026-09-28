@@ -179,6 +179,9 @@ EOF
   run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" ios batch
   [ "$status" -eq 0 ]
   [ "$output" = "--no-prompt --platform=ios --main-target-name=FullApp-iOS --ui-framework=swiftui --di=factory --architecture=mvvm-coordinator --async=async-await --min-ios=17.0 --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip" ]
+  run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" macos batch
+  [ "$status" -eq 0 ]
+  [ "$output" = "--no-prompt --platform=macos --main-target-name=FullApp-macOS --ui-framework=swiftui --di=factory --architecture=mvvm --async=async-await --min-macos=14.0 --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip" ]
 }
 
 @test "interactive flags pre-answer only the workspace's own questions" {
@@ -203,11 +206,17 @@ EOF
 }
 
 @test "every flag swift_init_flags can print is one swift-init accepts" {
-  local init="$(ws_repo_root)/agents/swift-init.md" f
+  local init="$(ws_repo_root)/agents/swift-init.md" f checked
   for args in "with-project-full.yml ios batch" "with-project-stack-tests.yml ios batch"; do
     set -- $args
-    for f in $(ws_swift_init_flags "$(ws_fixture_path workspace-yml/$1)" $2 $3); do
+    run ws_swift_init_flags "$(ws_fixture_path workspace-yml/$1)" $2 $3
+    [ "$status" -eq 0 ] || { echo "$1 $2 $3: exited $status"; return 1; }
+    [ -n "$output" ] || { echo "$1 $2 $3: printed nothing"; return 1; }
+    checked=0
+    for f in $output; do
       grep -qF -- "[${f%%=*}" "$init" || { echo "$f: not in swift-init's flag list"; return 1; }
+      checked=$((checked + 1))
     done
+    [ "$checked" -gt 0 ] || { echo "$1 $2 $3: checked 0 flags"; return 1; }
   done
 }
