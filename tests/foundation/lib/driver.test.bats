@@ -133,3 +133,11 @@ setup() {
   grep -qF "A simulator or device the brief's owner's directive names wins" <<<"$x" || { echo "XcodeBuildMCP"; return 1; }
   grep -qF 'packages included' <<<"$x" || { echo "packages"; return 1; }
 }
+
+@test "the validator plans a multi-finger or held move as gesture or drag, never as swipe" {
+  # A pinch driven as a swipe passes a step nothing checked; core names both motions.
+  V="$ROOT/agents/swift-validator.md"
+  grep -qF '`gesture`' "$V" || { echo "gesture not named"; return 1; }
+  grep -qF '`drag`' "$V" || { echo "drag not named"; return 1; }
+  grep -qF 'never stands in for either' "$V" || { echo "no swipe stand-in rule"; return 1; }
+}
