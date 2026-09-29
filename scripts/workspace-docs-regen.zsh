@@ -50,7 +50,10 @@ wsgraph::check_acyclic || exit 2
 # jq, not yq, writes the .code-workspace: from 1.7 it prints every number it does not change as written.
 if [[ "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
   jqv="$(jq --version 2>/dev/null)" || jqv=none
-  if [[ "$jqv" == none ]] || ! _wspkg_ge "${${jqv#jq-}%%-*}" 1.7; then
+  # Cut at the first non-digit, non-dot character: a pre-release suffix like rc2 is not a dotted
+  # number, and handing it whole to _wspkg_ge's arithmetic crashes the comparison into "equal".
+  jqnum="${${jqv#jq-}%%[^0-9.]*}"
+  if [[ "$jqv" == none || -z "$jqnum" ]] || ! _wspkg_ge "$jqnum" 1.7; then
     print -u2 "workspace-docs-regen: jq 1.7 or newer is required to keep .code-workspace numbers intact (found: $jqv)"
     exit 3
   fi
