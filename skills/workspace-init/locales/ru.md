@@ -58,6 +58,18 @@ workspace-init pre-flight:
 ## qa_pkg_deps
 Workspace-зависимости (мультивыбор):
 
+## qa_pkg_git_url
+Git URL для remote «{remote}»:
+
+## qa_pkg_external_dep
+Добавить внешнюю SwiftPM-зависимость? [y/N]
+
+## qa_pkg_external_dep_url
+URL внешней зависимости:
+
+## qa_pkg_external_dep_version
+Требование к версии — from, exact, branch или revision и значение (пусто = без требования):
+
 ## qa_pkg_dep_exception
 «{dep}» имеет архетип {dep_archetype}; пакет-{archetype} не может зависеть от него напрямую: [allow = записать как исключение в allowed_deps | drop = убрать {dep} из deps]
 
