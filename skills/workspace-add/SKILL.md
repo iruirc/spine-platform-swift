@@ -44,7 +44,7 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 
 ## --new <name>
 
-1. Q&A: archetype, group (if `package_groups` non-empty), git URL per declared remote (reprompt on empty), version (default 0.1.0), deps (multi-select from existing packages), external_deps (Y/N → loop), allowed_deps (exceptions to the archetype rule, default none).
+1. Q&A: archetype, group (if `package_groups` non-empty), git URL per declared remote (reprompt on empty), version (default 0.1.0), deps (multi-select from existing packages). Right after deps, for each picked dep whose archetype `wsarch::default_allowed <archetype>` does not list, ask `qa_pkg_dep_exception` (`{dep}`, `{dep_archetype}`, `{archetype}`): record it in `allowed_deps` as an exception, or drop it from deps. Then: external_deps (Y/N → loop), allowed_deps — further exceptions beyond the ones just resolved, default none.
 2. Backup current `workspace.yml` to `.workspace-add.backup.yml`.
 3. Update `workspace.yml` (insert package entry under `packages:`).
 4. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore from backup, emit `error_validation`, exit 2.
@@ -63,8 +63,10 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 4. Backup `workspace.yml`. Update with new package entry.
 5. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore + exit 2.
 6. Resolve target dir. If `--symlink` flag: create symlink. Else (default): `mv <original-path> <target-dir>`.
-7. **Soft mutate** target package files:
-   - If `<target-dir>/CLAUDE.md` does NOT exist → render template, `git add` it (no commit).
+7. **Soft mutate** target package files. Never call `wspkg::render_to` on an incorporated package — it
+   renders the whole package template and would overwrite the user's `Package.swift` and `Sources/`.
+   - If `<target-dir>/CLAUDE.md` does NOT exist → render only `<platform-root>/templates/workspace/package/CLAUDE.md.tmpl`
+     with `{{PACKAGE_NAME}}` substituted, to `<target-dir>/CLAUDE.md`, `git add` it (no commit).
    - If exists → emit `warn_existing_claude_md`.
 8. Run `workspace-docs-regen` from the meta-repo: it adds the package to the meta-repo docs and the workspace files, and fills the marked sections the package's docs have. An incorporated package's `Package.swift` carries no markers, so its dependencies stay its own; `workspace-docs-regen --adopt --pkg <name>` proposes them when the manifest is in the shape this plugin's template renders.
 9. Emit `report_success_incorporate`.

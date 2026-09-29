@@ -19,6 +19,9 @@ Archetype:
 ## qa_group
 Group:
 
+## qa_pkg_dep_exception
+'{dep}' is {dep_archetype}; a {archetype} package may not depend on it: [allow = record as an allowed_deps exception | drop = remove {dep} from deps]
+
 ## qa_allowed_deps
 Exceptions to the archetype rule (packages, default none):
 
@@ -39,7 +42,7 @@ swift is not on PATH; a new package's manifest is generated for Swift 6. Install
 Swift {version} is older than 6.0; a new package's manifest is generated for Swift 6 language mode. Update the toolchain. exit 3.
 
 ## error_validation
-workspace.yml validation failed after add; rolled back.
+workspace.yml is invalid after add (errors above); the edit was rolled back.
 
 ## error_fs
 filesystem error: {details}
