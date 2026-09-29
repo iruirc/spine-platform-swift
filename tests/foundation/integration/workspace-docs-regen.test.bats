@@ -252,6 +252,16 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   [[ "$output" == *"jq 1.7 or newer is required"*"found: jq-1.6"* ]]
 }
 
+@test "regen rejects a jq pre-release version without a bad math expression" {
+  local bin="$(ws_mktemp_dir)"
+  printf '#!/bin/sh\necho jq-1.6rc2\n' > "$bin/jq"; chmod +x "$bin/jq"
+  cd "$META"
+  PATH="$bin:$PATH" run "$REGEN"
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"jq 1.7 or newer is required"*"found: jq-1.6rc2"* ]] || return 1
+  [[ "$output" != *"bad math expression"* ]]
+}
+
 @test "the .code-workspace keeps its settings; one that is not plain JSON is reported" {
   local cw="$META/RegenWS.code-workspace"
   yq -i -p=json -o=json -I=2 '.settings."editor.tabSize" = 4 | del(.folders[1])' "$cw"
