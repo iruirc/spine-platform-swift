@@ -58,6 +58,9 @@ Version (default 0.1.0):
 ## qa_pkg_deps
 Workspace-internal deps (multiselect):
 
+## qa_pkg_dep_exception
+'{dep}' is {dep_archetype}; a {archetype} package may not depend on it: [allow = record as an allowed_deps exception | drop = remove {dep} from deps]
+
 ## qa_defaults_platforms
 Deployment floor of this workspace's packages: [ios 17.0 + macos 14.0 (default) | ios 16.0 + macos 13.0 | ios 17.0 | custom]
 

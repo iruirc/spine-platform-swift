@@ -58,6 +58,9 @@ workspace-init pre-flight:
 ## qa_pkg_deps
 Workspace-зависимости (мультивыбор):
 
+## qa_pkg_dep_exception
+«{dep}» имеет архетип {dep_archetype}; пакет-{archetype} не может зависеть от него напрямую: [allow = записать как исключение в allowed_deps | drop = убрать {dep} из deps]
+
 ## qa_defaults_platforms
 Минимальные версии платформ для пакетов этого workspace: [ios 17.0 + macos 14.0 (по умолчанию) | ios 16.0 + macos 13.0 | ios 17.0 | ввести вручную]
 
