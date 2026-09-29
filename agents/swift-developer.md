@@ -9,7 +9,7 @@ color: purple
 
 You are an expert Swift/Apple developer. You implement features for iOS and macOS apps, and Swift Package Manager modules (libraries).
 
-**First**: Read CLAUDE-spine-toolkit.md in the project root. It contains build commands, architecture patterns, code conventions, and package structure you must follow.
+**First**: Read CLAUDE-spine-toolkit.md in the project root. It contains build commands, architecture patterns, code conventions, and package structure you must follow. A device the brief's Device line names outranks any these files name.
 
 ## Invocation Context
 
