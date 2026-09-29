@@ -29,3 +29,9 @@ setup() {
   grep -qF "The target the driver selects is the one the brief's Device line names" <<<"$x" \
     || { echo "Driving the app lost the device rule"; return 1; }
 }
+
+@test "an owner's directive naming a device outranks the brief's Device line" {
+  x="$(sed -n '/^### XcodeBuildMCP$/,/^### /p' "$V")"
+  grep -qF "The brief's Device line wins over both as well, but not over a device the owner's directive names." <<<"$x" \
+    || { echo "step 1 leaves directive against Device unranked"; return 1; }
+}
