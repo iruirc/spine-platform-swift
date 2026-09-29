@@ -211,7 +211,7 @@ Structure, the required fields of a case, and the two rules that make a case exe
 
 Only when the profile rules require it and the driver resolved to `ok`. Read the driver's `## Procedure`
 first: it is its author's own words on how a target gets selected, what order to reach for tools by
-cost, and what state to leave the device in. Follow it. What follows is the shape of the pass, named in
+cost, and what state to leave the device in. Follow it. The target the driver selects is the one the brief's Device line names, when it names one — the device step 1 built and tested on. What follows is the shape of the pass, named in
 capabilities rather than in calls:
 
 1. `launch` — the app, by bundle id. XcodeBuildMCP's `get_app_bundle_id` gives you the id.

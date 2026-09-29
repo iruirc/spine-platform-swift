@@ -23,3 +23,9 @@ setup() {
       || { echo "swift-$a: First line lost the device rule"; return 1; }
   done
 }
+
+@test "the validator drives the device the brief names" {
+  x="$(sed -n '/^### Driving the app$/,/^---$/p' "$V")"
+  grep -qF "The target the driver selects is the one the brief's Device line names" <<<"$x" \
+    || { echo "Driving the app lost the device rule"; return 1; }
+}
