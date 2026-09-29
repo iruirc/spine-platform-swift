@@ -76,6 +76,10 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
     | grep -qF "\`[[ -f <repo>/project.yml ]] && grep -q '^## Platform\$' <repo>/CLAUDE-spine-toolkit.md\`"
 }
 
+@test "s06_pkg recovers its own interrupted render on --resume" {
+  step_row 's06_pkg_<name>' | grep -qF "own interrupted render" || { echo "s06_pkg row lacks recovery clause"; return 1; }
+}
+
 @test "no file names the marker swift-init never wrote" {
   all="$(grep -rlF --exclude-dir=.git --exclude-dir=.superpowers '.swift-init.done' "$ROOT" || true)"
   grep -qF 'setup-handoff.test.bats' <<<"$all" || { echo "the scan did not reach this file"; return 1; }
