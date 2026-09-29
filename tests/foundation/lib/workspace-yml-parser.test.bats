@@ -77,6 +77,13 @@ teardown() {
   [[ "$output" == *"duplicate package name"* ]]
 }
 
+@test "validate reports a duplicate package name once and checks none of its fields" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/duplicate-pkg.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [ "$(grep -c 'duplicate package name' <<<"$output")" -eq 1 ]
+  [ "$(grep -c "package 'A'" <<<"$output")" -eq 0 ]
+}
+
 @test "validate rejects unknown group reference" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-group-ref.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
