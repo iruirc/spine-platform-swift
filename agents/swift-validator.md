@@ -134,9 +134,10 @@ if it were contract: a table of call names is exactly what this contract replace
 in it had stopped existing at a server release and nothing noticed for months.
 
 Plan the drive in capabilities, read off the block for this run's surface: launching needs `launch`,
-reading the screen needs `ui_tree` or `find`, driving a path needs `tap`, `type` or `swipe`, an
-assertion needs `assert`, a shot for the record needs `screenshot`, a clean first run needs
-`reset_state`, and finishing needs `stop`. A check whose capability the block does not name is a check
+reading the screen needs `ui_tree` or `find`, driving a path needs the input capability that names
+each step's motion — `tap`, `type`, `swipe`, or for a pinch or rotation `gesture` and for a press held
+while moving `drag`, and a `swipe` never stands in for either — an assertion needs `assert`, a shot
+for the record needs `screenshot`, a clean first run needs `reset_state`, and finishing needs `stop`. A check whose capability the block does not name is a check
 you defer — it becomes a case in `ManualChecks.md` with the missing capability as its stated reason.
 
 The table is a **ceiling, never a floor**. If the driver can report its own composition at run time,
@@ -216,7 +217,7 @@ capabilities rather than in calls:
 
 1. `launch` — the app, by bundle id. XcodeBuildMCP's `get_app_bundle_id` gives you the id.
 2. `ui_tree` — read the screen as text first; an image costs many times more for the same answer.
-3. `tap` / `type` / `swipe` — drive the scenario.
+3. `tap` / `type` / `swipe` / `gesture` / `drag` — drive the scenario, each step by its own motion.
 4. `assert` — the key element present, or gone, at each point the scenario turns on it.
 5. `screenshot` — one, at the success endpoint, for the record (path under `## UI Smoke`).
 6. `stop` — leave nothing running.
