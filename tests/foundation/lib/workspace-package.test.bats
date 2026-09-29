@@ -216,19 +216,36 @@ packages/Core/Package.swift: external dep https://github.com/apple/swift-testing
     "p=\$(wsyml::packages | head -1); wspkg::render_to \"\$p\" '$d' && print -r -- \$p"
   [ "$status" -eq 0 ]
   local p="$output"
-  [ -f "$d/Package.swift" ] && [ -f "$d/Sources/$p/$p.swift" ] && [ -f "$d/Tests/${p}Tests/${p}Tests.swift" ]
-  [ -f "$d/.gitignore" ] && grep -qx '.build/' "$d/.gitignore" && grep -qx '.swiftpm/' "$d/.gitignore"
-  ! grep -rq '{{' "$d"
+  [ -f "$d/Package.swift" ]
+  [ -f "$d/Sources/$p/$p.swift" ]
+  [ -f "$d/Tests/${p}Tests/${p}Tests.swift" ]
+  [ -f "$d/.gitignore" ]
+  grep -qx '.build/' "$d/.gitignore"
+  grep -qx '.swiftpm/' "$d/.gitignore"
+  run grep -rq '{{' "$d"
+  [ "$status" -eq 1 ]
   grep -q 'import XCTest' "$d/Tests/${p}Tests/${p}Tests.swift"
   [ "$(ls "$d/Tests/${p}Tests" | wc -l | tr -d ' ')" -eq 1 ]
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::read '$d/Package.swift' PKG_MANIFEST_DEPS"
-  [ "$status" -eq 0 ] && [ -z "$output" ]
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
   [ ! -d "$d/.git" ]
 }
 
 @test "render_to refuses a package workspace.yml does not declare" {
   run pkg "$(ws_fixture_path workspace-yml/minimal.yml)" "wspkg::render_to Nope '$(ws_mktemp_dir)/x'"
   [ "$status" -eq 4 ]
+}
+
+@test "render_to refuses to overwrite a package that already has a Package.swift" {
+  local d="$(ws_mktemp_dir)/Core"
+  mkdir -p "$d"
+  printf '// hand-written\n' > "$d/Package.swift"
+  run pkg "$(ws_fixture_path workspace-yml/defaults-tests-xctest.yml)" \
+    "p=\$(wsyml::packages | head -1); wspkg::render_to \"\$p\" '$d'"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"already exists"* ]] || return 1
+  [ "$(cat "$d/Package.swift")" = "// hand-written" ]
 }
 
 @test "a package rendered then regenerated has both dependency arrays filled" {

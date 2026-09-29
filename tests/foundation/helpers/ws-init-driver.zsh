@@ -128,6 +128,9 @@ for p in $(wsyml::packages); do
   else
     pkg_dir="$ws_parent/packages/$p"
   fi
+  # s06_pkg_<name>'s own idempotency check ("dir + .git exist"): render_to now refuses a dir
+  # that already holds a Package.swift, so a rerun must skip it like the real skill does.
+  [[ -d "$pkg_dir/.git" ]] && continue
   mkdir -p "$pkg_dir"
   wspkg::render_to "$p" "$pkg_dir" || exit $?
   ( cd "$pkg_dir" && git init -q -b main )

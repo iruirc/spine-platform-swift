@@ -190,6 +190,7 @@ wspkg::test_framework_target_deps() {
 wspkg::render_to() {
   local p="$1" dir="$2" ver tools plats kind tfm tft src rel variant dst
   [[ -n "$p" && -n "$dir" ]] || { print -u2 "wspkg::render_to: usage: <package> <dir>"; return 4; }
+  [[ -f "$dir/Package.swift" ]] && { print -u2 "wspkg::render_to: $dir/Package.swift already exists; never rendered onto an existing package"; return 4; }
   ver="$(wsyml::package_field "$p" version 2>/dev/null)" || { print -u2 "wspkg::render_to: workspace.yml declares no package '$p'"; return 4; }
   tools="$(wspkg::tools_version)" || return $?
   plats="$(wspkg::platforms_inline)" || return 4
