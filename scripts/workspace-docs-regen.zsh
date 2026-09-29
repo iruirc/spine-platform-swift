@@ -48,7 +48,8 @@ wsyml::load "$ws_yml" || exit $?
 wsyml::validate || exit 2
 wsgraph::check_acyclic || exit 2
 # jq, not yq, writes the .code-workspace: from 1.7 it prints every number it does not change as written.
-if [[ "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
+# --check never calls jq — it only diffs — so the gate does not apply to it.
+if [[ "$mode" != check && "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
   jqv="$(jq --version 2>/dev/null)" || jqv=none
   # Cut at the first non-digit, non-dot character: a pre-release suffix like rc2 is not a dotted
   # number, and handing it whole to _wspkg_ge's arithmetic crashes the comparison into "equal".

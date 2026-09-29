@@ -262,6 +262,23 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   [[ "$output" != *"bad math expression"* ]]
 }
 
+@test "--check exits 0 with a jq older than 1.7 on a clean workspace" {
+  local bin="$(ws_mktemp_dir)"
+  printf '#!/bin/sh\necho jq-1.6\n' > "$bin/jq"; chmod +x "$bin/jq"
+  cd "$META"
+  PATH="$bin:$PATH" run "$REGEN" --check
+  [ "$status" -eq 0 ]
+}
+
+@test "regen accepts a jq older than 1.7 when workspace.code_workspace is false" {
+  yq -i '.workspace.code_workspace = false' "$META/workspace.yml"
+  local bin="$(ws_mktemp_dir)"
+  printf '#!/bin/sh\necho jq-1.6\n' > "$bin/jq"; chmod +x "$bin/jq"
+  cd "$META"
+  PATH="$bin:$PATH" run "$REGEN"
+  [ "$status" -eq 0 ]
+}
+
 @test "the .code-workspace keeps its settings; one that is not plain JSON is reported" {
   local cw="$META/RegenWS.code-workspace"
   yq -i -p=json -o=json -I=2 '.settings."editor.tabSize" = 4 | del(.folders[1])' "$cw"
