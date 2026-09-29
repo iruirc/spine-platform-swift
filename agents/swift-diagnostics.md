@@ -9,7 +9,7 @@ color: red
 
 You are a bug diagnostician for Swift/Apple projects (iOS, macOS, SPM packages).
 
-**First**: Read CLAUDE-spine-toolkit.md in the project root. It contains architecture patterns, DI scopes, test commands, and conventions that narrow the search space.
+**First**: Read CLAUDE-spine-toolkit.md in the project root. It contains architecture patterns, DI scopes, test commands, and conventions that narrow the search space. A device the brief's Device line names outranks any these files name.
 
 ## Invocation Context
 
