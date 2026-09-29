@@ -104,7 +104,7 @@ wsyml::validate() {
   # already declared in the same function prints `name=value` to stdout.
   local errs=0
   local _path="${_WSYML_STATE[path]}"
-  local ws_name pkg_count app_count pkgs groups remote_list
+  local ws_name pkg_count app_count pkgs upkgs groups remote_list
   local known_archs="api-contract engine library feature"
   local p g d r k pg deps git_keys arch ver allowed a rule dep_arch
   local tasks_path tasks_enabled tasks_mode tasks_symlink_target author
@@ -115,7 +115,7 @@ wsyml::validate() {
   local plat_keys pk pv tests_kind plat_declared plat_tag
   local ext_n j ext_tag ext_url ver_tag ver_key ver_val vkeys nvkeys
   local -a vkeys_arr
-  local -A seen group_set remote_set allowed_set seen_repos
+  local -A seen dups group_set remote_set allowed_set seen_repos
 
   # Rule 1: workspace.name required, matches [A-Za-z][A-Za-z0-9-]*
   ws_name="$(wsyml::get '.workspace.name' || true)"
@@ -139,17 +139,21 @@ wsyml::validate() {
   pkgs="$(wsyml::packages)"
   for p in ${(f)pkgs}; do
     if (( ${+seen[$p]} )); then
-      print -u2 "$_path: duplicate package name '$p'"
-      ((errs++))
+      (( ${+dups[$p]} )) || { print -u2 "$_path: duplicate package name '$p'"; ((errs++)); }
+      dups[$p]=1
     fi
     seen[$p]=1
   done
+  # A duplicate name selects every entry carrying it and would join their fields into one value,
+  # so the per-package rules below check only the names rule 3 accepted.
+  upkgs=""
+  for p in ${(f)pkgs}; do (( ${+dups[$p]} )) || upkgs+="$p"$'\n'; done
 
   # Rule 4: package_groups reference check
   groups="$(wsyml::groups || true)"
   if [[ -n "$groups" ]]; then
     for g in ${(f)groups}; do group_set[$g]=1; done
-    for p in ${(f)pkgs}; do
+    for p in ${(f)upkgs}; do
       pg="$(wsyml::package_field "$p" group || true)"
       if [[ -z "$pg" ]]; then
         print -u2 "$_path: package '$p' missing required group (package_groups present)"
@@ -165,7 +169,7 @@ wsyml::validate() {
   remote_list="$(wsyml::remotes || true)"
   for r in ${(f)remote_list}; do remote_set[$r]=1; done
 
-  for p in ${(f)pkgs}; do
+  for p in ${(f)upkgs}; do
     # Rule 5: deps reference
     deps="$(wsyml::package_field "$p" 'deps[]' 2>/dev/null || true)"
     for d in ${(f)deps}; do
@@ -222,6 +226,7 @@ wsyml::validate() {
       rule=" $(wsarch::default_allowed "$arch") "
       for d in ${(f)deps}; do
         (( ${+seen[$d]} )) || continue
+        (( ${+dups[$d]} )) && continue
         (( ${+allowed_set[$d]} )) && continue
         dep_arch="$(wsyml::package_field "$d" archetype || true)"
         [[ "$rule" == *" $dep_arch "* ]] && continue
@@ -388,12 +393,8 @@ wsyml::validate() {
   # map with url and an optional version of exactly one of from|exact|branch|revision). Nothing else
   # enforced this, so a value only SwiftPM would reject — an unquoted float, an unknown requirement
   # key, two requirement keys at once — reached Package.swift unchecked.
-  for p in ${(f)pkgs}; do
-    # A duplicate package name (already reported by rule 3) makes select() match more than one
-    # entry, so length comes back once per match; take the first so a bad name can't also crash
-    # the loop bound below.
+  for p in ${(f)upkgs}; do
     ext_n="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps | length" 2>/dev/null || echo 0)"
-    ext_n="${ext_n%%$'\n'*}"
     for ((j = 0; j < ext_n; j++)); do
       ext_tag="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[$j] | tag" 2>/dev/null || true)"
       [[ "$ext_tag" == '!!str' ]] && continue
