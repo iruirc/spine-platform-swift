@@ -45,6 +45,12 @@ setup() {
     echo "the reviewer still carries its own test criteria"
     return 1
   fi
+  # The five findings were restated here and lost which of them block when core
+  # changed that; the section is named, never copied.
+  if grep -qF 'standing in for the behaviour under test' "$r"; then
+    echo "the reviewer restates the findings of core's ## Review"
+    return 1
+  fi
 }
 
 @test "core at the declared floor has the sections the agents point at" {
