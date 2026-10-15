@@ -15,7 +15,7 @@ loaded skill location, not from the project working directory.
 
 ## Language Resolution
 
-Read `[LANG]` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`.
+Read `[LANG]` from the meta-repo's project config (`SPINE.md`, or `CLAUDE-spine-toolkit.md` where it has not migrated). Fallback: `en`.
 
 ## Run
 

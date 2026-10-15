@@ -1,7 +1,7 @@
 ---
 name: swift-init
 description: |
-  Bootstraps a new Swift/Apple project: iOS/macOS apps or SPM packages. Generates exactly one artifact per invocation. For a multi-module project run multiple times; assemble the .xcworkspace manually in Xcode. To attach the toolkit to an existing project use `/setup`. Initializes SwiftLint, a minimal user-owned `CLAUDE.md` (with `@./CLAUDE-spine-toolkit.md` import line), and the toolkit-owned `CLAUDE-spine-toolkit.md`. Interactive — always confirms stack choices before generating.
+  Bootstraps a new Swift/Apple project: iOS/macOS apps or SPM packages. Generates exactly one artifact per invocation. For a multi-module project run multiple times; assemble the .xcworkspace manually in Xcode. To attach the toolkit to an existing project use `/setup`. Initializes SwiftLint, a minimal user-owned `CLAUDE.md` (with `@./SPINE.md` import line), and the toolkit-owned `SPINE.md`. Interactive — always confirms stack choices before generating.
   Use when (en): "create new Swift project", "scaffold iOS app", "generate SPM package", "init macOS app from scratch", "/swift-init"
   Use when (ru): "создай Swift-проект", "новый iOS-проект", "сгенерируй SPM-пакет", "инициализируй macOS-приложение", "/swift-init"
 color: blue
@@ -159,7 +159,7 @@ Both Markdown config files belong to spine-toolkit, not to this agent: after the
 
 For every mode:
 - Folder structure matching the chosen mode and architecture
-- `CLAUDE-spine-toolkit.md` and a minimal user-owned `CLAUDE.md`, both written by `spine-toolkit:setup` as described above
+- `SPINE.md` and a minimal user-owned `CLAUDE.md`, both written by `spine-toolkit:setup` as described above
 - `.swiftlint.yml` with sensible defaults
 - `README.md` with brief project description + how to build
 
@@ -342,7 +342,7 @@ After generating, produce a short report to the user:
 - `## Next Steps` — exact commands to build and run the project. **For app modes always include**:
   - the project regeneration command: `xcodegen generate` (run it after editing `project.yml`);
   - a note about local packages: "If you need local SPM packages, run `/swift-init` separately in any folder on disk, then in Xcode use `File → New → Workspace`, drag the app's `.xcodeproj` and the package folders into the workspace. From then on, open the **`.xcworkspace`**, not the `.xcodeproj` — otherwise Xcode won't see the local packages."
-- `## CLAUDE-spine-toolkit.md Highlights` — what `## Stack` and `## Modules` received
+- `## SPINE.md Highlights` — what `## Stack` and `## Modules` received
 
 ## Multi-module projects
 
@@ -359,9 +359,9 @@ The `swift-init` agent **does not generate the workspace itself** — that's an 
 
 - Never overwrite existing files — refuse and ask the user to run in an empty directory (or a dedicated subdirectory)
 - Never commit changes
-- Never write `CLAUDE-spine-toolkit.md` or `CLAUDE.md` yourself — both come from `spine-toolkit:setup`, which renders core's own template
+- Never write `SPINE.md` or `CLAUDE.md` yourself — both come from `spine-toolkit:setup`, which renders core's own template
 - Always ask before generating — confirm mode, stack, platforms
 - Do not invent third-party dependencies; use only Swift + Apple SDKs
-- Do not attach labels like "(recommended)" / "(default)" next to architectural options (UI framework, async approach, DI, architecture) unless the recommendation is recorded in the project's `CLAUDE-spine-toolkit.md` or in one of the `spine-platform-swift:*` skills. Ask neutrally, without hinting at the "correct" answer — the choice belongs to the user
+- Do not attach labels like "(recommended)" / "(default)" next to architectural options (UI framework, async approach, DI, architecture) unless the recommendation is recorded in the project's `SPINE.md` or in one of the `spine-platform-swift:*` skills. Ask neutrally, without hinting at the "correct" answer — the choice belongs to the user
 - For app modes (1/2/3): generate `.xcodeproj` only via XcodeGen (`xcodegen generate`); never write `project.pbxproj` by hand
 - Before running `xcodegen`, verify it's installed; if not — ask the user before installing via `brew install xcodegen`

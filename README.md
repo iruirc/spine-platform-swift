@@ -28,7 +28,7 @@ they know.
 /setup
 ```
 
-That is spine-toolkit's command: it writes `CLAUDE-spine-toolkit.md`, and when more than one
+That is spine-toolkit's command: it writes `SPINE.md` (the project config; a project set up earlier still carries it as `CLAUDE-spine-toolkit.md`, read the same way), and when more than one
 platform plugin is installed it asks which serves this project. The answer lands in `## Platform`:
 
 ```

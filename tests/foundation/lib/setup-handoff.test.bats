@@ -24,7 +24,7 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
 }
 
 @test "the meta-repo config step calls setup only while no config exists" {
-  step_row s02b_meta_config | grep -qF 'Only if `<meta>/CLAUDE-spine-toolkit.md` is absent'
+  step_row s02b_meta_config | grep -qF 'Only if `<meta>/SPINE.md` is absent'
 }
 
 @test "the dialog asks the three toolkit answers" {
@@ -73,7 +73,7 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
 
 @test "s06b counts swift-init done by its project and config, not by a marker" {
   step_row 's06b_project_<app>' \
-    | grep -qF "\`[[ -f <repo>/project.yml ]] && grep -q '^## Platform\$' <repo>/CLAUDE-spine-toolkit.md\`"
+    | grep -qF "\`[[ -f <repo>/project.yml ]] && grep -q '^## Platform\$' <repo>/SPINE.md\`"
 }
 
 @test "s06_pkg recovers its own interrupted render on --resume" {

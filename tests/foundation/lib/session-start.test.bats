@@ -51,6 +51,18 @@ hook() {
     || { cat "$LOG/xcodebuildmcp"; return 1; }
 }
 
+@test "SPINE.md marks a spine project the same way" {
+  touch "$PROJ/SPINE.md"
+  stub mobilebuildmcp delete-mobilebuildmcp-storage
+  stub xcodebuildmcp delete-xcodebuildmcp-storage
+  hook
+  [ "$status" -eq 0 ] && [ -z "$output" ] || { echo "$output"; return 1; }
+  [ "$(cat "$LOG/mobilebuildmcp")" = "purge --scope all --classes testProducts --older-than 1d --delete --confirm delete-mobilebuildmcp-storage" ] \
+    || { cat "$LOG/mobilebuildmcp"; return 1; }
+  [ "$(cat "$LOG/xcodebuildmcp")" = "purge --scope all --classes testProducts --older-than 1d --delete --confirm delete-xcodebuildmcp-storage" ] \
+    || { cat "$LOG/xcodebuildmcp"; return 1; }
+}
+
 @test "Tasks/ACTIVE marks a spine project too" {
   mkdir -p "$PROJ/Tasks/ACTIVE"
   stub xcodebuildmcp delete-xcodebuildmcp-storage

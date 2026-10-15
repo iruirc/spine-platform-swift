@@ -80,7 +80,11 @@ wsproj::append_workspace_meta() {
     print -u2 "wsproj::append_workspace_meta: role must be project|meta; got '$role'"
     return 4
   fi
-  local file="$repo_dir/CLAUDE-spine-toolkit.md"
+  # The project config: SPINE.md, or the pre-multi-runtime name where the project still carries it.
+  local file="$repo_dir/SPINE.md"
+  if [[ ! -f "$file" && -f "$repo_dir/CLAUDE-spine-toolkit.md" ]]; then
+    file="$repo_dir/CLAUDE-spine-toolkit.md"
+  fi
   if [[ ! -f "$file" || ! -w "$file" ]]; then
     print -u2 "wsproj::append_workspace_meta: cannot read+write $file"
     return 4
