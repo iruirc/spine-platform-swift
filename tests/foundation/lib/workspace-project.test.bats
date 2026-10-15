@@ -102,6 +102,45 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+@test "wsproj::append_workspace_meta writes SPINE.md when the project carries it" {
+  local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
+  mkdir -p "$tmpd"
+  cat > "$tmpd/SPINE.md" <<'EOF'
+# Toolkit configuration — MyApp-iOS
+
+## Stack
+
+mvvm-coordinator
+EOF
+  run zsh -c "
+    source '$(ws_lib_path workspace-yml-parser.zsh)'
+    source '$(ws_lib_path workspace-project.zsh)'
+    wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
+    wsproj::append_workspace_meta '$tmpd'
+  "
+  [ "$status" -eq 0 ]
+  run grep '^## Workspace meta' "$tmpd/SPINE.md"
+  [ "$status" -eq 0 ]
+  run grep -F 'Workspace name: FullProj (../FullProj-meta)' "$tmpd/SPINE.md"
+  [ "$status" -eq 0 ]
+}
+
+@test "wsproj::append_workspace_meta prefers SPINE.md over a legacy file beside it" {
+  local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
+  mkdir -p "$tmpd"
+  printf '# SPINE.md — Spine Configuration\n\n## Stack\n\nmvvm-coordinator\n' > "$tmpd/SPINE.md"
+  printf '# CLAUDE-spine-toolkit.md — Toolkit Configuration\n' > "$tmpd/CLAUDE-spine-toolkit.md"
+  run zsh -c "
+    source '$(ws_lib_path workspace-yml-parser.zsh)'
+    source '$(ws_lib_path workspace-project.zsh)'
+    wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
+    wsproj::append_workspace_meta '$tmpd'
+  "
+  [ "$status" -eq 0 ]
+  grep -q '^## Workspace meta' "$tmpd/SPINE.md"
+  ! grep -q '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md"
+}
+
 @test "wsproj::append_workspace_meta is idempotent" {
   local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
   mkdir -p "$tmpd"

@@ -34,7 +34,7 @@ this skill edits `workspace.yml` validates the document without the edit.
 
 ## Language Resolution
 
-Read `[LANG]` from meta-repo's `CLAUDE-spine-toolkit.md`. Fallback: `en`. All user-facing strings via `locales/<lang>.md`.
+Read `[LANG]` from the meta-repo's project config (`SPINE.md`, or `CLAUDE-spine-toolkit.md` where it has not migrated). Fallback: `en`. All user-facing strings via `locales/<lang>.md`.
 
 ## Pre-flight
 

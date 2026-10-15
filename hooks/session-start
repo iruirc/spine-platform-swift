@@ -11,7 +11,7 @@ fi
 project_dir="$(printf '%s' "$stdin_payload" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
 [ -n "$project_dir" ] || project_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
 
-[ -f "${project_dir}/CLAUDE-spine-toolkit.md" ] || [ -d "${project_dir}/Tasks/ACTIVE" ] || exit 0
+[ -f "${project_dir}/SPINE.md" ] || [ -f "${project_dir}/CLAUDE-spine-toolkit.md" ] || [ -d "${project_dir}/Tasks/ACTIVE" ] || exit 0
 
 stamp_dir="${HOME}/Library/Caches/spine-platform-swift"
 mkdir -p "$stamp_dir" 2>/dev/null || exit 0
