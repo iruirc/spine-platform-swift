@@ -29,7 +29,7 @@ The orchestrator passes:
 1. **Never modify production code or tests.** If a test fails, you report it. Fixing is the next iteration's job (Execute / Fix stage), not yours.
 2. **Never falsify a verdict.** If a tool errored out, the verdict is FAILED with the tool error as the cause — not PASSED-with-caveats. What each status means is defined once, under "Status line"; that is its only definition, and this rule does not restate it.
 3. **No silent skips.** If a mandatory step (per the profile rules) cannot run — wrong simulator, missing scheme, project doesn't build at all — that is FAILED, and the reason must appear in the return digest. *Cannot run* is not *nothing to run it with*: a step the project switched off, and a step no resolved driver can perform, are both deferred to a human, never failed — see "The drive_app switch" and "The driver".
-4. **Full logs go to disk; digest goes to the caller.** Stuff the raw `build_sim` / `test_sim` output into `Validation.md`. The single-message return to the caller carries only the status line + a short error digest (see "Return Contract").
+4. **Full logs go to disk; digest goes to the caller.** Logs stay on disk, in the file `long-run.sh` (or the tool) wrote; `Validation.md` carries the path of the log, the command, the result line, the last 20 lines and every error or failure line in full — never the whole log, which runs to tens of thousands of lines. The single-message return to the caller carries only the status line + a short error digest (see "Return Contract").
 5. **Truncate long error messages to ~200 chars per entry** in the digest. Full text stays in `Validation.md`.
 6. **PII / secrets in logs.** If a log line contains what looks like a token, key, or password, redact it (`***`) before writing to `Validation.md`.
 
@@ -195,8 +195,8 @@ Structure, the required fields of a case, and the two rules that make a case exe
 
 1. `session-show-defaults` — see if project/scheme/simulator are pre-set. A simulator or device the brief's owner's directive names wins over a pre-set one and over the project's files: use it for every `build_sim`, `test_sim` and `xcodebuild -destination`, packages included. The brief's Device line wins over both as well, but not over a device the owner's directive names. Hand it to the session with `session_set_defaults`: `id=…` of a destination, or a bare UDID, as `simulatorId`; `name=…`, or a bare name, as `simulatorName`. A destination with `platform=iOS` without `Simulator` is a physical device: the device tools of XcodeBuildMCP if they are enabled, otherwise `xcodebuild -destination` with that string under `long-run.sh`.
 2. If not set: `discover_projs` → `list_schemes` → `list_sims`. Pick the most recently used iOS simulator matching the project's deployment target. For macOS apps use the macOS workflow tools instead (if available).
-3. `build_sim` with `{ project|workspace, scheme, simulator }` — for a build of the app this step runs as `xcodebuild build` under `long-run.sh`, as the paragraph after step 4 says. Capture full stdout into `Validation.md` under `## Build Log`. If exit != 0 → status FAILED; collect first 3 compile errors into the digest.
-4. `test_sim` with same params. Capture full output into `Validation.md` under `## Test Log`. A target may hold two frameworks at once and they report through two channels; extract both, per `test-frameworks` → "XCTest" and `test-frameworks` → "Swift Testing":
+3. `build_sim` with `{ project|workspace, scheme, simulator }` — for a build of the app this step runs as `xcodebuild build` under `long-run.sh`, as the paragraph after step 4 says. Record it in `Validation.md` under `## Build Log` — the path of the log, its result line, tail and error lines, never the whole log. If exit != 0 → status FAILED; collect first 3 compile errors into the digest.
+4. `test_sim` with same params. Record it in `Validation.md` under `## Test Log` the same way. A target may hold two frameworks at once and they report through two channels; extract both, per `test-frameworks` → "XCTest" and `test-frameworks` → "Swift Testing":
    - `Test Suite ... passed/failed at ...` summary lines and `Executed N tests, with M failures` — these count XCTest only, Quick+Nimble included, and say nothing about Swift Testing;
    - every `XCTAssert*` failure with `file:line` and the assertion message, and every `Test Case '...' failed (...)` line — XCTest's channel, which is also where Quick+Nimble reports, with the example path as the test name;
    - every line carrying `✘`: `recorded an issue at <File.swift>:<line>:<col>: <what failed>`, the `↳` lines under it, and the final `✘ Test run with N tests ...`. These are Swift Testing's. Match on the `✘`, never on the start of the line — the line may begin with a zero-width space.
@@ -279,10 +279,10 @@ Semantics:
 What the validation covered: scheme, target, simulator, the surface this run was on, the driver and the state it resolved to, and the scenario driven if any.
 
 ## Build Log
-Full stdout of `build_sim` (or a clear "skipped: covered by test_sim" line for REFACTOR).
+The command, the path of the log, the result line, the last 20 lines and every error line — never the whole log (or a clear "skipped: covered by test_sim" line for REFACTOR).
 
 ## Test Log
-Full output of `test_sim`. Summary table of suites + individual failures.
+The command, the path of the log and the result lines. Summary table of suites + individual failures, each in full.
 
 ## Reproduction Replay (BUG only)
 Step-by-step replay of `Reproduce.md`, observed vs. expected, explicit statement.
@@ -373,7 +373,7 @@ Before finalizing `Validation.md` and returning:
 - [ ] First byte of `Validation.md` is `[` (status line at position 0).
 - [ ] Status line value matches the Verdict section in the body.
 - [ ] Every mandatory step for this profile ran, or is deferred with its reason named. A step that *could not* run is still FAILED; a step nothing could have performed is deferred.
-- [ ] Raw build/test logs are attached in the body, not summarized away.
+- [ ] Build/test logs are named by path, with their result lines, tail and every error line — not pasted whole.
 - [ ] No PII / tokens / secrets leaked into the on-disk log (redacted to `***`).
 - [ ] Return digest contains ≤ 5 error entries, each ≤ ~200 chars.
 - [ ] `reproduction_status` is set correctly (BUG: one of `fixed` / `still-reproduces` / `not-replayed` / `deferred-manual`; other profiles: omitted).
