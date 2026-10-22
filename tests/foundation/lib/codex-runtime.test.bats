@@ -33,3 +33,9 @@ decision() { codex execpolicy check --resolve-host-executables --rules "$RULES" 
   run python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["servers"])' "$MCP"
   [ "$output" = "['xcodebuildmcp', 'mobilebuildmcp']" ] || { echo "$output"; false; }
 }
+
+# Final review of milestone 5: `xcrun simctl spawn` runs any program, and the user grants it with
+# one answer — the header has to say so.
+@test "the rules say simctl spawn runs any program outside the sandbox" {
+  grep -qF 'simctl spawn' "$RULES" || { echo "header does not name simctl spawn"; false; }
+}
