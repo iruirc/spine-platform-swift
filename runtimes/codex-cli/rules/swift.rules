@@ -1,0 +1,22 @@
+# Written by spine-toolkit's setup for Codex CLI from spine-platform-swift, and replaced by it when
+# a new version of the platform changes this file. To undo, delete it: Codex then asks before each
+# build and test run again.
+#
+# Codex's sandbox refuses the simulator and devices (CoreSimulator over XPC), so every build, test
+# run and simctl call would stop to ask. These rules let them go without a question and outside
+# the sandbox. xcodebuild runs the project's Run Script build phases there too — the same trust you
+# give the project's code when you build it yourself.
+prefix_rule(
+    pattern=["xcodebuild"],
+    decision="allow",
+    justification="Builds and test runs need the simulator, which the sandbox refuses.",
+    match=[["xcodebuild", "test", "-scheme", "App"], ["xcodebuild", "-version"]],
+    not_match=[["swift", "build"]],
+)
+prefix_rule(
+    pattern=["xcrun", "simctl"],
+    decision="allow",
+    justification="simctl drives the simulator, which the sandbox refuses.",
+    match=[["xcrun", "simctl", "list", "devices"]],
+    not_match=[["xcrun", "swift", "build"]],
+)
