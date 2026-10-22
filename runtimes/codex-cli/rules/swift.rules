@@ -5,7 +5,7 @@
 # Codex's sandbox refuses the simulator and devices (CoreSimulator over XPC), so every build, test
 # run and simctl call would stop to ask. These rules let them go without a question and outside
 # the sandbox. xcodebuild runs the project's Run Script build phases there too — the same trust you
-# give the project's code when you build it yourself.
+# give the project's code when you build it yourself — and `xcrun simctl spawn` runs any program.
 prefix_rule(
     pattern=["xcodebuild"],
     decision="allow",
