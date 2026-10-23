@@ -81,8 +81,6 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 
 ## Related Agents (spine-platform-swift)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=spine-platform-swift:<name>`) to avoid collisions with other installed plugins.
-
 - `spine-platform-swift:swift-architect` — co-reviews root cause during the Diagnose consilium
 - `spine-platform-swift:swift-developer` — applies the fix after user approval
 - `spine-platform-swift:swift-security` — for vulnerabilities that overlap with bugs

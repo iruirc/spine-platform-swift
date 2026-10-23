@@ -122,8 +122,6 @@ Consult the appropriate skill based on the architecture in use:
 
 ## Related Agents (spine-platform-swift)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=spine-platform-swift:<name>`) to avoid collisions with other installed plugins.
-
 - `spine-platform-swift:swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
 - `spine-platform-swift:swift-security` — OWASP Mobile Top-10 audit
 - `spine-platform-swift:swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
