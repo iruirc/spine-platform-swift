@@ -60,8 +60,6 @@ Audit source code, infrastructure (Info.plist, entitlements, xcconfig), dependen
 
 ## Related Agents (spine-platform-swift)
 
-When invoking via the Task tool, use the fully plugin-prefixed names (`subagent_type=spine-platform-swift:<name>`) to avoid collisions with other installed plugins.
-
 - `spine-platform-swift:swift-architect` — folds your lens findings into the analysis it writes at Research and Analyze
 - `spine-platform-swift:swift-diagnostics` — for bugs that turn out to be security defects
 - `spine-platform-swift:swift-reviewer` — for general code quality after security patches are applied
