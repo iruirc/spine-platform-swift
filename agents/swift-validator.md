@@ -210,6 +210,8 @@ Structure, the required fields of a case, and the two rules that make a case exe
 
    **One `test_sim` package per stage.** A `test_sim` without `testProductsPath` builds a new package of a gigabyte or more, and XcodeBuildMCP keeps it for days. Its path is the `Test Products` entry of the result joined to the directory line above it, with `~` written as `$HOME`. The package is built for that call's `-only-testing` selector only: pass the path as `testProductsPath`, with the simulator and the same selector, only to a repeat of that call while no file the build reads has changed; any other call goes without it, and so does a repeat whose package is gone or which ran no tests. When the stage ends, `rm -rf` each package the stage built and its completion marker, `<path>.*-completed` — only paths from your own results, and only a path ending in `.xctestproducts` whose parent directory is `test-products`.
 
+   **Simulator commands and one-off compiles, each in its own call.** Every `xcrun simctl …` is one call with the program as its first word, never wrapped in `python3 -c`, a script file, `sh -c` or a shell loop: Codex's rule sees the wrapper and asks the user at every call. A loop too long for that runs as `long-run.sh start -- python3 <script>`. A `swiftc` check outside a build gets `-module-cache-path /tmp/spine-module-cache`: its default cache under `~/.cache` is outside Codex's sandbox.
+
 ### Driving the app
 
 Only when the profile rules require it and the driver resolved to `ok`. Read the driver's `## Procedure`
