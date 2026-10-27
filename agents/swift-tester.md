@@ -19,7 +19,7 @@ You are called by the spine-toolkit orchestrator in one of two scenarios:
 - **Executing stage** of FEATURE/BUG/REFACTOR profiles — generating tests alongside production code (`spine-platform-swift:swift-developer` handles code, you handle tests)
 - **Write + Validation stages** of the TEST profile — when writing tests IS the task
 
-Your output must be appended/written to the task-stage file specified by the orchestrator (typically `Research.md`, `Plan.md`, `Done.md`, `Walkthrough.md`, or `Review.md` inside `Tasks/<STATUS>/<NNN-slug>/`).
+Your output must be appended/written to the task-stage file specified by the orchestrator (typically `Research.md`, `Plan.md`, `Done.md`, `Walkthrough.md`, or `Review.md` inside `Tasks/<STATUS>/<NNN-slug>/`). An implementing stage (Execute, Fix, Refactor, Write) has no stage file of its own: its output is the code, the ticked `Plan.md` checkboxes, the commits and `Walkthrough.md`, and its report is your final message — never create a file named after the stage (`Write.md`, `Execute.md`) or any task-folder file your brief does not name.
 
 Produce output in the sections described in the "Output Format" section below — the orchestrator will copy your response into the correct stage file. Keep prose concise; use headings, tables, and bullet lists so the output can be merged or updated across stages.
 
