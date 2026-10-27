@@ -68,6 +68,7 @@ This step is not optional and not satisfied by "I followed the project style" in
 - Handle errors explicitly — no silent `catch {}` blocks.
 - UI updates on main thread.
 - Proper subscription lifecycle — dispose/cancel when owner is deallocated.
+- Builds, simulator commands and one-off `swiftc` checks follow `swift-validator` → Tooling Procedure: each `xcrun simctl` in its own call, never inside a script, and `-module-cache-path /tmp/spine-module-cache` on `swiftc`.
 
 ## Comment Policy
 

@@ -6,6 +6,8 @@
 # run and simctl call would stop to ask. These rules let them go without a question and outside
 # the sandbox. xcodebuild runs the project's Run Script build phases there too — the same trust you
 # give the project's code when you build it yourself — and `xcrun simctl spawn` runs any program.
+# `xcrun xcresulttool` runs no project code: it reads the result bundle a test run wrote and keeps
+# its index beside it, which the sandbox refuses as well.
 prefix_rule(
     pattern=["xcodebuild"],
     decision="allow",
@@ -19,4 +21,11 @@ prefix_rule(
     justification="simctl drives the simulator, which the sandbox refuses.",
     match=[["xcrun", "simctl", "list", "devices"]],
     not_match=[["xcrun", "swift", "build"]],
+)
+prefix_rule(
+    pattern=["xcrun", "xcresulttool"],
+    decision="allow",
+    justification="xcresulttool indexes the result bundle xcodebuild wrote outside the sandbox.",
+    match=[["xcrun", "xcresulttool", "get", "test-results", "summary", "--path", "/tmp/R.xcresult"]],
+    not_match=[["xcrun", "swiftc", "main.swift"]],
 )

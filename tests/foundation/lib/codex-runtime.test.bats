@@ -11,13 +11,13 @@ setup() {
 
 decision() { codex execpolicy check --resolve-host-executables --rules "$RULES" "$@"; }
 
-@test "the rules let xcodebuild and simctl out of the sandbox and nothing else" {
+@test "the rules let xcodebuild, simctl and xcresulttool out of the sandbox and nothing else" {
   command -v codex >/dev/null || skip "codex is not installed"
-  for cmd in "xcodebuild test -scheme App" "/usr/bin/xcodebuild -version" "xcrun simctl list devices"; do
+  for cmd in "xcodebuild test -scheme App" "/usr/bin/xcodebuild -version" "xcrun simctl list devices" "xcrun xcresulttool get test-results summary --path /tmp/R.xcresult"; do
     run decision $cmd
     [[ "$output" == *'"decision":"allow"'* ]] || { echo "$cmd: $output"; false; }
   done
-  for cmd in "xcrun swift build" "swift test"; do
+  for cmd in "xcrun swift build" "swift test" "xcrun swiftc main.swift" "swiftc main.swift"; do
     run decision $cmd
     [[ "$output" == *'"matchedRules":[]'* ]] || { echo "$cmd: $output"; false; }
   done
