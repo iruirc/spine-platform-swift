@@ -48,26 +48,10 @@ SPM package and hands the answers it collected to spine-toolkit's setup, which w
 
 ### Codex
 
-The repository includes `.codex-plugin/plugin.json`; `skills/`, `scripts/`, `templates/`, and
-`conventions/` are shared with Claude Code. Codex installs a plugin from a marketplace entry whose
-path is relative to the marketplace root: for the personal marketplace,
-`~/.agents/plugins/marketplace.json`, that is `~/plugins/spine-platform-swift`. Put a copy of this
-repository there, then install it:
-
-```bash
-codex plugin add spine-platform-swift@personal
-```
-
-Start a new Codex session after installation. What Codex gets is a subset:
-
-- **Works:** every standalone knowledge skill, plus `workspace-add` and `workspace-docs-regen` on an
-  existing workspace.
-- **Not supported in Codex yet:** the nine `agents/` and four `commands/` are Claude Code
-  components. `spine-toolkit` ships no Codex manifest, so nothing orchestrates tasks, and its
-  internal `manifest`, `swift-setup`, and `workspace-init` skills cannot complete their workflows;
-  `workspace-init` also calls the Claude-only `swift-init`. Codex still permits an explicit
-  `$skill-name` invocation, but `policy.allow_implicit_invocation: false` prevents these three
-  skills from being selected automatically and their UI metadata offers no starter prompt.
+Install it from the `iruirc` marketplace together with `spine-toolkit` — the commands are in
+[spine-toolkit's README](https://github.com/iruirc/spine-toolkit#codex-cli). Codex gets the whole plugin: `spine-toolkit` dispatches its agents as
+Codex subagents, its knowledge skills are available, and `runtimes/codex-cli/rules/` carries the
+build and device rules `$spine-toolkit:setup` writes into the project. `/swift-init` and `workspace-init` are Claude Code commands; in Codex, start from an existing project or workspace.
 
 Codex caches a plugin by version. To pick up a change, refresh the copy and reinstall; to
 reinstall at an unchanged version, run the `plugin-creator` cachebuster **on the copy**. The suffix
