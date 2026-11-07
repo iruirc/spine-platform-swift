@@ -46,7 +46,7 @@ setup() {
 
 # The ManualChecks passage of a validator: from its "### `ManualChecks.md`" heading to the next heading.
 manual_checks_passage() {
-  awk '/^### `ManualChecks\.md`/ { on = 1; print; next } on && /^#{2,3} / { exit } on { print }' "$1"
+  awk '/^### `ManualChecks\.md`/ { on = 1; print; next } on && /^##(#)? / { exit } on { print }' "$1"
 }
 
 @test "every validator's ManualChecks passage names the manual-checks skill and its reader, a tester" {
@@ -54,7 +54,8 @@ manual_checks_passage() {
     p="$(manual_checks_passage "$f")"
     [ -n "$p" ] || { echo "$(basename "$f"): no ManualChecks.md passage found"; return 1; }
     grep -qF 'spine-toolkit:manual-checks' <<<"$p" || { echo "$(basename "$f"): the passage does not name spine-toolkit:manual-checks"; return 1; }
-    grep -qF 'tester' <<<"$p" || { echo "$(basename "$f"): the passage never names the tester as the reader"; return 1; }
+    grep -qF 'The reader is a tester who knows the product but not the code and was not on this task' <<<"$p" \
+      || { echo "$(basename "$f"): the passage does not state its reader: a tester who knows the product but not the code"; return 1; }
   done
 }
 
@@ -95,4 +96,14 @@ manual_checks_passage() {
 @test "swift-validator names spine-toolkit:artifact-reader" {
   grep -qF 'spine-toolkit:artifact-reader' "$ROOT/agents/swift-validator.md" \
     || { echo "swift-validator.md never names spine-toolkit:artifact-reader"; return 1; }
+}
+
+@test "no validator's MANUAL_CHECKS axis row still promises a human a script" {
+  for f in "$ROOT"/agents/*-validator.md; do
+    grep -qF '| `[MANUAL_CHECKS]` | `auto` | whether a tester gets test cases |' "$f" \
+      || { echo "$(basename "$f"): the [MANUAL_CHECKS] axis row does not say 'whether a tester gets test cases'"; return 1; }
+  done
+  if grep -rqF -e 'gets a script' -e 'hand-run script' "$ROOT/agents" "$ROOT/skills" "$ROOT/README.md"; then
+    echo "an agent, skill or the README still says 'gets a script' or 'hand-run script'"; return 1
+  fi
 }
