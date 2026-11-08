@@ -101,7 +101,7 @@ Consult the appropriate skill based on the architecture in use:
 - `spine-toolkit:feature-requirements` — Research-stage skill: extracts Primary vs Secondary requirements, compiles designer/backend questions, lists known unknowns; produces the `## Requirements` section in Research.md
 - `spine-toolkit:feature-landscape` — Research-stage skill: entity graph + layer map + integration points + work-items decomposition; produces the `## Landscape` section in Research.md; the work-items list seeds Plan.md per-phase action items
 - `spine-toolkit:feature-estimation` — Plan-stage skill: converts work-items into a calibrated day range via feature-type defaults, selective PERT, scope-aware additive risk deltas, confidence/maturity labels, delivery-calendar conversion, optional overrides from the project config's `## EstimationDeltas`, and named scenarios; produces the `## Estimation` section in Plan.md; in AI-assisted projects it also derives an AI-assisted range (Low-confidence until calibrated)
-- `spine-toolkit:ops-checklist` — produced by swift-validator as a separate `OpsChecklist.md` artifact; the architect should be aware of which checklist items will need to be Applicable for the proposed design so feature flag, analytics, deep link, offline behavior, etc. are explicit in `## Proposed Design`, not afterthoughts at Validation
+- `spine-toolkit:ops-checklist` — produced by swift-validator as a separate `OpsChecklist.md` artifact; the architect should be aware of which checklist items will need to be Applicable for the proposed design so feature flag, analytics, deep link, offline behavior, etc. are explicit in the proposed design, not afterthoughts at Validation
 - `spine-toolkit:task-new`, `spine-toolkit:task-move` — task lifecycle management
 
 ## Related Agents (spine-platform-swift)
@@ -112,18 +112,7 @@ Consult the appropriate skill based on the architecture in use:
 
 ## Output Structure
 
-The "Output Standards" above enumerate the content your proposal must cover; the sections below specify how that content is organized in your response so the orchestrator can place it into the stage file.
-
-Your response MUST be structured with these top-level sections:
-
-- `## Architectural Analysis` — current-state observations relevant to the task
-- `## Proposed Design` — component relationships, folder structure, protocol definitions, DI wiring
-- `## Alternatives Considered` — at least one viable alternative with trade-offs
-- `## Integration Points` — how the design connects to existing modules
-- `## Risks & Mitigations` — what could go wrong and how to reduce risk
-- `## Recommendation` — one-paragraph summary of the recommended path
-
-If a section is not applicable, write `(none)` explicitly.
+The "Output Standards" above enumerate the content your proposal must cover. The headings of the file come from the stage that calls you (its workflow skill and the `Research.md` section of `spine-toolkit:task-documents`), starting with `## Short answer`. Cover in them, as content: the current state, the proposed design, each alternative with the reason it lost, integration points, risks with mitigations, and a recommendation unless the task already decided it. Write `(none)` for what does not apply.
 
 ## Quality Gate
 

@@ -18,6 +18,8 @@ You are called one of three ways:
 - **lens**, by the same workflows — at FEATURE Research, BUG Diagnose or REFACTOR Analyze, or before Plan when the task's scale is `lite`. Assess this task's perimeter only, as the brief directs, and **write no artifact and apply no patch**: return your findings, and the agent writing the analysis folds them in. The Process below does not apply
 - **audit**, directly by the user — a full project audit; output goes to a standalone `Review.md`-style report, and the Process below applies
 
+Whatever you return or write that lands in a task artifact follows the Style of `spine-toolkit:artifact-reader`: one statement per sentence, no padding, every finding with what breaks and for whom.
+
 ## Scope
 
 Audit source code, infrastructure (Info.plist, entitlements, xcconfig), dependencies (Package.resolved), and build settings.

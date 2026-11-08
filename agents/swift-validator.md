@@ -275,7 +275,7 @@ Semantics:
 
 ```
 ## Summary
-1–2 sentences: what was validated, which simulator/device, top-level outcome.
+1-2 sentences in plain language: what was validated and the outcome; no contract field names.
 
 ## Scope
 What the validation covered: scheme, target, simulator, the surface this run was on, the driver and the state it resolved to, and the scenario driven if any.
