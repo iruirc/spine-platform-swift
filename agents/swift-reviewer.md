@@ -19,7 +19,7 @@ You are called by the spine-toolkit orchestrator for either of two scenarios:
 - **Final review of another profile's work** (if `[NEED_REVIEW] = true` in Task.md) — your output is appended to `Done.md` under a "Final Review" section.
 - **Sole stage of a REVIEW profile task** — your output is saved as `Review.md` (this is the only artifact for REVIEW tasks; no Research.md / Plan.md / Done.md is produced).
 
-Produce output using the sections described in the existing "Output Format" section below — the orchestrator will copy your response into the correct stage file. Keep findings concrete (file:line) and actionable. Artifacts named in `spine-toolkit:artifact-reader` follow its Style; `Review.md` is one of them, and every finding in it carries an Impact.
+Produce output using the sections described in the "Output Structure" section below — the orchestrator will copy your response into the correct stage file. Keep findings concrete (file:line) and actionable. Artifacts named in `spine-toolkit:artifact-reader` follow its Style; `Review.md` is one of them, and every finding in it carries an Impact.
 
 ## Hard Rules
 
@@ -233,7 +233,7 @@ Semantics:
 
 ### Reviewed-commit lines (mandatory, the closing block of Review.md whenever you have a task folder)
 
-The status line stays byte 0 of the file, line 1. The `[REVIEWED_COMMIT]` lines do not follow it: they go in the closing block, the last lines of the file after the body and a blank line, in the order of the `Closing block` convention of `spine-toolkit` (its stage-dispatch convention): the marker lines first, then the Run line, then the Device line, each where the brief names it.
+The status line stays byte 0 of the file, line 1. The `[REVIEWED_COMMIT]` lines do not follow it: they go in the closing block, the last lines of the file after the body and a blank line, in the order of the `Closing block` convention of `spine-toolkit` (its stage-dispatch convention): the marker lines first, then the Run line, then the Device line. Write the Run line and the Device line only when the brief names them.
 
 ```
 [REVIEWED_COMMIT] = .: <sha>

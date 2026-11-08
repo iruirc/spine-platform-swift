@@ -130,6 +130,14 @@ manual_checks_passage() {
     || { echo "Summary and Previous findings must each say 'its ID in brackets'"; return 1; }
 }
 
+@test "swift-reviewer: the output pointer names the Output Structure section that exists" {
+  f="$ROOT/agents/swift-reviewer.md"
+  grep -qxF '## Output Structure' "$f" || { echo "no ## Output Structure section"; return 1; }
+  if grep -qF 'Output Format' "$f"; then echo "still points at a missing Output Format section"; return 1; fi
+  grep -qF 'sections described in the "Output Structure" section below' "$f" \
+    || { echo "the opening pointer does not name the Output Structure section"; return 1; }
+}
+
 @test "swift-reviewer: the reviewed-commit lines are the closing block, the status line stays byte 0" {
   f="$ROOT/agents/swift-reviewer.md"
   grep -qF 'Reviewed-commit lines (mandatory, the closing block of Review.md whenever you have a task folder)' "$f" \
@@ -142,6 +150,9 @@ manual_checks_passage() {
   grep -qF 'Run line' <<<"$p" && grep -qF 'Device line' <<<"$p" \
     || { echo "the heading body does not order the Run and Device lines after the markers"; return 1; }
   if grep -qF 'directly under the status line' "$f"; then echo "still says the lines go directly under the status line"; return 1; fi
+  grep -qF 'Write the Run line and the Device line only when the brief names them.' <<<"$p" \
+    || { echo "the heading body does not say the Run and Device lines are written only when the brief names them"; return 1; }
+  if grep -qF 'each where the brief names it' "$f"; then echo "still says the Run and Device lines go each where the brief names it"; return 1; fi
 }
 
 @test "swift-architect: the headings come from the calling stage, not six fixed sections" {
@@ -163,7 +174,11 @@ manual_checks_passage() {
   [ -n "$line" ] || { echo "no ## Summary line found"; return 1; }
   grep -qF '1-2 sentences in plain language: what was validated and the outcome; no contract field names' <<<"$line" \
     || { echo "Summary line is: $line"; return 1; }
+  # the whole section body, up to the next heading; the Summary template sits inside the
+  # file's own fenced block, so fences are not skipped
+  body="$(awk '/^## Summary$/ { on = 1; next } on && /^#/ { exit } on { print }' "$f")"
+  [ -n "$body" ] || { echo "the ## Summary section is empty"; return 1; }
   for field in validation_status VALIDATION_STATUS manual_checks_changed; do
-    if grep -qF -- "$field" <<<"$line"; then echo "the Summary line names $field"; return 1; fi
+    if grep -qF -- "$field" <<<"$body"; then echo "the Summary section names $field"; return 1; fi
   done
 }
