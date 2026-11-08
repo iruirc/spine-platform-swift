@@ -182,3 +182,11 @@ manual_checks_passage() {
     if grep -qF -- "$field" <<<"$body"; then echo "the Summary section names $field"; return 1; fi
   done
 }
+
+@test "swift-tester: the output pointer names the Output Structure section that exists" {
+  f="$ROOT/agents/swift-tester.md"
+  grep -qxF '## Output Structure' "$f" || { echo "no ## Output Structure section"; return 1; }
+  if grep -qF 'Output Format' "$f"; then echo "still points at a missing Output Format section"; return 1; fi
+  grep -qF 'sections described in the "Output Structure" section below' "$f" \
+    || { echo "the opening pointer does not name the Output Structure section"; return 1; }
+}
