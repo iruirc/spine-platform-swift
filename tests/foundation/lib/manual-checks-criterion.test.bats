@@ -17,3 +17,7 @@ setup() {
   grep -qF '{ "name": "spine-toolkit", "version": ">=2.32.0 <3" }' "$ROOT/.claude-plugin/plugin.json" \
     || { echo "the spine-toolkit floor is not >=2.32.0 <3"; return 1; }
 }
+
+@test "the none line names what was covered and each automatable gap" {
+  grep -qF 'each automatable gap' "$A" || { echo "gaps are lost when there is no file"; return 1; }
+}
