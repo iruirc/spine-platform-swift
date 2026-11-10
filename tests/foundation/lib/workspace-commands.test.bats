@@ -25,9 +25,9 @@ setup() {
   # The precedence itself is now pinned by Task 6's wsproj::swift_init_flags tests; this only
   # checks the row still names both calls.
   local row; row="$(grep -E '^\| s06b_project_<app> \|' "$s")"
-  grep -qF -- 'wsproj::swift_init_flags <key> interactive <meta>' <<<"$row" \
+  grep -qF -- 'wsproj::swift_init_flags <key> interactive <root>' <<<"$row" \
     || { echo "the row does not name the interactive call"; return 1; }
-  grep -qF -- 'wsproj::swift_init_flags <key> batch <meta>' <<<"$row" \
+  grep -qF -- 'wsproj::swift_init_flags <key> batch <root>' <<<"$row" \
     || { echo "the row does not name the batch call"; return 1; }
 }
 
@@ -59,4 +59,26 @@ setup() {
   grep -qF -- '[--config-dir=<dir>]' <<<"$synopsis" || { echo "the synopsis does not list --config-dir=<dir>"; return 1; }
   grep -qF -- 'wsproj::append_module' "$a" || { echo "swift-init.md does not name wsproj::append_module"; return 1; }
   grep -qF -- 'no CLAUDE.md in the artifact' "$a" || { echo "swift-init.md does not say the artifact gets no CLAUDE.md"; return 1; }
+}
+
+@test "workspace-init rows of the nested layout: bootstrap.sh stays executable, s06c injects from the root" {
+  local s="$(ws_repo_root)/skills/workspace-init/SKILL.md"
+  local row
+  row="$(grep -E '^\| s02_meta_files \|' "$s")"
+  grep -qF -- 'chmod +x <root>/bootstrap.sh' <<<"$row" || { echo "s02 does not chmod bootstrap.sh"; return 1; }
+  row="$(grep -E '^\| s06c_project_inject_<app> \|' "$s")"
+  grep -qF -- 'wsproj::inject_deps <root>/<app_dir> <repo> <key>' <<<"$row" \
+    || { echo "s06c does not inject from <root>/<app_dir>"; return 1; }
+  row="$(grep -E '^\| s10_meta_initial_commit \|' "$s")"
+  grep -qF -- 'symlink' <<<"$row" || { echo "s10 does not say the Tasks/Docs symlinks are committed"; return 1; }
+}
+
+@test "workspace-init refuses a folder that already holds a workspace, with a key in both locales" {
+  local d="$(ws_repo_root)/skills/workspace-init"
+  grep -qF -- '`error_root_has_workspace`' "$d/SKILL.md" || { echo "SKILL.md never emits error_root_has_workspace"; return 1; }
+  grep -qF -- '`--dir <path>`' "$d/SKILL.md" || { echo "SKILL.md does not document --dir"; return 1; }
+  local l
+  for l in en ru; do
+    grep -qx '## error_root_has_workspace' "$d/locales/$l.md" || { echo "$l.md lacks error_root_has_workspace"; return 1; }
+  done
 }

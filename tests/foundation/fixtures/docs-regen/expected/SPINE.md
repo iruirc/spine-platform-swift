@@ -13,6 +13,11 @@
 
 spine-platform-swift
 
+## Stack
+
+- Baseline: iOS+macOS
+- Tests: Swift Testing
+
 ## Workspace meta
 
 <!-- WORKSPACE_META_BEGIN -->
@@ -22,3 +27,10 @@ spine-platform-swift
 - domainPackages/CFeature — feature package
 - Before editing inside a repository, read its CLAUDE.md when it has one; commit in each repository separately
 <!-- WORKSPACE_META_END -->
+
+## Paths
+
+- External packages: /sharedPackages/*
+- External packages: /domainPackages/*
+- Roots: /Tasks
+- Roots: /Docs

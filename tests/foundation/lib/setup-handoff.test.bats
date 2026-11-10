@@ -16,15 +16,37 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
 @test "the meta-repo config step hands every answer to setup" {
   row="$(step_row s02b_meta_config)"
   [ -n "$row" ] || { echo "no s02b_meta_config row"; return 1; }
-  for want in 'spine-toolkit:setup' '`platform = spine-platform-swift`' '`stack = —`' \
-              '`tasks = skip`' '`docs_map = skip`' '`wsyml::toolkit`' \
-              '`wsproj::append_workspace_meta <meta>`'; do
+  for want in 'spine-toolkit:setup' '`platform = spine-platform-swift`' '`defaults.tests`' \
+              '`defaults.platforms`' '`tasks = skip`' '`docs_map = skip`' '`wsyml::toolkit`' \
+              '`wsproj::append_workspace_meta <root>`' '`wsproj::append_paths <root>`'; do
     grep -qF -- "$want" <<<"$row" || { echo "s02b row lacks: $want"; return 1; }
   done
 }
 
 @test "the meta-repo config step calls setup only while no config exists" {
-  step_row s02b_meta_config | grep -qF 'Only if `<meta>/SPINE.md` is absent'
+  step_row s02b_meta_config | grep -qF 'Only if `<root>/SPINE.md` is absent'
+}
+
+@test "the meta-repo config step never hands setup the template's placeholder stack" {
+  run step_row s02b_meta_config
+  [ -n "$output" ] || { echo "no s02b_meta_config row"; return 1; }
+  [[ "$output" != *'`stack = —`'* ]] || { echo "s02b still passes an empty stack"; return 1; }
+}
+
+@test "the meta-repo config step runs after the apps: its row follows the last per-app step" {
+  local ids; ids="$(grep -oE '^\| s[0-9a-z_<>]+ \|' "$WS" | tr -d '| ')"
+  local after; after="$(grep -A1 -xF 's06e_project_git_<app>' <<<"$ids" | tail -n 1)"
+  [ "$after" = s02b_meta_config ] || { echo "after s06e comes: $after"; return 1; }
+}
+
+@test "the app repo gets no Workspace meta of its own: no s06d step anywhere in the skill" {
+  run grep -c 's06d' "$WS"
+  [ "$output" = 0 ] || { grep -n 's06d' "$WS"; return 1; }
+}
+
+@test "the skill names the workspace root <root>, never <meta> or <workspace-parent>" {
+  run grep -nE '<meta>|<workspace-parent>|-meta/' "$WS"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
 }
 
 @test "the dialog asks the three toolkit answers" {
@@ -64,7 +86,7 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
 }
 
 @test "the meta-repo config step names the directory setup runs in" {
-  step_row s02b_meta_config | grep -qF 'with `<meta>` as the working directory'
+  step_row s02b_meta_config | grep -qF 'with `<root>` as the working directory'
 }
 
 @test "swift-init names the directory setup runs in" {
@@ -73,7 +95,7 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
 
 @test "s06b counts swift-init done by its project and config, not by a marker" {
   step_row 's06b_project_<app>' \
-    | grep -qF "\`[[ -f <repo>/project.yml ]] && grep -q '^## Platform\$' <repo>/SPINE.md\`"
+    | grep -qF "\`[[ -f <root>/<app_dir>/project.yml ]] && grep -q '^## Platform\$' <root>/SPINE.md\`"
 }
 
 @test "s06_pkg recovers its own interrupted render on --resume" {

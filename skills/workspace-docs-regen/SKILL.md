@@ -62,7 +62,7 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | meta `README.md` | `PKG_LIST` under `## Packages`, `CLONE` under `## Quickstart`, `DAILY_OPS` under `## Daily ops`, `SCHEMA` under `## Schema` |
 | meta `ARCHITECTURE.md` | `LAYERS`, `GRAPH` |
 | meta `CONTRIBUTING.md` | `ARCHETYPE_RULES` under `## Archetype rules`; `## Project-specific rules` is the user's |
-| meta `.gitignore` | `REPOS`: one `/<path>/` line per repository `bootstrap.sh` clones, so the root repo does not track them |
+| meta `.gitignore` | `REPOS`: one `/<path>/` line per repository `bootstrap.sh` clones, then one per Tasks/Docs repo of `sibling` or `path` mode, so the root repo does not track them; a Tasks/Docs symlink is not listed — the root repo commits it |
 | meta `bootstrap.sh` | `REPOS`: one `<path>` and `<remote url>` line per repository, tab-separated, inside the script's heredoc; the script stays executable |
 | meta `SPINE.md` | `META` under `## Workspace meta`: the repo map, where agents start and what each repository is |
 | package `README.md` | `PKG_HEADER` (holds the title), `PKG_DEPS` (holds `## Dependencies`) |

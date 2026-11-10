@@ -192,9 +192,27 @@ External packages:
   [ "$output" = $'SimpleApp-iOS\t' ]
 }
 
-@test "gitignore_repos: one /<path>/ line per repository" {
+@test "gitignore_repos: one /<path>/ line per repository, then the Tasks and Docs repos" {
   run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::gitignore_repos'
-  [ "$output" = $'/projects/App/\n/packages/OnePkg/' ]
+  [ "$output" = $'/projects/App/\n/packages/OnePkg/\n/Tasks/\n/Docs/' ] || { echo "$output"; return 1; }
+}
+
+@test "gitignore_repos: a Tasks repo in path mode by its path; a symlink and a disabled block are not ignored" {
+  local yml="$(ws_mktemp_dir)/workspace.yml"
+  cat > "$yml" <<'YML'
+workspace:
+  name: Modes
+  tasks: { enabled: true, mode: path, path: ./work/Tasks/ }
+  docs: { enabled: true, mode: symlink, symlink_target: ../../Docs }
+remotes: [origin]
+packages:
+  - { name: A, archetype: library, git: { origin: x }, version: 0.1.0 }
+YML
+  run docs "$yml" 'wsdocs::gitignore_repos'
+  [ "$output" = $'/packages/A/\n/work/Tasks/' ] || { echo "$output"; return 1; }
+  run docs "$(ws_fixture_path workspace-yml/docs-disabled.yml)" 'wsdocs::gitignore_repos'
+  [[ "$output" != *'/Docs/'* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *'/Tasks/'* ]] || { echo "$output"; return 1; }
 }
 
 @test "repo_map: the workspace line, one line per repository, the commit rule" {

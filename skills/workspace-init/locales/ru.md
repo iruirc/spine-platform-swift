@@ -83,28 +83,28 @@ URL внешней зависимости:
 Фреймворк тестов этого воркспейса — его пакетов и создаваемых им приложений: [swift-testing (по умолчанию) | xctest | quick-nimble]
 
 ## qa_tasks_enabled
-Создать общую Tasks/-папку на уровне workspace-parent (рядом с packages и project-репо)? (Y/N, по умолчанию Y)
+Создать общую Tasks/-папку в корне workspace (рядом с репо приложений и пакетов)? (Y/N, по умолчанию Y)
 
 ## qa_tasks_mode
-Как создавать Tasks/? [sibling = mkdir + git init внутри workspace-parent (по умолчанию) | path = то же, но по произвольному относительному пути | symlink = ln -s на внешнюю папку]
+Как создавать Tasks/? [sibling = mkdir + git init в корне workspace (по умолчанию) | path = то же, но по произвольному относительному пути | symlink = ln -s на внешнюю папку]
 
 ## qa_tasks_path
-Путь к Tasks/ (относительно workspace-parent, по умолчанию ./Tasks):
+Путь к Tasks/ (относительно корня workspace, по умолчанию ./Tasks):
 
 ## qa_tasks_symlink_target
-Цель symlink для Tasks/ (относительный путь с .. или абсолютный, например ../../Tasks):
+Цель symlink для Tasks/ (абсолютный путь или относительный от корня workspace, можно с .., например ../../Tasks):
 
 ## qa_docs_enabled
-Создать общую Docs/-папку на уровне workspace-parent (рядом с packages и project-репо)? (Y/N, по умолчанию Y)
+Создать общую Docs/-папку в корне workspace (рядом с репо приложений и пакетов)? (Y/N, по умолчанию Y)
 
 ## qa_docs_mode
-Как создавать Docs/? [sibling = mkdir + git init внутри workspace-parent (по умолчанию) | path = то же, но по произвольному относительному пути | symlink = ln -s на внешнюю папку]
+Как создавать Docs/? [sibling = mkdir + git init в корне workspace (по умолчанию) | path = то же, но по произвольному относительному пути | symlink = ln -s на внешнюю папку]
 
 ## qa_docs_path
-Путь к Docs/ (относительно workspace-parent, по умолчанию ./Docs):
+Путь к Docs/ (относительно корня workspace, по умолчанию ./Docs):
 
 ## qa_docs_symlink_target
-Цель symlink для Docs/ (относительный путь с .. или абсолютный, например ../../Docs):
+Цель symlink для Docs/ (абсолютный путь или относительный от корня workspace, можно с .., например ../../Docs):
 
 ## qa_toolkit_mode
 Режим тулкита — `manual` ждёт подтверждения по ходу прогона задачи, `auto` идёт без остановок: [manual (по умолчанию) | auto]
@@ -157,6 +157,9 @@ Workspace готов. Дальше: открой {workspace_name}.xcworkspace
 
 ## error_app_swift_init_failed
 swift-init упал для {app}: {details}
+
+## error_root_has_workspace
+В {root} уже есть workspace: лежит workspace.yml, а .workspace-init.state от прерванного запуска нет. Запусти workspace-init в пустой папке (или передай --dir <path>); прерванный запуск продолжает --resume. exit 4.
 
 ## error_xcodegen_missing
 xcodegen не найден в PATH (нужен для генерации project'а при наличии project-блока). Установка: brew install xcodegen

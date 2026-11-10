@@ -47,13 +47,14 @@ setup() {
 @test "every project config this plugin writes names its platform" {
   # spine-toolkit:setup writes every real config; a driver stub without ## Platform
   # lets a test pass on a config the orchestrator cannot route. Discovery keys on
-  # ## Stack / ## Task defaults: the meta-repo stub has no stack to declare.
+  # ## Stack / ## Task defaults. Both drivers share one stub (helpers/ws-setup-stub.zsh), so one
+  # file is the floor.
   found=0; missing=""
   while IFS= read -r f; do
     found=$((found + 1))
     grep -q '^## Platform$' "$f" || missing="$missing $f"
   done < <(grep -rlE '^## (Stack|Task defaults)$' "$ROOT/templates" "$ROOT/tests/foundation/helpers")
-  [ "$found" -ge 2 ] || { echo "discovery matched $found file(s); the scan went vacuous"; return 1; }
+  [ "$found" -ge 1 ] || { echo "discovery matched $found file(s); the scan went vacuous"; return 1; }
   [ -z "$missing" ] || { echo "config template(s) with no ## Platform block:$missing"; return 1; }
 }
 

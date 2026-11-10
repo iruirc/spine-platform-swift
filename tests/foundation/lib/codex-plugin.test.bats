@@ -74,7 +74,7 @@ PY
   init="$ROOT/skills/workspace-init/SKILL.md"
   add="$ROOT/skills/workspace-add/SKILL.md"
 
-  for lib in workspace-yml-parser workspace-graph workspace-package workspace-project; do
+  for lib in workspace-yml-parser workspace-graph workspace-doc-markers workspace-docs workspace-package workspace-project; do
     grep -qF "source \"<platform-root>/templates/workspace/lib/$lib.zsh\"" "$init" \
       || { echo "workspace-init: $lib is not sourced"; return 1; }
   done

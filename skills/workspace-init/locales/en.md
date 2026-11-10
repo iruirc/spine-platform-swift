@@ -83,28 +83,28 @@ Platforms as a comma-separated list, e.g. ios=17.0,macos=14.0:
 Test framework this workspace is generated with — its packages, and the apps it creates: [swift-testing (default) | xctest | quick-nimble]
 
 ## qa_tasks_enabled
-Provision a shared Tasks/ folder at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)
+Provision a shared Tasks/ folder in the workspace root (beside the app and package repos)? (Y/N, default Y)
 
 ## qa_tasks_mode
-How should Tasks/ be created? [sibling = mkdir + git init inside workspace-parent (default) | path = same, but at a custom relative path | symlink = ln -s to an external folder]
+How should Tasks/ be created? [sibling = mkdir + git init in the workspace root (default) | path = same, but at a custom relative path | symlink = ln -s to an external folder]
 
 ## qa_tasks_path
-Tasks/ directory path (relative to workspace-parent, default ./Tasks):
+Tasks/ directory path (relative to the workspace root, default ./Tasks):
 
 ## qa_tasks_symlink_target
-Symlink target for Tasks/ (relative path with .. or absolute, e.g. ../../Tasks):
+Symlink target for Tasks/ (absolute, or relative to the workspace root and allowed to contain .., e.g. ../../Tasks):
 
 ## qa_docs_enabled
-Provision a shared Docs/ folder at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)
+Provision a shared Docs/ folder in the workspace root (beside the app and package repos)? (Y/N, default Y)
 
 ## qa_docs_mode
-How should Docs/ be created? [sibling = mkdir + git init inside workspace-parent (default) | path = same, but at a custom relative path | symlink = ln -s to an external folder]
+How should Docs/ be created? [sibling = mkdir + git init in the workspace root (default) | path = same, but at a custom relative path | symlink = ln -s to an external folder]
 
 ## qa_docs_path
-Docs/ directory path (relative to workspace-parent, default ./Docs):
+Docs/ directory path (relative to the workspace root, default ./Docs):
 
 ## qa_docs_symlink_target
-Symlink target for Docs/ (relative path with .. or absolute, e.g. ../../Docs):
+Symlink target for Docs/ (absolute, or relative to the workspace root and allowed to contain .., e.g. ../../Docs):
 
 ## qa_toolkit_mode
 Toolkit mode — `manual` stops for your confirmation during a task run, `auto` runs straight through: [manual (default) | auto]
@@ -157,6 +157,9 @@ Will trigger /swift-init for: {apps_csv}
 
 ## error_app_swift_init_failed
 swift-init failed for {app}: {details}
+
+## error_root_has_workspace
+{root} already holds a workspace: workspace.yml is there and no interrupted run left .workspace-init.state. Run workspace-init in an empty folder (or pass --dir <path>); to finish an interrupted run, use --resume. exit 4.
 
 ## error_xcodegen_missing
 xcodegen not on PATH (required for project generation when project block is present). Install: brew install xcodegen

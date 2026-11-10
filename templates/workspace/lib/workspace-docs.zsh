@@ -70,12 +70,25 @@ wsdocs::repos() {
   done
 }
 
-# The .gitignore entries of the repositories bootstrap.sh clones: they are not the meta repo's files.
+# The .gitignore entries of the repositories under the root: the ones bootstrap.sh clones, then the
+# Tasks and Docs repos of sibling and path mode. None is the meta repo's files; a Tasks or Docs
+# symlink is, so it is not listed.
 wsdocs::gitignore_repos() {
-  local rpath url   # not `path`: in zsh it is tied to PATH
+  local rpath url block def mode   # not `path`: in zsh it is tied to PATH
   while IFS=$'\t' read -r rpath url; do
     [[ -n "$rpath" ]] && print -r -- "/$rpath/"
   done < <(wsdocs::repos)
+  for block def in tasks Tasks docs Docs; do
+    [[ "$(wsyml::get ".workspace.$block.enabled" 2>/dev/null)" == false ]] && continue
+    mode="$(wsyml::get ".workspace.$block.mode" 2>/dev/null || print sibling)"
+    case "$mode" in
+      symlink) continue ;;
+      path) rpath="$(wsyml::get ".workspace.$block.path" 2>/dev/null || print "$def")" ;;
+      *) rpath="$def" ;;
+    esac
+    while [[ "$rpath" == ./* ]]; do rpath="${rpath#./}"; done
+    print -r -- "/${rpath%/}/"
+  done
 }
 
 # The repo map of `## Workspace meta`: where agents start, what each repository is, how to commit.

@@ -6,7 +6,7 @@ load "$(dirname "$BATS_TEST_FILENAME")/../helpers/ws-test-helpers"
 setup() {
   WS_TEST_TMPDIRS=()
   PARENT="$(ws_mktemp_dir)"
-  WS_DRIVER_LAYOUT=nested "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+  "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
     "$(ws_fixture_path workspace-yml/docs-regen.yml)" "$PARENT" >/dev/null 2>&1
   # The meta repo is the workspace root: workspace.yml, the docs and the packages share one folder.
   META="$PARENT"

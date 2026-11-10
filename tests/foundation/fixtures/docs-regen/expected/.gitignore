@@ -10,4 +10,6 @@ DerivedData/
 /sharedPackages/AKit/
 /sharedPackages/BEngine/
 /domainPackages/CFeature/
+/Tasks/
+/Docs/
 # WORKSPACE_REPOS_END
