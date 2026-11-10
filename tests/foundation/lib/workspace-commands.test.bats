@@ -51,3 +51,12 @@ setup() {
     }
   done
 }
+
+@test "swift-init documents --config-dir: the synopsis lists it, an existing config gets a Modules row, the artifact gets no CLAUDE.md" {
+  local a="$(ws_repo_root)/agents/swift-init.md"
+  local synopsis; synopsis="$(awk '/^swift-init \[--no-prompt\]/ {on = 1} on {print} on && /\[<output-dir>\]/ {exit}' "$a")"
+  [ -n "$synopsis" ] || { echo "no swift-init synopsis block; the scan went vacuous"; return 1; }
+  grep -qF -- '[--config-dir=<dir>]' <<<"$synopsis" || { echo "the synopsis does not list --config-dir=<dir>"; return 1; }
+  grep -qF -- 'wsproj::append_module' "$a" || { echo "swift-init.md does not name wsproj::append_module"; return 1; }
+  grep -qF -- 'no CLAUDE.md in the artifact' "$a" || { echo "swift-init.md does not say the artifact gets no CLAUDE.md"; return 1; }
+}
