@@ -1,8 +1,9 @@
 #!/usr/bin/env zsh
-# workspace-project.zsh — project-repo helpers (deps injection + workspace meta append).
-# Public API: wsproj::package_path, wsproj::inject_deps, wsproj::append_workspace_meta, wsproj::swift_init_flags
-# swift_init_flags needs workspace-package.zsh loaded (wspkg::tests_kind); package_path needs
-# workspace-docs.zsh.
+# workspace-project.zsh — project-repo helpers (deps injection) and the edits of the root config.
+# Public API: wsproj::package_path, wsproj::inject_deps, wsproj::append_workspace_meta,
+#   wsproj::append_module, wsproj::append_paths, wsproj::swift_init_flags
+# swift_init_flags needs workspace-package.zsh loaded (wspkg::tests_kind); package_path, append_module
+# and append_paths need workspace-docs.zsh; append_workspace_meta needs workspace-doc-markers.zsh.
 
 # The path from the app repo to a package, as project.yml's `packages.<name>.path` needs it. Both
 # sit under the workspace root (wsdocs::app_dir, wsdocs::pkg_dir), so the shared head is dropped and
@@ -78,64 +79,151 @@ wsproj::inject_deps() {
   return 0
 }
 
-wsproj::append_workspace_meta() {
-  local repo_dir="$1" role="${2:-project}"
-  if [[ -z "$repo_dir" ]]; then
-    print -u2 "wsproj::append_workspace_meta: usage: <repo-dir> [project|meta]"
-    return 4
-  fi
-  if [[ "$role" != project && "$role" != meta ]]; then
-    print -u2 "wsproj::append_workspace_meta: role must be project|meta; got '$role'"
-    return 4
-  fi
-  # The project config: SPINE.md, or the pre-multi-runtime name where the project still carries it.
-  local file="$repo_dir/SPINE.md"
-  if [[ ! -f "$file" && -f "$repo_dir/CLAUDE-spine-toolkit.md" ]]; then
-    file="$repo_dir/CLAUDE-spine-toolkit.md"
+# The config file of a root: SPINE.md, or the pre-multi-runtime name where the project still carries
+# it. Prints the path; exit 4 (with the caller's name in the message) when it cannot be read+written.
+_wsproj_config_file() {
+  local fn="$1" root="$2" file="$2/SPINE.md"
+  if [[ ! -f "$file" && -f "$root/CLAUDE-spine-toolkit.md" ]]; then
+    file="$root/CLAUDE-spine-toolkit.md"
   fi
   if [[ ! -f "$file" || ! -w "$file" ]]; then
-    print -u2 "wsproj::append_workspace_meta: cannot read+write $file"
+    print -u2 "$fn: cannot read+write $file"
     return 4
   fi
-  if grep -q '^## Workspace meta' "$file"; then
-    return 0
-  fi
-  if [[ -z "${_WSYML_STATE[json]:-}" ]]; then
-    print -u2 "wsproj::append_workspace_meta: no workspace.yml loaded"
-    return 4
-  fi
-  local ws_name
-  ws_name="$(wsyml::get '.workspace.name')"
-  local meta_dir="${ws_name}-meta"
-  if [[ "$role" == meta ]]; then
-    cat >> "$file" <<EOF
-
-## Workspace meta
-
-- Workspace name: ${ws_name}
-- This repository is the meta-repo of a multi-package SPM workspace: meta-repo + N package repos + optional project repos
-- Layout: \`workspace.yml\` (single source of truth); schema — \`README.md\` → \`## Schema\`
-EOF
-    return 0
-  fi
-  cat >> "$file" <<EOF
-
-## Workspace meta
-
-- Workspace name: ${ws_name} (../${meta_dir})
-- Available packages: see \`../${meta_dir}/workspace.yml\`
-- This project is part of a multi-package SPM workspace
-EOF
-  return 0
+  print -r -- "$file"
 }
 
-# The flags s06b invokes swift-init with. Interactive pre-answers only what the workspace itself asked;
+# Adds `## Workspace meta` with an empty marker pair to the root's config; workspace-docs-regen fills
+# the pair with wsdocs::repo_map. Idempotent by the heading.
+wsproj::append_workspace_meta() {
+  local root="$1" file
+  if [[ -z "$root" ]]; then
+    print -u2 "wsproj::append_workspace_meta: usage: <root>"
+    return 4
+  fi
+  file="$(_wsproj_config_file wsproj::append_workspace_meta "$root")" || return $?
+  grep -q '^## Workspace meta' "$file" && return 0
+  printf '\n## Workspace meta\n\n%s\n%s\n' "$(_wsmark_begin "$file" META)" "$(_wsmark_end "$file" META)" >> "$file"
+}
+
+# Appends <line> to the `<heading>` section of <file>, after the section's last non-blank line, and
+# creates the section at the end of the file when it is absent. A line of the section that starts with
+# <prefix> (default: the whole line) counts as already there. The file is rewritten in place, so its
+# mode survives.
+_wsproj_section_add() {
+  local file="$1" heading="$2" line="$3" prefix="${4:-$3}" scratch rc
+  scratch="$(mktemp -t wsproj.XXXXXX)" || return 4
+  awk -v heading="$heading" -v line="$line" -v prefix="$prefix" '
+    { a[NR] = $0 }
+    END {
+      n = NR; s = 0
+      for (i = 1; i <= n; i++) if (a[i] == heading) { s = i; break }
+      if (!s) {
+        for (i = 1; i <= n; i++) print a[i]
+        if (n && a[n] != "") print ""
+        print heading; print ""; print line
+        exit
+      }
+      e = n + 1
+      for (i = s + 1; i <= n; i++) if (a[i] ~ /^## /) { e = i; break }
+      last = s
+      for (i = s + 1; i < e; i++) {
+        if (a[i] != "") last = i
+        if (index(a[i], prefix) == 1) dup = 1
+      }
+      if (dup) { for (i = 1; i <= n; i++) print a[i]; exit }
+      if (last == s) {
+        # empty section: the row goes under the heading, after its blank line
+        p = (s + 1 < e && a[s + 1] == "") ? s + 1 : s
+        for (i = 1; i <= p; i++) print a[i]
+        if (p == s) print ""
+        print line
+        if (p + 1 == e && e <= n) print ""
+        for (i = p + 1; i <= n; i++) print a[i]
+      } else {
+        for (i = 1; i <= last; i++) print a[i]
+        print line
+        for (i = last + 1; i <= n; i++) print a[i]
+      }
+    }
+  ' "$file" > "$scratch" && cat "$scratch" > "$file"
+  rc=$?
+  rm -f "$scratch"
+  return $rc
+}
+
+# Adds the row of one app to `## Modules`: `- <repo>: /<app dir> — <Axis>: <value>, ...`. The axes
+# arrive in the manifest's `## Axes` spelling (UI=UIKit DI=Swinject). Idempotent by `- <repo>:`.
+wsproj::append_module() {
+  local root="$1" key="$2" file dir repo k v row=""
+  if [[ -z "$root" || -z "$key" ]]; then
+    print -u2 "wsproj::append_module: usage: <root> <app-key> <Axis=value>..."
+    return 4
+  fi
+  shift 2
+  file="$(_wsproj_config_file wsproj::append_module "$root")" || return $?
+  if [[ -z "${_WSYML_STATE[json]:-}" ]]; then
+    print -u2 "wsproj::append_module: no workspace.yml loaded"
+    return 4
+  fi
+  dir="$(wsdocs::app_dir "$key")" || {
+    print -u2 "wsproj::append_module: no app '$key' declared"
+    return 2
+  }
+  repo="${dir:t}"
+  for v in "$@"; do
+    k="${v%%=*}"
+    row+="${row:+, }$k: ${v#*=}"
+  done
+  _wsproj_section_add "$file" "## Modules" "- $repo: /$dir${row:+ — $row}" "- $repo:"
+}
+
+# Adds the folders of the workspace to `## Paths`: one `- External packages: /<dir>/*` per package
+# folder (`packages` when a package sits outside every group, each group's dir otherwise) and one
+# `- Roots: /<dir>` per enabled Tasks/Docs block (its path in path mode, else the default name).
+# Idempotent per line.
+wsproj::append_paths() {
+  local root="$1" file g p dir block def enabled mode bpath
+  local -a dirs
+  if [[ -z "$root" ]]; then
+    print -u2 "wsproj::append_paths: usage: <root>"
+    return 4
+  fi
+  file="$(_wsproj_config_file wsproj::append_paths "$root")" || return $?
+  if [[ -z "${_WSYML_STATE[json]:-}" ]]; then
+    print -u2 "wsproj::append_paths: no workspace.yml loaded"
+    return 4
+  fi
+  for p in ${(f)"$(wsyml::packages 2>/dev/null)"}; do
+    wsyml::package_field "$p" group >/dev/null 2>&1 || { dirs+=(packages); break; }
+  done
+  for g in ${(f)"$(wsyml::groups 2>/dev/null)"}; do
+    dir="$(wsyml::get ".package_groups[] | select(.name == \"$g\") | .dir")" || continue
+    dirs+=("$dir")
+  done
+  for dir in "${dirs[@]}"; do
+    dir="${dir%/}"
+    _wsproj_section_add "$file" "## Paths" "- External packages: /${dir#./}/*" || return $?
+  done
+  for block def in tasks Tasks docs Docs; do
+    enabled="$(wsyml::get ".workspace.$block.enabled" 2>/dev/null || echo true)"
+    [[ "$enabled" == false ]] && continue
+    mode="$(wsyml::get ".workspace.$block.mode" 2>/dev/null || echo sibling)"
+    bpath="$def"
+    [[ "$mode" == path ]] && bpath="$(wsyml::get ".workspace.$block.path" 2>/dev/null || echo "$def")"
+    bpath="${bpath#./}"
+    _wsproj_section_add "$file" "## Paths" "- Roots: /${bpath%/}" || return $?
+  done
+}
+
+# The flags s06b invokes swift-init with; --config-dir points swift-init at the workspace root, where
+# the one config lives. Interactive pre-answers only what the workspace itself asked;
 # batch adds what apps.<key>.stack sets, and swift-init supplies its own defaults for the rest.
 wsproj::swift_init_flags() {
-  local key="$1" mode="$2" repo v ax flag tests
+  local key="$1" mode="$2" root="$3" repo v ax flag tests
   local -a out
-  if [[ ! "$key" =~ ^(ios|macos)$ || ! "$mode" =~ ^(interactive|batch)$ ]]; then
-    print -u2 "wsproj::swift_init_flags: usage: ios|macos interactive|batch"
+  if [[ ! "$key" =~ ^(ios|macos)$ || ! "$mode" =~ ^(interactive|batch)$ || -z "$root" ]]; then
+    print -u2 "wsproj::swift_init_flags: usage: ios|macos interactive|batch <config-root>"
     return 4
   fi
   repo="$(wsyml::get ".project.apps.$key.repo" 2>/dev/null || wsyml::get ".project.apps.$key" 2>/dev/null)" \
@@ -153,6 +241,6 @@ wsproj::swift_init_flags() {
     v="$(wsyml::get ".project.apps.$key.stack.tests" 2>/dev/null)" && tests="$v"
   fi
   out+=(--tests=$tests --lang=$(wsyml::toolkit lang) --mode=$(wsyml::toolkit mode)
-        --progress=$(wsyml::toolkit progress) --tasks=skip)
+        --progress=$(wsyml::toolkit progress) --tasks=skip --config-dir=$root)
   print -r -- "${(j: :)out}"
 }

@@ -82,9 +82,6 @@ wsproj::inject_deps "$repo_dir" "$repo_name" "$platform"
   exit 1
 }
 
-# s06d: append workspace meta
-wsproj::append_workspace_meta "$repo_dir"
-
 # s06e: git init
 ( cd "$repo_dir" && git init -q -b main )
 

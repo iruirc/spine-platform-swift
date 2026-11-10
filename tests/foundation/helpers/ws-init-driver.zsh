@@ -57,7 +57,7 @@ if [[ ! -f "$config" ]]; then
 spine-platform-swift
 EOF
 fi
-wsproj::append_workspace_meta "$meta_dir" meta
+wsproj::append_workspace_meta "$meta_dir"
 
 cp "$ws_yml" "$meta_dir/workspace.yml"
 ( cd "$meta_dir" && git init -q -b main && touch .gitkeep )

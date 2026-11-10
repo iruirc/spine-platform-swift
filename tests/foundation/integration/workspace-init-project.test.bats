@@ -27,10 +27,8 @@ teardown() { ws_cleanup_tmpdirs; }
   [ "$output" = "manual" ]
   run grep '^## AILeverage' "$parent/FullApp-iOS/CLAUDE-spine-toolkit.md"
   [ "$status" -eq 0 ]
-  run grep '^## Workspace meta' "$parent/FullApp-iOS/CLAUDE-spine-toolkit.md"
-  [ "$status" -eq 0 ]
-  run grep '^## Workspace meta' "$parent/FullApp-macOS/CLAUDE-spine-toolkit.md"
-  [ "$status" -eq 0 ]
+  # the root config holds the only Workspace meta; an app repo gets none
+  ! grep -q '^## Workspace meta' "$parent/FullApp-iOS/CLAUDE-spine-toolkit.md"
   run yq eval '.packages.CoreKit.path' "$parent/FullApp-iOS/project.yml"
   [ "$output" = "../packages/CoreKit" ]
   run yq eval '.packages.Engine.path' "$parent/FullApp-iOS/project.yml"

@@ -14,8 +14,9 @@ teardown() { ws_cleanup_tmpdirs; }
   [ -f "$parent/GroupedWS-meta/README.md" ]
   # The config's content is spine-toolkit:setup's and the driver stubs it; the
   # workspace's own block is what this plugin still writes.
-  grep -Fxq -- '- Workspace name: GroupedWS' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
-  grep -Fxq -- '- This repository is the meta-repo of a multi-package SPM workspace: meta-repo + N package repos + optional project repos' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
+  grep -Fxq -- '## Workspace meta' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
+  grep -Fxq -- '<!-- WORKSPACE_META_BEGIN -->' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
+  grep -Fxq -- '<!-- WORKSPACE_META_END -->' "$parent/GroupedWS-meta/CLAUDE-spine-toolkit.md"
   [ -f "$parent/sharedPackages/AKit/Package.swift" ]
   [ -f "$parent/sharedPackages/AKit/CLAUDE.md" ]
   # NEW: verify nested source/test stubs are rendered

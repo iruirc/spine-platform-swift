@@ -18,7 +18,7 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
   [ -n "$row" ] || { echo "no s02b_meta_config row"; return 1; }
   for want in 'spine-toolkit:setup' '`platform = spine-platform-swift`' '`stack = —`' \
               '`tasks = skip`' '`docs_map = skip`' '`wsyml::toolkit`' \
-              '`wsproj::append_workspace_meta <meta> meta`'; do
+              '`wsproj::append_workspace_meta <meta>`'; do
     grep -qF -- "$want" <<<"$row" || { echo "s02b row lacks: $want"; return 1; }
   done
 }

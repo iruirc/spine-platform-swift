@@ -71,6 +71,7 @@ swift-init [--no-prompt]
            [--progress=quiet|normal|live]
            [--tasks=create|skip]
            [--docs-map=create|skip]
+           [--config-dir=<dir>]
            [<output-dir>]
 ```
 

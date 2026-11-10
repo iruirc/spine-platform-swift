@@ -25,9 +25,9 @@ setup() {
   # The precedence itself is now pinned by Task 6's wsproj::swift_init_flags tests; this only
   # checks the row still names both calls.
   local row; row="$(grep -E '^\| s06b_project_<app> \|' "$s")"
-  grep -qF -- 'wsproj::swift_init_flags <key> interactive' <<<"$row" \
+  grep -qF -- 'wsproj::swift_init_flags <key> interactive <meta>' <<<"$row" \
     || { echo "the row does not name the interactive call"; return 1; }
-  grep -qF -- 'wsproj::swift_init_flags <key> batch' <<<"$row" \
+  grep -qF -- 'wsproj::swift_init_flags <key> batch <meta>' <<<"$row" \
     || { echo "the row does not name the batch call"; return 1; }
 }
 

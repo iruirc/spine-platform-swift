@@ -126,164 +126,220 @@ EOF
   [ "$output" -eq 3 ]
 }
 
-@test "wsproj::append_workspace_meta adds Workspace meta section" {
-  local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
-  mkdir -p "$tmpd"
-  cat > "$tmpd/CLAUDE-spine-toolkit.md" <<'EOF'
-# Toolkit configuration — MyApp-iOS
-
-## Stack
-
-mvvm-coordinator
-EOF
-  run zsh -c "
-    source '$(ws_lib_path workspace-yml-parser.zsh)'
-    source '$(ws_lib_path workspace-project.zsh)'
-    wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
-    wsproj::append_workspace_meta '$tmpd'
-  "
-  [ "$status" -eq 0 ]
-  run grep '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md"
-  [ "$status" -eq 0 ]
-  run grep -F 'Workspace name: FullProj (../FullProj-meta)' "$tmpd/CLAUDE-spine-toolkit.md"
-  [ "$status" -eq 0 ]
+# Usage: cfg <file-body> -> prints the path of a fresh root holding SPINE.md with that body
+cfg() {
+  local root; root="$(ws_mktemp_dir)"
+  printf '%b' "$1" > "$root/SPINE.md"
+  printf "%s\n" "$root"
 }
 
-@test "wsproj::append_workspace_meta writes SPINE.md when the project carries it" {
-  local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
-  mkdir -p "$tmpd"
-  cat > "$tmpd/SPINE.md" <<'EOF'
-# Toolkit configuration — MyApp-iOS
-
-## Stack
-
-mvvm-coordinator
-EOF
-  run zsh -c "
-    source '$(ws_lib_path workspace-yml-parser.zsh)'
-    source '$(ws_lib_path workspace-project.zsh)'
-    wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
-    wsproj::append_workspace_meta '$tmpd'
-  "
+@test "wsproj::append_workspace_meta writes one section with an empty marker pair, once" {
+  local root; root="$(cfg '# Toolkit\n\n## Stack\n\nmvvm\n')"
+  run proj "$(ws_fixture_path workspace-yml/grouped.yml)" "wsproj::append_workspace_meta '$root'; wsproj::append_workspace_meta '$root'"
   [ "$status" -eq 0 ]
-  run grep '^## Workspace meta' "$tmpd/SPINE.md"
-  [ "$status" -eq 0 ]
-  run grep -F 'Workspace name: FullProj (../FullProj-meta)' "$tmpd/SPINE.md"
-  [ "$status" -eq 0 ]
+  [ "$(grep -c '^## Workspace meta$' "$root/SPINE.md")" -eq 1 ]
+  [ "$(grep -c '^<!-- WORKSPACE_META_BEGIN -->$' "$root/SPINE.md")" -eq 1 ]
+  [ "$(grep -c '^<!-- WORKSPACE_META_END -->$' "$root/SPINE.md")" -eq 1 ]
+  # the pair sits right under the heading, with nothing between the markers
+  run awk '/^## Workspace meta$/{f=1;next} f&&NF{print;exit}' "$root/SPINE.md"
+  [ "$output" = "<!-- WORKSPACE_META_BEGIN -->" ]
+  run awk '/WORKSPACE_META_BEGIN/{getline; print; exit}' "$root/SPINE.md"
+  [ "$output" = "<!-- WORKSPACE_META_END -->" ]
+  ! grep -qF -- '-meta' "$root/SPINE.md"
 }
 
-@test "wsproj::append_workspace_meta prefers SPINE.md over a legacy file beside it" {
-  local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
-  mkdir -p "$tmpd"
-  printf '# SPINE.md — Spine Configuration\n\n## Stack\n\nmvvm-coordinator\n' > "$tmpd/SPINE.md"
-  printf '# CLAUDE-spine-toolkit.md — Toolkit Configuration\n' > "$tmpd/CLAUDE-spine-toolkit.md"
-  run zsh -c "
-    source '$(ws_lib_path workspace-yml-parser.zsh)'
-    source '$(ws_lib_path workspace-project.zsh)'
-    wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
-    wsproj::append_workspace_meta '$tmpd'
-  "
+@test "wsproj::append_workspace_meta falls back to the legacy config name, and prefers SPINE.md" {
+  local root; root="$(ws_mktemp_dir)"
+  printf '# Toolkit\n' > "$root/CLAUDE-spine-toolkit.md"
+  run proj "$(ws_fixture_path workspace-yml/grouped.yml)" "wsproj::append_workspace_meta '$root'"
   [ "$status" -eq 0 ]
-  grep -q '^## Workspace meta' "$tmpd/SPINE.md"
-  ! grep -q '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md"
-}
-
-@test "wsproj::append_workspace_meta is idempotent" {
-  local tmpd="$(ws_mktemp_dir)/MyApp-iOS"
-  mkdir -p "$tmpd"
-  cat > "$tmpd/CLAUDE-spine-toolkit.md" <<'EOF'
-# Toolkit configuration — MyApp-iOS
-EOF
-  zsh -c "
-    source '$(ws_lib_path workspace-yml-parser.zsh)'
-    source '$(ws_lib_path workspace-project.zsh)'
-    wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
-    wsproj::append_workspace_meta '$tmpd'
-  "
-  local count_before
-  count_before="$(grep -c '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md")"
-  zsh -c "
-    source '$(ws_lib_path workspace-yml-parser.zsh)'
-    source '$(ws_lib_path workspace-project.zsh)'
-    wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
-    wsproj::append_workspace_meta '$tmpd'
-  "
-  local count_after
-  count_after="$(grep -c '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md")"
-  [ "$count_before" -eq 1 ]
-  [ "$count_after" -eq 1 ]
-}
-
-@test "wsproj::append_workspace_meta meta describes the meta-repo" {
-  local tmpd="$(ws_mktemp_dir)/GroupedWS-meta"
-  mkdir -p "$tmpd"
-  printf '# CLAUDE-spine-toolkit.md — Toolkit Configuration\n' > "$tmpd/CLAUDE-spine-toolkit.md"
-  run zsh -c "
-    source '$(ws_lib_path workspace-yml-parser.zsh)'
-    source '$(ws_lib_path workspace-project.zsh)'
-    wsyml::load '$(ws_fixture_path workspace-yml/grouped.yml)'
-    wsproj::append_workspace_meta '$tmpd' meta
-  "
+  grep -q '^## Workspace meta$' "$root/CLAUDE-spine-toolkit.md"
+  printf '# SPINE\n' > "$root/SPINE.md"
+  run proj "$(ws_fixture_path workspace-yml/grouped.yml)" "wsproj::append_workspace_meta '$root'"
   [ "$status" -eq 0 ]
-  local f="$tmpd/CLAUDE-spine-toolkit.md"
-  grep -Fxq -- '- Workspace name: GroupedWS' "$f"
-  grep -Fxq -- '- This repository is the meta-repo of a multi-package SPM workspace: meta-repo + N package repos + optional project repos' "$f"
-  grep -Fq -- '- Layout: `workspace.yml` (single source of truth)' "$f"
-  ! grep -Fq 'Available packages:' "$f"
+  grep -q '^## Workspace meta$' "$root/SPINE.md"
+  [ "$(grep -c '^## Workspace meta$' "$root/CLAUDE-spine-toolkit.md")" -eq 1 ]
 }
 
-@test "wsproj::append_workspace_meta meta is idempotent" {
-  local tmpd="$(ws_mktemp_dir)/GroupedWS-meta"
-  mkdir -p "$tmpd"
-  printf '# CLAUDE-spine-toolkit.md — Toolkit Configuration\n' > "$tmpd/CLAUDE-spine-toolkit.md"
-  for _ in 1 2; do
-    zsh -c "
-      source '$(ws_lib_path workspace-yml-parser.zsh)'
-      source '$(ws_lib_path workspace-project.zsh)'
-      wsyml::load '$(ws_fixture_path workspace-yml/grouped.yml)'
-      wsproj::append_workspace_meta '$tmpd' meta
-    "
-  done
-  [ "$(grep -c '^## Workspace meta' "$tmpd/CLAUDE-spine-toolkit.md")" -eq 1 ]
-}
-
-@test "wsproj::append_workspace_meta rejects a role it does not know" {
-  local tmpd="$(ws_mktemp_dir)/GroupedWS-meta"
-  mkdir -p "$tmpd"
-  printf '# CLAUDE-spine-toolkit.md — Toolkit Configuration\n' > "$tmpd/CLAUDE-spine-toolkit.md"
-  run zsh -c "
-    source '$(ws_lib_path workspace-yml-parser.zsh)'
-    source '$(ws_lib_path workspace-project.zsh)'
-    wsyml::load '$(ws_fixture_path workspace-yml/grouped.yml)'
-    wsproj::append_workspace_meta '$tmpd' package
-  "
+@test "wsproj::append_workspace_meta exits 4 without a root or without a config" {
+  run proj "$(ws_fixture_path workspace-yml/grouped.yml)" 'wsproj::append_workspace_meta'
   [ "$status" -eq 4 ]
-  [[ "$output" == *"role must be project|meta; got 'package'"* ]]
+  run proj "$(ws_fixture_path workspace-yml/grouped.yml)" "wsproj::append_workspace_meta '$(ws_mktemp_dir)'"
+  [ "$status" -eq 4 ]
+}
+
+@test "wsproj::append_module adds the row to an empty ## Modules section, once" {
+  local root; root="$(cfg '# T\n\n## Modules\n\n## Stack\n\nmvvm\n')"
+  local args="'$root' ios UI=UIKit DI=Swinject"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module $args; wsproj::append_module $args"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c -- '^- App: /projects/App — UI: UIKit, DI: Swinject$' "$root/SPINE.md")" -eq 1 ]
+  [ "$(grep -c '^## Modules$' "$root/SPINE.md")" -eq 1 ]
+  # the row stays inside ## Modules, and ## Stack keeps its heading
+  run awk '/^## Modules$/{f=1;next} /^## /{f=0} f&&/^- /{print}' "$root/SPINE.md"
+  [ "$output" = "- App: /projects/App — UI: UIKit, DI: Swinject" ]
+  grep -q '^## Stack$' "$root/SPINE.md"
+  grep -qx 'mvvm' "$root/SPINE.md"
+}
+
+@test "wsproj::append_module appends after the last line of a section that has text, before the next heading" {
+  local root; root="$(cfg '# T\n\n## Modules\n\n(none yet)\n- Other: /other — UI: AppKit\n\n## Stack\n\nmvvm\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=SwiftUI"
+  [ "$status" -eq 0 ]
+  run sed -n '/^## Modules$/,/^## Stack$/p' "$root/SPINE.md"
+  [ "$output" = "$(printf '## Modules\n\n(none yet)\n- Other: /other — UI: AppKit\n- App: /projects/App — UI: SwiftUI\n\n## Stack')" ]
+}
+
+@test "wsproj::append_module creates ## Modules at the end of the file when it is absent" {
+  local root; root="$(cfg '# T\n\n## Stack\n\nmvvm\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  run tail -n 3 "$root/SPINE.md"
+  [ "$output" = "$(printf '## Modules\n\n- App: /projects/App — UI: UIKit')" ]
+}
+
+@test "wsproj::append_module keeps the file mode and adds a second app beside the first" {
+  local root; root="$(cfg '# T\n\n## Modules\n')"
+  chmod 640 "$root/SPINE.md"
+  run proj "$(ws_fixture_path workspace-yml/with-project-full.yml)" "wsproj::append_module '$root' ios UI=SwiftUI; wsproj::append_module '$root' macos UI=AppKit DI=Factory"
+  [ "$status" -eq 0 ]
+  grep -qx -- '- FullApp-iOS: /FullApp-iOS — UI: SwiftUI' "$root/SPINE.md"
+  grep -qx -- '- FullApp-macOS: /FullApp-macOS — UI: AppKit, DI: Factory' "$root/SPINE.md"
+  [ "$(stat -f %Lp "$root/SPINE.md" 2>/dev/null || stat -c %a "$root/SPINE.md")" = 640 ]
+}
+
+@test "wsproj::append_module is idempotent by the repo prefix, not by the whole row" {
+  local root; root="$(cfg '# T\n\n## Modules\n\n- App: /projects/App — UI: SwiftUI\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c -- '^- App:' "$root/SPINE.md")" -eq 1 ]
+  grep -qx -- '- App: /projects/App — UI: SwiftUI' "$root/SPINE.md"
+}
+
+@test "wsproj::append_module rejects a missing argument, an unknown app and a missing config with 4 or 2" {
+  local root; root="$(cfg '# T\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root'"
+  [ "$status" -eq 4 ]
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' macos UI=AppKit"
+  [ "$status" -eq 2 ]
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$(ws_mktemp_dir)' ios UI=UIKit"
+  [ "$status" -eq 4 ]
+}
+
+@test "wsproj::append_paths lists every package folder and the roots, once" {
+  local root; root="$(cfg '# T\n\n## Paths\n\n## Stack\n\nmvvm\n')"
+  run proj "$(ws_fixture_path workspace-yml/grouped.yml)" "wsproj::append_paths '$root'; wsproj::append_paths '$root'"
+  [ "$status" -eq 0 ]
+  run sed -n '/^## Paths$/,/^## Stack$/p' "$root/SPINE.md"
+  [ "$output" = "$(printf '## Paths\n\n- External packages: /sharedPackages/*\n- External packages: /domainPackages/*\n- Roots: /Tasks\n- Roots: /Docs\n\n## Stack')" ]
+  [ "$(grep -c '^## Paths$' "$root/SPINE.md")" -eq 1 ]
+}
+
+@test "wsproj::append_paths names /packages/* only when a package sits outside every group" {
+  local root; root="$(cfg '# T\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_paths '$root'"
+  [ "$status" -eq 0 ]
+  grep -qx -- '- External packages: /packages/\*' "$root/SPINE.md"
+  ! grep -q -- '/sharedPackages' "$root/SPINE.md"
+  local yml; yml="$(ws_mktemp_dir)/workspace.yml"
+  cat > "$yml" <<'YML'
+workspace:
+  name: Mixed
+remotes: [origin]
+package_groups:
+  - { name: common, dir: sharedPackages }
+packages:
+  - { name: A, archetype: api-contract, group: common, git: { origin: x }, version: 0.1.0 }
+YML
+  root="$(cfg '# T\n')"
+  run proj "$yml" "wsproj::append_paths '$root'"
+  [ "$status" -eq 0 ]
+  grep -qx -- '- External packages: /sharedPackages/\*' "$root/SPINE.md"
+  ! grep -q -- '/packages/\*' "$root/SPINE.md"
+}
+
+@test "wsproj::append_paths leaves out the root of a disabled block and follows a path-mode path" {
+  local root; root="$(cfg '# T\n')"
+  run proj "$(ws_fixture_path workspace-yml/tasks-disabled.yml)" "wsproj::append_paths '$root'"
+  [ "$status" -eq 0 ]
+  ! grep -q -- '- Roots: /Tasks' "$root/SPINE.md"
+  grep -qx -- '- Roots: /Docs' "$root/SPINE.md"
+  root="$(cfg '# T\n')"
+  run proj "$(ws_fixture_path workspace-yml/docs-disabled.yml)" "wsproj::append_paths '$root'"
+  grep -qx -- '- Roots: /Tasks' "$root/SPINE.md"
+  ! grep -q -- '- Roots: /Docs' "$root/SPINE.md"
+  local yml; yml="$(ws_mktemp_dir)/workspace.yml"
+  cat > "$yml" <<'YML'
+workspace:
+  name: PathMode
+  tasks: { enabled: true, mode: path, path: ./work/Tasks }
+  docs: { enabled: true, mode: path, path: Notes }
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: { origin: x }, version: 0.1.0 }
+YML
+  root="$(cfg '# T\n')"
+  run proj "$yml" "wsproj::append_paths '$root'"
+  grep -qx -- '- Roots: /work/Tasks' "$root/SPINE.md"
+  grep -qx -- '- Roots: /Notes' "$root/SPINE.md"
+}
+
+@test "wsproj::append_paths in symlink mode names the default folders" {
+  local root; root="$(cfg '# T\n')"
+  run proj "$(ws_fixture_path workspace-yml/tasks-docs-symlink.yml)" "wsproj::append_paths '$root'"
+  [ "$status" -eq 0 ]
+  grep -qx -- '- Roots: /Tasks' "$root/SPINE.md"
+  grep -qx -- '- Roots: /Docs' "$root/SPINE.md"
+}
+
+@test "wsproj::append_paths skips a line that is already there and keeps other text" {
+  local root; root="$(cfg '# T\n\n## Paths\n\n- Roots: /Tasks\n- Mine: /custom\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_paths '$root'"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c -- '^- Roots: /Tasks$' "$root/SPINE.md")" -eq 1 ]
+  grep -qx -- '- Mine: /custom' "$root/SPINE.md"
+  grep -qx -- '- External packages: /packages/\*' "$root/SPINE.md"
+}
+
+@test "wsproj::append_paths exits 4 without a root" {
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsproj::append_paths'
+  [ "$status" -eq 4 ]
 }
 
 @test "batch flags carry every axis the app's stack sets, and nothing it leaves out" {
   run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" ios batch
   [ "$status" -eq 0 ]
-  [ "$output" = "--no-prompt --platform=ios --main-target-name=FullApp-iOS --ui-framework=swiftui --di=factory --architecture=mvvm-coordinator --async=async-await --min-ios=17.0 --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip" ]
+  [ "$output" = "--no-prompt --platform=ios --main-target-name=FullApp-iOS --ui-framework=swiftui --di=factory --architecture=mvvm-coordinator --async=async-await --min-ios=17.0 --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip --config-dir=/r" ]
   run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" macos batch
   [ "$status" -eq 0 ]
-  [ "$output" = "--no-prompt --platform=macos --main-target-name=FullApp-macOS --ui-framework=swiftui --di=factory --architecture=mvvm --async=async-await --min-macos=14.0 --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip" ]
+  [ "$output" = "--no-prompt --platform=macos --main-target-name=FullApp-macOS --ui-framework=swiftui --di=factory --architecture=mvvm --async=async-await --min-macos=14.0 --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip --config-dir=/r" ]
 }
 
 @test "interactive flags pre-answer only the workspace's own questions" {
   run ws_swift_init_flags "$(ws_fixture_path workspace-yml/with-project-full.yml)" ios interactive
   [ "$status" -eq 0 ]
-  [ "$output" = "--platform=ios --main-target-name=FullApp-iOS --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip" ]
+  [ "$output" = "--platform=ios --main-target-name=FullApp-iOS --tests=swift-testing --lang=en --mode=manual --progress=normal --tasks=skip --config-dir=/r" ]
 }
 
 @test "tests: the app's own answer in batch, the workspace's otherwise; short-form repo resolves" {
   local y="$(ws_fixture_path workspace-yml/with-project-stack-tests.yml)"
   run ws_swift_init_flags "$y" ios batch
-  [ "$output" = "--no-prompt --platform=ios --main-target-name=ST-ios --di=plain --tests=quick-nimble --lang=ru --mode=auto --progress=quiet --tasks=skip" ]
+  [ "$output" = "--no-prompt --platform=ios --main-target-name=ST-ios --di=plain --tests=quick-nimble --lang=ru --mode=auto --progress=quiet --tasks=skip --config-dir=/r" ]
   run ws_swift_init_flags "$y" ios interactive
   [[ "$output" == *"--tests=xctest "* ]] || return 1
   run ws_swift_init_flags "$y" macos batch
-  [ "$output" = "--no-prompt --platform=macos --main-target-name=ST-macos --tests=xctest --lang=ru --mode=auto --progress=quiet --tasks=skip" ]
+  [ "$output" = "--no-prompt --platform=macos --main-target-name=ST-macos --tests=xctest --lang=ru --mode=auto --progress=quiet --tasks=skip --config-dir=/r" ]
+}
+
+@test "swift_init_flags hands the config root to swift-init in both modes and refuses to run without one" {
+  local y="$(ws_fixture_path workspace-yml/with-project-full.yml)"
+  run ws_swift_init_flags "$y" ios batch /some/root
+  [[ "$output" == *"--config-dir=/some/root"* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *"--tasks=skip"* ]] || { echo "$output"; return 1; }
+  run ws_swift_init_flags "$y" ios interactive /some/root
+  [[ "$output" == *"--config-dir=/some/root"* ]] || { echo "$output"; return 1; }
+  run ws_swift_init_flags "$y" ios batch ""
+  [ "$status" -eq 4 ]
 }
 
 @test "swift_init_flags refuses an app workspace.yml does not declare" {

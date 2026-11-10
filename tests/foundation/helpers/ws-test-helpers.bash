@@ -42,10 +42,10 @@ ws_run_zsh() {
 }
 
 # Runs wsproj::swift_init_flags against a workspace.yml.
-# Usage: ws_swift_init_flags <workspace.yml> <ios|macos> <interactive|batch>
+# Usage: ws_swift_init_flags <workspace.yml> <ios|macos> <interactive|batch> [config-root, default /r]
 ws_swift_init_flags() {
   local lib; lib="$(ws_repo_root)/templates/workspace/lib"
   zsh -c "for f in workspace-yml-parser workspace-package workspace-project; do source '$lib/'\$f.zsh; done
     wsyml::load '$1' || exit 9
-    wsproj::swift_init_flags $2 $3"
+    wsproj::swift_init_flags $2 $3 '${4-/r}'"
 }
