@@ -518,3 +518,33 @@ skeleton_live() {
   run grep -rIn -i 'workspace[- ]parent' "$(ws_repo_root)/templates"
   [ "$status" -eq 1 ] || { echo "$output"; return 1; }
 }
+
+@test "validate accepts a package with no remote, either git: {} or no git, and an app repo named My_App" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/package-no-remote.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "a package with no remote is a url-less repos line, and the url check says it has none" {
+  run zsh -c "for f in workspace-yml-parser workspace-docs workspace-package; do source '$(ws_repo_root)/templates/workspace/lib/'\$f.zsh; done
+    wsyml::load '$(ws_fixture_path workspace-yml/package-no-remote.yml)' || exit 9
+    wsdocs::repos; wspkg::url_matches_name A; print \"A=\$?\"; wspkg::url_matches_name B; print \"B=\$?\""
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  local tab=$'\t'
+  [ "$output" = "My_App${tab}
+packages/A${tab}
+packages/B${tab}
+packages/C${tab}git@x:C.git
+A=2
+B=2" ] || { echo "$output"; return 1; }
+}
+
+@test "validate rejects an app repo name that does not start with a letter or holds a slash" {
+  local repo
+  for repo in _IOS 'a/b'; do
+    run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load <(print -r -- 'workspace: { name: eg }
+remotes: [origin]
+project: { name: eg, apps: { ios: { repo: \"$repo\" } } }') && wsyml::validate"
+    [ "$status" -eq 2 ] || { echo "$repo: $output"; return 1; }
+    [[ "$output" == *"must match [A-Za-z][A-Za-z0-9._-]*"* ]] || { echo "$repo: $output"; return 1; }
+  done
+}

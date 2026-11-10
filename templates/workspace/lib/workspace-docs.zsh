@@ -2,7 +2,7 @@
 # workspace-docs.zsh — the content of every toolkit-owned section and workspace file, derived from
 # the loaded workspace.yml. Each generator prints its content without the marker lines.
 # Public API: wsdocs::find_workspace_yml, wsdocs::refuse_old_layout,
-#   wsdocs::pkg_dir, wsdocs::apps, wsdocs::app_dir, wsdocs::app_url,
+#   wsdocs::pkg_dir, wsdocs::apps, wsdocs::app_dir, wsdocs::app_xcodeproj, wsdocs::app_url,
 #   wsdocs::pkg_list, wsdocs::layers, wsdocs::graph,
 #   wsdocs::repos, wsdocs::gitignore_repos, wsdocs::repo_map,
 #   wsdocs::clone, wsdocs::fragment, wsdocs::pkg_header, wsdocs::pkg_deps, wsdocs::pkg_meta,
@@ -32,13 +32,14 @@ wsdocs::find_workspace_yml() {
   return 4
 }
 
-# Needs the workspace.yml loaded. Inside an old <ws>-meta folder workspace.yml is right there, so
+# Needs the workspace.yml loaded. Inside an old <ws>-meta folder (any case) workspace.yml is right there, so
 # wsdocs::find_workspace_yml took it for a root. It is the old layout when none of the declared
 # repositories is under it and one is beside it: exit 4, the same pointer. Otherwise 0.
 wsdocs::refuse_old_layout() {
   local yml="$1" meta="${1:h}" ws rpath inside=0 beside=0
   ws="$(wsyml::get '.workspace.name')"
-  [[ "${meta:t}" == "$ws-meta" ]] || return 0
+  # Case-insensitive: a folder made by hand often lowercases the workspace name (myapp-meta).
+  [[ "${meta:t:l}" == "${ws:l}-meta" ]] || return 0
   for rpath in ${(f)"$(wsdocs::repos | cut -f1)"}; do
     [[ -e "$meta/$rpath" ]] && inside=1
     [[ -e "${meta:h}/$rpath" ]] && beside=1
@@ -280,13 +281,29 @@ wsdocs::pkg_public_api() {
   if (( ${#decls} )); then print -r -- "${(F)decls}"; else print -r -- "- none"; fi
 }
 
+# The app's project from the workspace root: the one *.xcodeproj its folder holds, whatever it is
+# called (an app made before the workspace often names it after the product, not the repo); with none
+# or several, <app_dir>/<repo>.xcodeproj. The root is the folder of the loaded workspace.yml.
+wsdocs::app_xcodeproj() {
+  local key="$1" dir root
+  local -a found
+  dir="$(wsdocs::app_dir "$key")" || return 2
+  root="${${_WSYML_STATE[path]:-.}:A:h}"
+  found=("$root/$dir"/*.xcodeproj(N/))
+  if (( ${#found} == 1 )); then
+    print -r -- "$dir/${found[1]:t}"
+  else
+    print -r -- "$dir/${dir:t}.xcodeproj"
+  fi
+}
+
 # The whole contents.xcworkspacedata: the template with both ref lists filled.
 wsdocs::xcworkspace() {
   local tmp p key repo projects="" pkgs=""
   tmp="$(mktemp -t wsdocs-xcws.XXXXXX)" || return 4
   cp -- "$_WSDOCS_TEMPLATES/meta-repo/xcworkspace-contents.xml.tmpl" "$tmp" || { rm -f -- "$tmp"; return 4; }
   while read -r key repo; do
-    [[ -n "$repo" ]] && projects+="   <FileRef location=\"group:$(wsdocs::app_dir "$key")/$repo.xcodeproj\"></FileRef>"$'\n'
+    [[ -n "$repo" ]] && projects+="   <FileRef location=\"group:$(wsdocs::app_xcodeproj "$key")\"></FileRef>"$'\n'
   done < <(wsdocs::apps)
   for p in ${(f)"$(wsyml::packages)"}; do
     pkgs+="   <FileRef location=\"group:$(wsdocs::pkg_dir "$p")\"></FileRef>"$'\n'

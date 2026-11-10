@@ -36,10 +36,12 @@ done
 WSDOCS_CALLER=workspace-docs-regen
 ws_yml="$(wsdocs::find_workspace_yml)" || exit $?
 wsyml::load "$ws_yml" || exit $?
+# The layout first: an old workspace.yml often fails today's schema too, and the move comes before
+# its fixes.
+wsdocs::refuse_old_layout "$ws_yml" || exit $?
 wsyml::validate || exit 2
 wsgraph::check_acyclic || exit 2
 meta="${ws_yml:h}" parent="$meta" ws="$(wsyml::get '.workspace.name')"
-wsdocs::refuse_old_layout "$ws_yml" || exit $?
 # jq, not yq, writes the .code-workspace: from 1.7 it prints every number it does not change as written.
 # --check never calls jq — it only diffs — so the gate does not apply to it.
 if [[ "$mode" != check && "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then

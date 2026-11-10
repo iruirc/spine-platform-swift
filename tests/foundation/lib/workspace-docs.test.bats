@@ -224,3 +224,29 @@ YML
   [ "${lines[3]}" = '- Before editing inside a repository, read its CLAUDE.md when it has one; commit in each repository separately' ]
   [ "${#lines[@]}" -eq 4 ]
 }
+
+@test "app_xcodeproj: the one project the app folder holds, else <repo>.xcodeproj" {
+  local root; root="$(ws_mktemp_dir)"
+  cp "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" "$root/workspace.yml"
+  mkdir -p "$root/SimpleApp-iOS"
+  run docs "$root/workspace.yml" 'wsdocs::app_xcodeproj ios'
+  [ "$output" = 'SimpleApp-iOS/SimpleApp-iOS.xcodeproj' ] || { echo "none: $output"; return 1; }
+  mkdir "$root/SimpleApp-iOS/Other.xcodeproj"
+  run docs "$root/workspace.yml" 'wsdocs::xcworkspace'
+  [[ "$output" == *'<FileRef location="group:SimpleApp-iOS/Other.xcodeproj"></FileRef>'* ]] || { echo "one: $output"; return 1; }
+  mkdir "$root/SimpleApp-iOS/Second.xcodeproj"
+  run docs "$root/workspace.yml" 'wsdocs::app_xcodeproj ios'
+  [ "$output" = 'SimpleApp-iOS/SimpleApp-iOS.xcodeproj' ] || { echo "two: $output"; return 1; }
+}
+
+@test "refuse_old_layout: a <name>-meta folder that differs from workspace.name only in case is the old layout" {
+  local ws; ws="$(ws_mktemp_dir)"
+  mkdir -p "$ws/myapp-meta" "$ws/myapp" "$ws/packages/myapp-core"
+  printf '%s\n' 'workspace: { name: MyApp }' 'remotes: [origin]' \
+    'project: { name: MyApp, apps: { ios: { repo: myapp } } }' \
+    'packages:' '  - { name: myapp-core, archetype: library, git: { origin: git@x:c.git }, version: 0.1.0 }' \
+    > "$ws/myapp-meta/workspace.yml"
+  run docs "$ws/myapp-meta/workspace.yml" "wsdocs::refuse_old_layout '$ws/myapp-meta/workspace.yml'"
+  [ "$status" -eq 4 ] || { echo "$status: $output"; return 1; }
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]]
+}

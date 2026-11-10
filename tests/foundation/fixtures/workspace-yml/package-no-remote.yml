@@ -1,0 +1,10 @@
+workspace: { name: eg }
+remotes: [origin]
+project:
+  name: eg
+  apps:
+    ios: { repo: My_App, dir: . }
+packages:
+  - { name: A, archetype: library, git: {}, version: 0.1.0 }
+  - { name: B, archetype: library, version: 0.1.0 }
+  - { name: C, archetype: library, git: { origin: git@x:C.git }, version: 0.1.0 }

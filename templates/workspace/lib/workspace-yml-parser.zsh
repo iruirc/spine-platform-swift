@@ -179,12 +179,9 @@ wsyml::validate() {
       fi
     done
 
-    # Rule 6: git remotes subset
+    # Rule 6: git remotes subset. A package with no remote (`git: {}` or no `git`) is valid:
+    # bootstrap.sh lists it with no url and skips it where it is missing. A declared url is non-empty.
     git_keys="$(wsyml::get ".packages[] | select(.name == \"$p\") | .git | keys | .[]" 2>/dev/null || true)"
-    if [[ -z "$git_keys" ]]; then
-      print -u2 "$_path: package '$p' git map must be non-empty"
-      ((errs++))
-    fi
     for k in ${(f)git_keys}; do
       if (( ! ${+remote_set[$k]} )); then
         print -u2 "$_path: package '$p' uses unknown remote '$k' (declare in top-level remotes[])"
@@ -498,8 +495,8 @@ wsyml::validate() {
         ((errs++))
         continue
       fi
-      if [[ ! "$app_repo" =~ ^[A-Za-z][A-Za-z0-9-]*$ ]]; then
-        print -u2 "$_path: project.apps.$ak.repo '$app_repo' must match [A-Za-z][A-Za-z0-9-]*"
+      if [[ ! "$app_repo" =~ ^[A-Za-z][A-Za-z0-9._-]*$ ]]; then
+        print -u2 "$_path: project.apps.$ak.repo '$app_repo' must match [A-Za-z][A-Za-z0-9._-]*"
         ((errs++))
       fi
       if (( ${+seen_repos[$app_repo]} )); then

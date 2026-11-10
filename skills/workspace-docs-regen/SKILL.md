@@ -68,7 +68,7 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | package `README.md` | `PKG_HEADER` (holds the title), `PKG_DEPS` (holds `## Dependencies`) |
 | package `CLAUDE.md` | `PKG_META`; `PKG_BOUNDARY`, the archetype paragraph under `## Boundary contract` — lines below its end marker are the package's own constraints; `PKG_PUBLIC_API` (holds `## Public API`) |
 | package `Package.swift` | `PKG_MANIFEST_DEPS` inside `dependencies:` of the package, `PKG_TARGET_DEPS` inside `dependencies:` of its main target. The tools version, `platforms`, `products` and every other target are the user's |
-| `<workspace>.xcworkspace` | the whole file |
+| `<workspace>.xcworkspace` | the whole file: one ref per app — the one `*.xcodeproj` in the app's folder, whatever its name, or `<repo>.xcodeproj` when there is none or more than one — then one per package |
 | `<workspace>.code-workspace` | `folders` only. The `.code-workspace` must be plain JSON: a `//` comment, which VS Code allows, stops regen for that file with "is not plain JSON". |
 
 ## Older workspaces

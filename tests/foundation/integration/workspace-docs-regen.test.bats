@@ -229,6 +229,15 @@ old_layout() {
   [ ! -e "$OLD/RegenWS-meta/RegenWS.code-workspace" ]
 }
 
+@test "the old layout is reported before a schema error an old workspace.yml carries" {
+  old_layout
+  yq -i '.packages[0].allowed_deps = ["library"]' "$OLD/RegenWS-meta/workspace.yml"
+  cd "$OLD/RegenWS-meta"
+  run "$REGEN" --check
+  [ "$status" -eq 4 ] || { echo "$output"; return 1; }
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]]
+}
+
 @test "a new root that happens to be named <ws>-meta and holds its packages is still a root" {
   local root="$(ws_mktemp_dir)/RegenWS-meta"
   mkdir -p "$root/sharedPackages/AKit"
