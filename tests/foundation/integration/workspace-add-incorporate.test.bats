@@ -78,7 +78,8 @@ standalone() {   # <name>
   run "$DRIVER" "$STANDALONE" Pkg
   [ "$status" -eq 0 ]
   [[ "$output" == *"git@github.com:user/pkg-ios.git"* ]] || { echo "$output"; return 1; }
-  [[ "$output" == *"warning"* && "$output" == *"Pkg"* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *"warning: the last part of Pkg's git url"* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *"Xcode replaces a remote package with a local folder only when the folder name equals the repository name"* ]] || { echo "$output"; return 1; }
   [ -f "$ROOT/packages/Pkg/Package.swift" ]
 }
 
@@ -88,7 +89,8 @@ standalone() {   # <name>
   cd "$ROOT"
   run "$DRIVER" "$STANDALONE" Pkg
   [ "$status" -eq 0 ]
-  [[ "$output" != *"does not match"* ]] || { echo "$output"; return 1; }
+  [[ "$output" != *"warning: the last part of"* ]] || { echo "$output"; return 1; }
+  [[ "$output" != *"Xcode replaces"* ]] || { echo "$output"; return 1; }
   [[ "$output" != *"https://host/o/Pkg.git"* ]] || { echo "$output"; return 1; }
 }
 
@@ -98,7 +100,9 @@ standalone() {   # <name>
   cd "$ROOT"
   run "$DRIVER" "$STANDALONE" Pkg
   [ "$status" -eq 0 ]
-  [[ "$output" != *"does not match"* ]] || { echo "$output"; return 1; }
+  [[ "$output" != *"warning: the last part of"* ]] || { echo "$output"; return 1; }
+  [[ "$output" != *"Xcode replaces"* ]] || { echo "$output"; return 1; }
+  [[ "$output" != *"git@y:o/other.git"* ]] || { echo "$output"; return 1; }
 }
 
 @test "incorporate package with existing CLAUDE.md: it is preserved + warning emitted" {
@@ -113,6 +117,22 @@ standalone() {   # <name>
   [ "${output#*not overwritten}" != "$output" ]
   run cat "$ROOT/packages/HasCLAUDE/CLAUDE.md"
   [[ "$output" == *"USER_OWNED_CONTENT"* ]]
+}
+
+@test "an occupied target stops the run before workspace.yml, the package or the docs change" {
+  standalone BareKit
+  declare_pkg BareKit git@github.com:user/BareKit.git
+  mkdir -p "$ROOT/packages/BareKit"
+  echo mine > "$ROOT/packages/BareKit/keep"
+  local before; before="$(md5 -q "$ROOT/workspace.yml")$(md5 -q "$ROOT/.gitignore")"
+  cd "$ROOT"
+  run "$DRIVER" "$STANDALONE" BareKit
+  [ "$status" -eq 3 ] || { echo "$status $output"; return 1; }
+  [[ "$output" == *"already exists"* ]]
+  [ -f "$STANDALONE/Package.swift" ]
+  [ "$(cat "$ROOT/packages/BareKit/keep")" = mine ]
+  [ ! -e "$ROOT/packages/BareKit/Package.swift" ]
+  [ "$(md5 -q "$ROOT/workspace.yml")$(md5 -q "$ROOT/.gitignore")" = "$before" ]
 }
 
 @test "outside any workspace the driver stops with exit 1 and moves nothing" {

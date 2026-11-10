@@ -44,7 +44,7 @@ Version requirement — from, exact, branch or revision, then the value (empty =
 Exceptions to the archetype rule (packages, default none):
 
 ## warn_url_name_mismatch
-warning: the last part of {pkg}'s git url ({url}) is not '{pkg}'; the package folder is named {pkg}, so a fresh clone from bootstrap.sh lands under that name. Rename the repository or the package if they should agree.
+warning: the last part of {pkg}'s git url ({url}) is not '{pkg}'. Xcode replaces a remote package with a local folder only when the folder name equals the repository name (the last part of the url), so the local copy in the workspace will be silently ignored and the remote one used. Rename the repository or the package so they agree.
 
 ## warn_existing_claude_md
 warning: {path}/CLAUDE.md already exists; not overwritten.

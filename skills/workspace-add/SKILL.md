@@ -20,7 +20,7 @@ libraries in `<platform-root>/templates/workspace/lib/`, one prefix per file (`w
 
 The functions, and the copy of `workspace.yml` that `wsyml::load` keeps, live only in the shell that
 sourced them, and the host starts a fresh shell for each command. Every command that calls a `ws*::`
-function therefore opens with:
+function therefore opens with the libraries, then finds `<root>` and loads it. The order is fixed: source the libs → `wsdocs::find_workspace_yml` → `wsyml::load` → `wsdocs::refuse_old_layout` (see **Pre-flight**).
 
 ```zsh
 source "<platform-root>/templates/workspace/lib/workspace-yml-parser.zsh"
@@ -71,20 +71,21 @@ Find `<root>` with `wsdocs::find_workspace_yml` (it walks up from the cwd, and a
 1. Read target's `Package.swift` to extract package name. If `--name <override>` supplied, use that; else use parsed name.
 2. Read target's `git remote -v` to detect existing remotes.
 3. Q&A: archetype, group (if applicable), allowed_deps (exceptions to the archetype rule), `qa_pkg_git_url` for each declared remote the repo lacks.
-4. Backup `workspace.yml`. Update with new package entry.
-5. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore + exit 2. Then see **Url and package name**.
-6. Resolve the target dir: `<root>/$(wsdocs::pkg_dir <name>)`. If it already exists: emit `error_fs` and stop, moving nothing. If `--symlink` flag: `ln -s <original-path> <target-dir>`. Else (default): `mv <original-path> <target-dir>`, creating the parent dir first. A symlinked package is listed in `.gitignore` and `bootstrap.sh` like any other.
-7. **Soft mutate** target package files. Never call `wspkg::render_to` on an incorporated package — it
+4. Check the target dir before touching `workspace.yml`: `<root>/<group-dir>/<name>` (the `dir` of the picked group in `package_groups`), or `<root>/packages/<name>` if no groups. If it already exists: emit `error_fs` and stop, with nothing edited and nothing moved.
+5. Backup `workspace.yml`. Update with new package entry.
+6. `wsyml::load` the updated file, then `wsyml::validate` + `wsgraph::check_acyclic`. On failure: restore + exit 2. Then see **Url and package name**.
+7. Resolve the target dir: `<root>/$(wsdocs::pkg_dir <name>)` (the same folder step 4 checked). If `--symlink` flag: `ln -s <absolute-original-path> <target-dir>`, the link target being the absolute path of the original. Else (default): `mv <original-path> <target-dir>`, creating the parent dir first. A symlinked package is listed in `.gitignore` and `bootstrap.sh` like any other.
+8. **Soft mutate** target package files. Never call `wspkg::render_to` on an incorporated package — it
    renders the whole package template and would overwrite the user's `Package.swift` and `Sources/`.
    - If `<target-dir>/CLAUDE.md` does NOT exist → render only `<platform-root>/templates/workspace/package/CLAUDE.md.tmpl`
      with `{{PACKAGE_NAME}}` substituted, to `<target-dir>/CLAUDE.md`, `git add` it (no commit).
    - If exists → emit `warn_existing_claude_md`.
-8. Run `workspace-docs-regen` from `<root>`: it adds the package to the meta-repo docs, the `REPOS` blocks of `.gitignore` and `bootstrap.sh`, the repo map in `SPINE.md` and the workspace files, and fills the marked sections the package's docs have. An incorporated package's `Package.swift` carries no markers, so its dependencies stay its own; `workspace-docs-regen --adopt --pkg <name>` proposes them when the manifest is in the shape this plugin's template renders.
-9. Emit `report_success_incorporate`.
+9. Run `workspace-docs-regen` from `<root>`: it adds the package to the meta-repo docs, the `REPOS` blocks of `.gitignore` and `bootstrap.sh`, the repo map in `SPINE.md` and the workspace files, and fills the marked sections the package's docs have. An incorporated package's `Package.swift` carries no markers, so its dependencies stay its own; `workspace-docs-regen --adopt --pkg <name>` proposes them when the manifest is in the shape this plugin's template renders.
+10. Emit `report_success_incorporate`.
 
 ## Url and package name
 
-After the url Q&A, in both modes, with the entry in `workspace.yml` loaded, run `wspkg::url_matches_name <name>`. Exit 1 means the last component of the url under the first declared remote, without `.git`, is not `<name>`: emit `warn_url_name_mismatch` (`{pkg}`, `{url}`) and go on. Exit 2 means the package has no url under that remote: say nothing. A warning never stops the command, since `bootstrap.sh` clones into `<root>/<pkg_dir>` whatever the repository is called.
+After the url Q&A, in both modes, with the entry in `workspace.yml` loaded, run `wspkg::url_matches_name <name>`. Exit 1 means the last component of the url under the first declared remote, without `.git`, is not `<name>`: emit `warn_url_name_mismatch` (`{pkg}`, `{url}`) and go on. Exit 2 means the package has no url under that remote: say nothing. The warning matters because Xcode replaces a remote package with a local folder only when the folder name equals the repository name (the last url component): on a mismatch the local copy is silently ignored and the remote one is used. It never stops the command: `bootstrap.sh` still clones into `<root>/<pkg_dir>` whatever the repository is called.
 
 ## Failure recovery
 

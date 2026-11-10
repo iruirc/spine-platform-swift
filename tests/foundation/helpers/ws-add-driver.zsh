@@ -6,8 +6,8 @@
 #
 #   ws-add-driver.zsh <package-dir> <name> [--symlink]
 #
-# Exit: 1 no workspace.yml above the cwd, or the old layout; 2 workspace.yml invalid or <name> not
-# declared in it; 1 the move or regen failed.
+# Exit: 1 no workspace.yml above the cwd, the old layout, or a failed regen; 2 workspace.yml invalid or
+# <name> not declared in it; 3 the target folder already exists.
 set -euo pipefail
 
 helpers="${0:A:h}"
@@ -48,6 +48,10 @@ wsgraph::check_acyclic >&2 || exit 2
 root="${ws_yml:h}"
 wsyml::packages | grep -qxF -- "$name" || { print -u2 "ws-add-driver: workspace.yml declares no package '$name'"; exit 2; }
 
+# Before anything is moved: an occupied target stops the run (the skill checks it before editing workspace.yml).
+target="$root/$(wsdocs::pkg_dir "$name")"
+[[ -e "$target" || -L "$target" ]] && { print -u2 "ws-add-driver: $target already exists"; exit 3; }
+
 # The url Q&A is over: a name that differs from the repository's is a warning, not a stop.
 wspkg::url_matches_name "$name" || {
   rc=$?
@@ -57,7 +61,6 @@ wspkg::url_matches_name "$name" || {
   fi
 }
 
-target="$root/$(wsdocs::pkg_dir "$name")"
 mkdir -p "${target:h}"
 if (( symlink )); then ln -s "$src" "$target"; else mv "$src" "$target"; fi
 print "placed $target"
