@@ -131,8 +131,10 @@ wsmark::write() {
     inside { next }
     { print }
   ' "$file" > "$tmp" || { rm -f "$tmp" "$nc_file"; return 4; }
-  mv -- "$tmp" "$file"
-  rm -f "$nc_file"
+  # Overwrite in place: a rename would swap in the scratch file's 0600 mode and drop the executable
+  # bit of bootstrap.sh.
+  cat -- "$tmp" > "$file" || { rm -f "$tmp" "$nc_file"; return 4; }
+  rm -f "$tmp" "$nc_file"
   return 0
 }
 

@@ -379,3 +379,11 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   [ "$status" -eq 0 ]
   [ "$(cat "$d/.gitignore")" = "$(printf 'x\nkeep')" ]
 }
+
+@test "wsmark::write keeps the file mode, so a regenerated bootstrap.sh stays executable" {
+  d="$(ws_mktemp_dir)"; printf '#!/usr/bin/env bash\n# WORKSPACE_REPOS_BEGIN\n# WORKSPACE_REPOS_END\n' > "$d/bootstrap.sh"
+  chmod 755 "$d/bootstrap.sh"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; print -r -- 'a b' | wsmark::write '$d/bootstrap.sh' REPOS"
+  [ "$status" -eq 0 ]
+  [ -x "$d/bootstrap.sh" ]
+}

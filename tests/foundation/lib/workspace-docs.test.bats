@@ -183,3 +183,26 @@ External packages:
 
 - none' ] || { echo "$output"; return 1; }
 }
+
+@test "repos: apps first, then packages, as <path><TAB><url>; no url leaves the url empty" {
+  run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::repos'
+  [ "$status" -eq 0 ]
+  [ "$output" = $'projects/App\tgit@x:o/app.git\npackages/OnePkg\tgit@x:o/one.git' ]
+  run docs "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsdocs::repos | head -n 1'
+  [ "$output" = $'SimpleApp-iOS\t' ]
+}
+
+@test "gitignore_repos: one /<path>/ line per repository" {
+  run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::gitignore_repos'
+  [ "$output" = $'/projects/App/\n/packages/OnePkg/' ]
+}
+
+@test "repo_map: the workspace line, one line per repository, the commit rule" {
+  run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::repo_map'
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = '- Workspace: Nested; launch agents from this folder' ]
+  [ "${lines[1]}" = '- projects/App — app (ios)' ]
+  [ "${lines[2]}" = '- packages/OnePkg — api-contract package' ]
+  [ "${lines[3]}" = '- Before editing inside a repository, read its CLAUDE.md when it has one; commit in each repository separately' ]
+  [ "${#lines[@]}" -eq 4 ]
+}

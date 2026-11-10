@@ -3,6 +3,7 @@
 # the loaded workspace.yml. Each generator prints its content without the marker lines.
 # Public API: wsdocs::pkg_dir, wsdocs::apps, wsdocs::app_dir, wsdocs::app_url,
 #   wsdocs::pkg_list, wsdocs::layers, wsdocs::graph,
+#   wsdocs::repos, wsdocs::gitignore_repos, wsdocs::repo_map,
 #   wsdocs::clone, wsdocs::fragment, wsdocs::pkg_header, wsdocs::pkg_deps, wsdocs::pkg_meta,
 #   wsdocs::pkg_boundary, wsdocs::pkg_public_api, wsdocs::xcworkspace, wsdocs::code_workspace_folders
 
@@ -52,6 +53,42 @@ wsdocs::app_url() {
   [[ -n "$remote" ]] || return 0
   wsyml::get ".project.apps.$key.git.\"$remote\"" 2>/dev/null || true
   return 0
+}
+
+# One "<path><TAB><url>" line per repository: the apps (ios, macos), then the packages in `packages[]`
+# order. The url is the one under the first top-level remote; empty when the repository declares none.
+wsdocs::repos() {
+  local key repo p remote url
+  remote="$(wsyml::remotes 2>/dev/null | head -n 1)"
+  while read -r key repo; do
+    [[ -n "$repo" ]] && print -r -- "$(wsdocs::app_dir "$key")"$'\t'"$(wsdocs::app_url "$key")"
+  done < <(wsdocs::apps)
+  for p in ${(f)"$(wsyml::packages)"}; do
+    url=""
+    [[ -n "$remote" ]] && url="$(wsyml::package_field "$p" "git.\"$remote\"" 2>/dev/null || true)"
+    print -r -- "$(wsdocs::pkg_dir "$p")"$'\t'"$url"
+  done
+}
+
+# The .gitignore entries of the repositories bootstrap.sh clones: they are not the meta repo's files.
+wsdocs::gitignore_repos() {
+  local rpath url   # not `path`: in zsh it is tied to PATH
+  while IFS=$'\t' read -r rpath url; do
+    [[ -n "$rpath" ]] && print -r -- "/$rpath/"
+  done < <(wsdocs::repos)
+}
+
+# The repo map of `## Workspace meta`: where agents start, what each repository is, how to commit.
+wsdocs::repo_map() {
+  local key repo p
+  print -r -- "- Workspace: $(wsyml::get '.workspace.name'); launch agents from this folder"
+  while read -r key repo; do
+    [[ -n "$repo" ]] && print -r -- "- $(wsdocs::app_dir "$key") — app ($key)"
+  done < <(wsdocs::apps)
+  for p in ${(f)"$(wsyml::packages)"}; do
+    print -r -- "- $(wsdocs::pkg_dir "$p") — $(wsyml::package_field "$p" archetype) package"
+  done
+  print -r -- "- Before editing inside a repository, read its CLAUDE.md when it has one; commit in each repository separately"
 }
 
 wsdocs::pkg_list() {
