@@ -2,19 +2,50 @@
 # workspace-doc-markers.zsh — parse + replace WORKSPACE_*_BEGIN / _END regions.
 
 # A marker's syntax follows the file it lives in: Swift takes a line comment, which may be indented
-# so it can sit inside the array it owns; everything else takes the HTML comment of a markdown file.
+# so it can sit inside the array it owns; shell scripts and .gitignore take a column-0 hash comment;
+# everything else takes the HTML comment of a markdown file. A docs-regen scratch copy keeps only
+# the tail of the name (`<N>..gitignore`), so .gitignore is matched by suffix, not by equality.
+_wsmark_syntax() {
+  case "${1:t}" in
+    *.swift) print swift ;;
+    *.sh|*.gitignore) print hash ;;
+    *) print html ;;
+  esac
+}
+
 _wsmark_begin() {
-  if [[ "${1:e}" == swift ]]; then print -r -- "// WORKSPACE_${2}_BEGIN"
-  else print -r -- "<!-- WORKSPACE_${2}_BEGIN -->"; fi
+  case "$(_wsmark_syntax "$1")" in
+    swift) print -r -- "// WORKSPACE_${2}_BEGIN" ;;
+    hash) print -r -- "# WORKSPACE_${2}_BEGIN" ;;
+    *) print -r -- "<!-- WORKSPACE_${2}_BEGIN -->" ;;
+  esac
 }
 
 _wsmark_end() {
-  if [[ "${1:e}" == swift ]]; then print -r -- "// WORKSPACE_${2}_END"
-  else print -r -- "<!-- WORKSPACE_${2}_END -->"; fi
+  case "$(_wsmark_syntax "$1")" in
+    swift) print -r -- "// WORKSPACE_${2}_END" ;;
+    hash) print -r -- "# WORKSPACE_${2}_END" ;;
+    *) print -r -- "<!-- WORKSPACE_${2}_END -->" ;;
+  esac
 }
 
 # 1 when a marker line of this file may carry leading whitespace.
-_wsmark_lax() { [[ "${1:e}" == swift ]] && print 1 || print 0 }
+_wsmark_lax() { [[ "$(_wsmark_syntax "$1")" == swift ]] && print 1 || print 0 }
+
+# Sets bre / ere (the caller's locals) to the BEGIN / END line regexes of <file>, capturing the name.
+_wsmark_regexes() {
+  case "$(_wsmark_syntax "$1")" in
+    swift)
+      bre='^[[:space:]]*// WORKSPACE_([A-Z_]+)_BEGIN$'
+      ere='^[[:space:]]*// WORKSPACE_([A-Z_]+)_END$' ;;
+    hash)
+      bre='^# WORKSPACE_([A-Z_]+)_BEGIN$'
+      ere='^# WORKSPACE_([A-Z_]+)_END$' ;;
+    *)
+      bre='^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$'
+      ere='^<!-- WORKSPACE_([A-Z_]+)_END -->$' ;;
+  esac
+}
 
 # True when <file> carries the BEGIN marker of <name>.
 wsmark::has() {
@@ -115,13 +146,7 @@ wsmark::lint() {
   local -a open_stack open_lines
   local -A closed_at
   local lineno=0 line name top i bre ere
-  if [[ "${file:e}" == swift ]]; then
-    bre='^[[:space:]]*// WORKSPACE_([A-Z_]+)_BEGIN$'
-    ere='^[[:space:]]*// WORKSPACE_([A-Z_]+)_END$'
-  else
-    bre='^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$'
-    ere='^<!-- WORKSPACE_([A-Z_]+)_END -->$'
-  fi
+  _wsmark_regexes "$file"
   while IFS= read -r line || [[ -n "$line" ]]; do
     ((lineno++))
     if [[ "$line" =~ $bre ]]; then
@@ -183,13 +208,7 @@ wsmark::repair_to() {
     return 4
   fi
   : > "$out" || return 4
-  if [[ "${file:e}" == swift ]]; then
-    bre='^[[:space:]]*// WORKSPACE_([A-Z_]+)_BEGIN$'
-    ere='^[[:space:]]*// WORKSPACE_([A-Z_]+)_END$'
-  else
-    bre='^<!-- WORKSPACE_([A-Z_]+)_BEGIN -->$'
-    ere='^<!-- WORKSPACE_([A-Z_]+)_END -->$'
-  fi
+  _wsmark_regexes "$file"
   # Two passes: a single pass can only learn a BEGIN is unclosed once it hits EOF, by which point
   # the line to insert the END after is long behind it. So collect the surviving lines first, note
   # where each still-open BEGIN sits among them, and only then emit — closing each right after its
@@ -349,10 +368,10 @@ wsmark::unwrap() {
   [[ -r "$file" && -w "$file" && -n "$name" ]] || { print -u2 "wsmark::unwrap: usage: <file> <marker-name>"; return 4; }
   local tmp
   tmp="$(mktemp -t wsmark-unwrap.XXXXXX)" || return 4
-  if [[ "${file:e}" == swift ]]; then
-    grep -vE -- "^[[:space:]]*// WORKSPACE_${name}_(BEGIN|END)$" "$file" > "$tmp"
+  if [[ "$(_wsmark_lax "$file")" == 1 ]]; then
+    grep -vE -- "^[[:space:]]*$(_wsmark_begin "$file" "$name")\$|^[[:space:]]*$(_wsmark_end "$file" "$name")\$" "$file" > "$tmp"
   else
-    grep -vxF -e "<!-- WORKSPACE_${name}_BEGIN -->" -e "<!-- WORKSPACE_${name}_END -->" -- "$file" > "$tmp"
+    grep -vxF -e "$(_wsmark_begin "$file" "$name")" -e "$(_wsmark_end "$file" "$name")" -- "$file" > "$tmp"
   fi
   mv -- "$tmp" "$file"
   return 0

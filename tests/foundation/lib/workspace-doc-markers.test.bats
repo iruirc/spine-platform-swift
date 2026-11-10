@@ -330,3 +330,52 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   [ -z "$output" ]
   cmp "$d/in.md" "$d/out.md"
 }
+
+@test "wsmark::write fills a hash-comment pair in a .sh file" {
+  d="$(ws_mktemp_dir)"; printf '#!/usr/bin/env bash\n# WORKSPACE_REPOS_BEGIN\n# WORKSPACE_REPOS_END\n' > "$d/bootstrap.sh"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; print -r -- 'a b' | wsmark::write '$d/bootstrap.sh' REPOS"
+  [ "$status" -eq 0 ]
+  run sed -n 3p "$d/bootstrap.sh"; [ "$output" = "a b" ]
+}
+@test "wsmark::has finds a hash-comment pair in .gitignore" {
+  d="$(ws_mktemp_dir)"; printf '# WORKSPACE_REPOS_BEGIN\n# WORKSPACE_REPOS_END\n' > "$d/.gitignore"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::has '$d/.gitignore' REPOS"
+  [ "$status" -eq 0 ]
+}
+@test "an HTML marker in a .sh file is not a marker" {
+  d="$(ws_mktemp_dir)"; printf '<!-- WORKSPACE_REPOS_BEGIN -->\n' > "$d/x.sh"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::has '$d/x.sh' REPOS"
+  [ "$status" -ne 0 ]
+}
+@test "a docs-regen scratch copy of .gitignore (N..gitignore) takes hash markers" {
+  d="$(ws_mktemp_dir)"; printf '# WORKSPACE_REPOS_BEGIN\nold\n# WORKSPACE_REPOS_END\n' > "$d/1..gitignore"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; print -r -- new | wsmark::write '$d/1..gitignore' REPOS && wsmark::read '$d/1..gitignore' REPOS"
+  [ "$status" -eq 0 ]
+  [ "$output" = "new" ]
+}
+@test "a hash marker must start at column 0 (not lax)" {
+  d="$(ws_mktemp_dir)"; printf '  # WORKSPACE_REPOS_BEGIN\n' > "$d/x.sh"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::has '$d/x.sh' REPOS"
+  [ "$status" -ne 0 ]
+}
+@test "wsmark::lint accepts a well-formed hash pair and flags a missing END" {
+  d="$(ws_mktemp_dir)"; printf '# WORKSPACE_A_BEGIN\n# WORKSPACE_A_END\n' > "$d/ok.sh"
+  printf '# WORKSPACE_A_BEGIN\n' > "$d/bad.sh"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$d/ok.sh'"
+  [ "$status" -eq 0 ]
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$d/bad.sh'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"missing WORKSPACE_A_END"* ]]
+}
+@test "wsmark::repair_to restores a missing END as a hash comment" {
+  d="$(ws_mktemp_dir)"; printf '# WORKSPACE_A_BEGIN\n' > "$d/.gitignore"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::repair_to '$d/.gitignore' '$d/out'"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$d/out")" = "$(printf '# WORKSPACE_A_BEGIN\n# WORKSPACE_A_END')" ]
+}
+@test "wsmark::unwrap drops a hash pair and keeps its content" {
+  d="$(ws_mktemp_dir)"; printf 'x\n# WORKSPACE_A_BEGIN\nkeep\n# WORKSPACE_A_END\n' > "$d/.gitignore"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::unwrap '$d/.gitignore' A"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$d/.gitignore")" = "$(printf 'x\nkeep')" ]
+}
