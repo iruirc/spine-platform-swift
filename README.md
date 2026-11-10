@@ -104,6 +104,17 @@ wired to local-path package dependencies), `workspace-add` adds or incorporates 
 `workspace-docs-regen` regenerates the marker-delimited doc sections and the workspace files.
 Templates live under `templates/workspace/`.
 
+The workspace root is the meta repo. It holds `workspace.yml`, the one `SPINE.md` for every
+repository, `CLAUDE.md` and `AGENTS.md`, the `.xcworkspace` and `bootstrap.sh`; each app repo sits at
+`<dir>/<repo>` under it (`project.apps.<key>.dir`, `.` by default) and each package at
+`packages/<name>` or `<group-dir>/<name>`, kept out of the meta repo by its `.gitignore`. A fresh
+machine runs `git clone <meta-url> <Name> && cd <Name> && ./bootstrap.sh`, which clones every
+repository that is missing and reports `ok` for the ones already there. Launch `claude` or `codex`
+from the root: from there they see every repository without extra flags. A workspace made before
+this layout, with the meta repo in a `<name>-meta` folder beside the repositories, is refused by
+the workspace commands; [docs/migrations/workspace-nested-layout.md](docs/migrations/workspace-nested-layout.md)
+moves it.
+
 **A `SessionStart` hook** — in a spine project, once a day, deletes XcodeBuildMCP `test_sim` packages
 older than a day from every workspace on the machine; an agent removes its own when its stage ends.
 Silent in other projects; runs `mobilebuildmcp` and `xcodebuildmcp`, whichever is installed.

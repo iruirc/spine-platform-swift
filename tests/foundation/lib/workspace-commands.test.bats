@@ -92,3 +92,30 @@ setup() {
     grep -qF -- "$want" "$s" || { echo "workspace-add never names $want"; return 1; }
   done
 }
+
+@test "the migration guide exists, walks the general order and has a section per real workspace" {
+  local g="$ROOT/docs/migrations/workspace-nested-layout.md"
+  [ -f "$g" ] || { echo "no $g"; return 1; }
+  local h
+  for h in '## Before you start' '## General order' '## Rollback' '## MyApp' '## OtherApp' '## ThirdApp' '## TeamApp'; do
+    grep -qx -- "$h" "$g" || { echo "the guide has no '$h' heading"; return 1; }
+  done
+  local want
+  for want in './bootstrap.sh' 'workspace-docs-regen.zsh" --adopt --yes' 'MyApp/SourceCode/develop' \
+              'OtherApp/SourceCode/develop' 'ThirdApp/SourceCode/develop' 'TeamApp/develop'; do
+    grep -qF -- "$want" "$g" || { echo "the guide never names $want"; return 1; }
+  done
+}
+
+@test "the generated sections describe the nested layout: bootstrap in daily ops, dir and git in the schema" {
+  local s="$ROOT/templates/workspace/sections"
+  grep -qF -- './bootstrap.sh' "$s/DAILY_OPS.md" || { echo "DAILY_OPS.md does not name ./bootstrap.sh"; return 1; }
+  local want
+  for want in 'apps.<key>.dir' 'apps.<key>.git' 'counted from the root'; do
+    grep -qF -- "$want" "$s/SCHEMA.md" || { echo "SCHEMA.md never names $want"; return 1; }
+  done
+  grep -qF -- 'Launch agents from this folder' "$ROOT/templates/workspace/meta-repo/CLAUDE.md.tmpl" \
+    || { echo "the meta CLAUDE.md template does not say agents launch from the root"; return 1; }
+  run grep -nF -- '-meta' "$ROOT/templates/workspace/meta-repo/code-workspace.json.tmpl"
+  [ "$status" -eq 1 ] || { echo "the .code-workspace template still names the meta folder <name>-meta: $output"; return 1; }
+}

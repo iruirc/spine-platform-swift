@@ -1,1 +1,3 @@
 `workspace.yml` is the single source of truth. Every field is annotated in `workspace-yml-skeleton.yml`, which ships inside the `spine-platform-swift` plugin (or run `workspace-init` to scaffold a new one).
+
+This folder is the workspace root and the meta repo at once; every repository sits under it. An app lives at `<dir>/<repo>`: `project.apps.<key>.dir` is its folder, `.` by default, and `project.apps.<key>.git` its remote urls, keyed like a package's `git`. A package lives at `packages/<name>`, or at `<group-dir>/<name>` once it names a group. `tasks.path`, `docs.path` and `symlink_target` are counted from the root.

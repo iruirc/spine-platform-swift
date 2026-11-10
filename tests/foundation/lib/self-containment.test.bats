@@ -38,9 +38,10 @@ setup() {
 }
 
 @test "no file names the pre-split project config" {
-  # Migrating a pre-split config is core's job; nothing here may still read one.
+  # Migrating a pre-split config is core's job; nothing here may still read one. The layout
+  # migration guide names the file only to tell the owner to remove it from a workspace.
   offenders="$(grep -rl --exclude-dir=.git --exclude-dir=.superpowers 'CLAUDE-swift-toolkit' "$ROOT" \
-    | grep -vF 'self-containment.test.bats' || true)"
+    | grep -vF 'self-containment.test.bats' | grep -vF 'docs/migrations/workspace-nested-layout.md' || true)"
   [ -z "$offenders" ] || { echo "$offenders"; return 1; }
 }
 
