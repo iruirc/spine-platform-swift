@@ -1,7 +1,8 @@
 #!/usr/bin/env zsh
 # workspace-docs.zsh — the content of every toolkit-owned section and workspace file, derived from
 # the loaded workspace.yml. Each generator prints its content without the marker lines.
-# Public API: wsdocs::pkg_dir, wsdocs::apps, wsdocs::pkg_list, wsdocs::layers, wsdocs::graph,
+# Public API: wsdocs::pkg_dir, wsdocs::apps, wsdocs::app_dir, wsdocs::app_url,
+#   wsdocs::pkg_list, wsdocs::layers, wsdocs::graph,
 #   wsdocs::clone, wsdocs::fragment, wsdocs::pkg_header, wsdocs::pkg_deps, wsdocs::pkg_meta,
 #   wsdocs::pkg_boundary, wsdocs::pkg_public_api, wsdocs::xcworkspace, wsdocs::code_workspace_folders
 
@@ -26,6 +27,30 @@ wsdocs::apps() {
     repo="$(wsyml::get ".project.apps.$key.repo" 2>/dev/null || wsyml::get ".project.apps.$key | select(tag == \"!!str\")" 2>/dev/null || true)"
     [[ -n "$repo" ]] && print -r -- "$key $repo"
   done
+  return 0
+}
+
+# The app repo's path from the workspace root: <dir>/<repo>, with no leading ./ and no trailing /;
+# `dir` absent or `.` puts the repo directly under the root. Exit 2 when the key declares no app.
+wsdocs::app_dir() {
+  local key="$1" k repo dir found=0
+  while read -r k repo; do
+    [[ "$k" == "$key" ]] && { found=1; break; }
+  done < <(wsdocs::apps)
+  (( found )) || return 2
+  dir="$(wsyml::get ".project.apps.$key.dir" 2>/dev/null || true)"
+  while [[ "$dir" == ./* ]]; do dir="${dir#./}"; done
+  while [[ "$dir" == */ ]]; do dir="${dir%/}"; done
+  [[ "$dir" == . ]] && dir=""
+  print -r -- "${dir:+$dir/}$repo"
+}
+
+# The url of the app under the first top-level remote; empty when the app declares none.
+wsdocs::app_url() {
+  local key="$1" remote
+  remote="$(wsyml::remotes 2>/dev/null | head -n 1)"
+  [[ -n "$remote" ]] || return 0
+  wsyml::get ".project.apps.$key.git.\"$remote\"" 2>/dev/null || true
   return 0
 }
 

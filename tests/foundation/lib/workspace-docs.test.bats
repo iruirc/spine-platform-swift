@@ -21,6 +21,40 @@ docs() {
   [ "$output" = 'ios ShortApp-iOS' ]
 }
 
+@test "app_dir: the repo under its dir, normalized, default at the root, undeclared key fails" {
+  run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::app_dir ios'
+  [ "$output" = 'projects/App' ]
+  run docs "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsdocs::app_dir ios'
+  [ "$output" = 'SimpleApp-iOS' ]
+  run docs "$(ws_fixture_path workspace-yml/with-project-shortform.yml)" 'wsdocs::app_dir ios'
+  [ "$output" = 'ShortApp-iOS' ]
+  run docs "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsdocs::app_dir macos'
+  [ "$status" -eq 2 ]
+}
+
+@test "app_dir: ./projects/, projects/ and . normalize without a leading ./ or trailing /" {
+  local d f
+  f="$(mktemp -d)"; WS_TEST_TMPDIRS+=("$f")
+  for d in './projects/' 'projects' 'projects/' '.' './' './a/b/'; do
+    sed "s|dir: projects/|dir: $d|" "$(ws_fixture_path workspace-yml/nested-apps.yml)" > "$f/w.yml"
+    run docs "$f/w.yml" 'wsdocs::app_dir ios'
+    case "$d" in
+      .|./) [ "$output" = 'App' ] ;;
+      ./a/b/) [ "$output" = 'a/b/App' ] ;;
+      *) [ "$output" = 'projects/App' ] ;;
+    esac
+  done
+}
+
+@test "app_url: the url of the first remote, empty when the app has no git" {
+  run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::app_url ios'
+  [ "$status" -eq 0 ]
+  [ "$output" = 'git@x:o/app.git' ]
+  run docs "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsdocs::app_url ios'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
 @test "an ungrouped package lives under packages/ and sits in the — row" {
   run docs "$(ws_fixture_path workspace-yml/minimal.yml)" 'wsdocs::pkg_dir OnePkg; wsdocs::layers; wsdocs::pkg_meta OnePkg'
   [ "$output" = "packages/OnePkg

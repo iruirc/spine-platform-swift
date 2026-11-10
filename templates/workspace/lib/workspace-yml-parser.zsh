@@ -514,6 +514,29 @@ wsyml::validate() {
       fi
     done
 
+    # P-rule 10: project.apps.<key>.dir stays inside the workspace; the app repo sits at <root>/<dir>/<repo>.
+    # P-rule 11: project.apps.<key>.git remotes are declared in top-level remotes[], URLs non-empty.
+    for ak in ${(f)app_keys}; do
+      [[ "$ak" =~ ^(ios|macos)$ ]] || continue
+      v="$(wsyml::get ".project.apps.$ak.dir" 2>/dev/null || true)"
+      if [[ -n "$v" && ( "$v" == /* || "$v" =~ '(^|/)\.\.(/|$)' ) ]]; then
+        print -u2 "$_path: project.apps.$ak.dir must be relative and stay inside the workspace"
+        ((errs++))
+      fi
+      git_keys="$(wsyml::get ".project.apps.$ak.git | keys | .[]" 2>/dev/null || true)"
+      for k in ${(f)git_keys}; do
+        if (( ! ${+remote_set[$k]} )); then
+          print -u2 "$_path: project.apps.$ak uses unknown remote '$k' (declare in top-level remotes[])"
+          ((errs++))
+        fi
+        v="$(wsyml::get ".project.apps.$ak.git.\"$k\"" 2>/dev/null || true)"
+        if [[ -z "${v//[[:space:]]/}" ]]; then
+          print -u2 "$_path: project.apps.$ak has empty git URL for remote '$k'"
+          ((errs++))
+        fi
+      done
+    done
+
     # P-rules 4-7: stack enum validation (per app)
     for ak in ${(f)app_keys}; do
       [[ "$ak" =~ ^(ios|macos)$ ]] || continue

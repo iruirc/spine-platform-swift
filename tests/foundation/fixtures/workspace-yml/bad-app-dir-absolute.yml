@@ -1,0 +1,14 @@
+workspace:
+  name: Nested
+remotes: [origin]
+project:
+  name: NestedApp
+  apps:
+    ios:
+      repo: App
+      dir: /projects
+packages:
+  - name: OnePkg
+    archetype: api-contract
+    git: { origin: git@x:o/one.git }
+    version: 0.1.0

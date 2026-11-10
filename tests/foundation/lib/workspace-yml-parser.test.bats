@@ -102,6 +102,26 @@ teardown() {
   [[ "$output" == *"unknown remote 'gitolite'"* ]]
 }
 
+@test "validate rejects an app dir that is absolute or leaves the workspace" {
+  local f
+  for f in bad-app-dir-absolute bad-app-dir-parent; do
+    run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/$f.yml)' && wsyml::validate"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"project.apps.ios.dir must be relative and stay inside the workspace"* ]]
+  done
+}
+
+@test "validate rejects an app git remote not in top-level remotes" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-app-git-remote.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"project.apps.ios uses unknown remote 'x'"* ]]
+}
+
+@test "validate accepts an app with dir and git" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/nested-apps.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
 @test "validate rejects bad archetype" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-archetype.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]

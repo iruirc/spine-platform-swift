@@ -51,6 +51,11 @@ bootstrap:
 #   apps:
 #     ios:
 #       repo: MyApp-iOS
+## where the app repo sits: <root>/<dir>/<repo>; default . (directly under the root). Relative, inside the workspace.
+## tasks.path, docs.path and symlink_target are counted from the root, which is the meta repo's own folder.
+#       dir: .
+## the app's remote urls, keyed by the top-level remotes[]; the first remote is the clone url.
+#       git: { origin: git@github.com:user/MyApp-iOS.git }
 #       stack:
 #         ui_framework: swiftui       ## swiftui | uikit | appkit
 #         di: factory                 ## factory | swinject | manual-factory | plain
