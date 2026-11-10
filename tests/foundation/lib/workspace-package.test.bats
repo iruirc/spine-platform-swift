@@ -250,7 +250,7 @@ packages/Core/Package.swift: external dep https://github.com/apple/swift-testing
 
 @test "a package rendered then regenerated has both dependency arrays filled" {
   local parent="$(ws_mktemp_dir)"
-  "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+  WS_DRIVER_LAYOUT=nested "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
     "$(ws_fixture_path workspace-yml/docs-regen.yml)" "$parent" >/dev/null 2>&1
   local m="$parent/domainPackages/CFeature/Package.swift"
   grep -qF '.package(path: "../../sharedPackages/AKit"),' "$m"

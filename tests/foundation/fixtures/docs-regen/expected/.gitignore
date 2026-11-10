@@ -1,0 +1,13 @@
+.DS_Store
+.workspace-init.state
+.workspace-add.backup.yml
+*.xcworkspace/xcuserdata/
+xcuserdata/
+.swiftpm/
+.build/
+DerivedData/
+# WORKSPACE_REPOS_BEGIN
+/sharedPackages/AKit/
+/sharedPackages/BEngine/
+/domainPackages/CFeature/
+# WORKSPACE_REPOS_END

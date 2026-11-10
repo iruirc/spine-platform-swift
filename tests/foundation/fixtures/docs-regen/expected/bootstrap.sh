@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# bootstrap.sh — clones every repository of the RegenWS workspace that is not here yet.
+# Safe to re-run: a repository already in place is left as it is.
+set -u
+cd "$(dirname "$0")" || exit 1
+
+status=0
+while IFS=$'\t' read -r path url; do
+  case "$path" in ''|'#'*) continue ;; esac
+  if [ -e "$path/.git" ]; then
+    echo "ok $path"
+  elif [ -e "$path" ] || [ -L "$path" ]; then
+    echo "error $path: exists and is not a git repository"
+    status=1
+  elif [ -z "$url" ]; then
+    echo "skip $path (no remote)"
+  else
+    echo "clone $path"
+    if ! git clone --quiet "$url" "$path" </dev/null; then
+      echo "error $path: git clone failed"
+      status=1
+    fi
+  fi
+done <<'WORKSPACE_REPOS'
+# WORKSPACE_REPOS_BEGIN
+sharedPackages/AKit	git@github.com:user/AKit.git
+sharedPackages/BEngine	git@github.com:user/BEngine.git
+domainPackages/CFeature	git@github.com:user/CFeature.git
+# WORKSPACE_REPOS_END
+WORKSPACE_REPOS
+
+exit "$status"

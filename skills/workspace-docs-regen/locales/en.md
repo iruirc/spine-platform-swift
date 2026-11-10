@@ -20,7 +20,10 @@ workspace.yml is invalid; the errors are listed above. exit 2.
 yq not on PATH (required by this toolkit). Install: brew install yq
 
 ## error_missing_workspace_yml
-workspace.yml not found in this directory, its ancestors, or a *-meta directory beside one of them; cd into a repository of the workspace first.
+workspace.yml not found in this directory or its ancestors; cd into the workspace root or a folder inside it first.
+
+## error_old_layout
+This workspace uses the old layout, where the meta repo sits beside the packages in a *-meta folder. Move it to the new layout first: docs/migrations/workspace-nested-layout.md.
 
 ## repair_prompt
 Apply? (y/N)

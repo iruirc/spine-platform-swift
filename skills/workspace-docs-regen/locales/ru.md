@@ -20,7 +20,10 @@ workspace.yml некорректен; ошибки перечислены выш
 yq не найден в PATH (нужен этому тулкиту). Установка: brew install yq
 
 ## error_missing_workspace_yml
-workspace.yml не найден ни в этой папке, ни в её предках, ни в папке *-meta рядом с одним из них; перейди в любой репозиторий workspace'а.
+workspace.yml не найден ни в этой папке, ни в её предках; перейди в корень workspace'а или в папку внутри него.
+
+## error_old_layout
+Этот workspace в старой раскладке: meta-repo лежит рядом с пакетами в папке *-meta. Сначала переведи его на новую раскладку: docs/migrations/workspace-nested-layout.md.
 
 ## repair_prompt
 Применить? (y/N)

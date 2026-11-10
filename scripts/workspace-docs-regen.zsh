@@ -5,10 +5,12 @@
 #
 #   workspace-docs-regen.zsh [--check | --repair | --adopt] [--yes] [--pkg <name>]
 #
-# Runs from the meta-repo or any repository beside it. --repair and --adopt propose changes and
-# write nothing until rerun with --yes. --pkg limits package files; meta-repo files always run.
+# The meta-repo is the workspace root: it holds workspace.yml, and the package repositories sit under
+# it. Runs from the root or any folder inside it. --repair and --adopt propose changes and write
+# nothing until rerun with --yes. --pkg limits package files; meta-repo files always run.
 # Exit: 0 done or no drift; 1 drift under --check, or changes awaiting --yes; 2 invalid workspace.yml
-# or malformed markers; 3 yq missing, or jq missing or older than 1.7; 4 workspace.yml not found.
+# or malformed markers; 3 yq missing, or jq missing or older than 1.7; 4 workspace.yml not found, or
+# found only in a *-meta folder of the old layout.
 # Last line: workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n> missing=<n> pending=<n>
 set -uo pipefail
 
@@ -29,18 +31,21 @@ while (( $# )); do
   shift
 done
 
-# A package repository sits beside the meta-repo, not inside it.
-ws_yml="" d="$PWD"
+# The nearest ancestor holding workspace.yml is the workspace root. A *-meta folder with one beside
+# an ancestor is the old layout: it is only reported, never used.
+ws_yml="" old_yml="" d="$PWD"
 while :; do
   if [[ -f "$d/workspace.yml" ]]; then ws_yml="$d/workspace.yml"; break; fi
-  cands=("$d"/*-meta/workspace.yml(N))
-  if (( ${#cands} > 1 )); then print -u2 "workspace-docs-regen: several workspaces beside $d: ${cands[*]}"; exit 4; fi
-  if (( ${#cands} == 1 )); then ws_yml="${cands[1]}"; break; fi
+  if [[ -z "$old_yml" ]]; then cands=("$d"/*-meta/workspace.yml(N)); (( ${#cands} )) && old_yml="${cands[1]}"; fi
   [[ "$d" == / ]] && break
   d="${d:h}"
 done
+if [[ -z "$ws_yml" && -n "$old_yml" ]]; then
+  print -u2 "workspace-docs-regen: $old_yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md"
+  exit 4
+fi
 if [[ -z "$ws_yml" ]]; then
-  print -u2 "workspace-docs-regen: no workspace.yml in $PWD, its ancestors, or a *-meta directory beside one of them"
+  print -u2 "workspace-docs-regen: no workspace.yml in $PWD or its ancestors"
   exit 4
 fi
 
@@ -63,11 +68,7 @@ if [[ -n "$only" ]] && ! wsyml::packages | grep -qxF -- "$only"; then
   print -u2 "workspace-docs-regen: workspace.yml declares no package '$only'"
   exit 2
 fi
-meta="${ws_yml:h}" parent="${ws_yml:h:h}" ws="$(wsyml::get '.workspace.name')"
-if [[ "${meta:t}" != "$ws-meta" ]]; then
-  print -u2 "workspace-docs-regen: $ws_yml is not inside $ws-meta"
-  exit 4
-fi
+meta="${ws_yml:h}" parent="$meta" ws="$(wsyml::get '.workspace.name')"
 
 typeset -a files
 typeset -A markers adopt pkg_of dir_of
@@ -76,6 +77,9 @@ add "$meta/README.md" "PKG_LIST CLONE DAILY_OPS SCHEMA" \
   "wrap|## Quickstart|CLONE|body;wrap|## Daily ops|DAILY_OPS|body;wrap|## Schema|SCHEMA|body"
 add "$meta/ARCHITECTURE.md" "LAYERS GRAPH" ""
 add "$meta/CONTRIBUTING.md" "ARCHETYPE_RULES" "wrap|## Archetype rules|ARCHETYPE_RULES|body;unwrap|PROJECT_RULES"
+add "$meta/.gitignore" "REPOS" ""
+add "$meta/bootstrap.sh" "REPOS" ""
+add "$meta/SPINE.md" "META" ""
 for p in ${(f)"$(wsyml::packages)"}; do
   [[ -z "$only" || "$p" == "$only" ]] || continue
   pdir="$parent/$(wsdocs::pkg_dir "$p")"
@@ -85,8 +89,12 @@ for p in ${(f)"$(wsyml::packages)"}; do
   add "$pdir/Package.swift" "PKG_MANIFEST_DEPS PKG_TARGET_DEPS" "manifest" "$p" "$pdir"
 done
 
+# content <marker> <package> <package dir> <file>: REPOS is the one marker two files share, so the
+# generator follows the file's name.
 content() {
   case "$1" in
+    REPOS) case "${4:t}" in bootstrap.sh) wsdocs::repos ;; .gitignore) wsdocs::gitignore_repos ;; esac ;;
+    META) wsdocs::repo_map ;;
     PKG_LIST) wsdocs::pkg_list ;;
     CLONE) wsdocs::clone ;;
     LAYERS) wsdocs::layers ;;
@@ -170,7 +178,7 @@ for f in $files; do
   cp -- "$f" "$tmp" || exit 4
   for m in ${(s: :)markers[$f]}; do
     wsmark::has "$tmp" "$m" || continue
-    content "$m" "${pkg_of[$f]}" "${dir_of[$f]}" | wsmark::write "$tmp" "$m" || exit 4
+    content "$m" "${pkg_of[$f]}" "${dir_of[$f]}" "$f" | wsmark::write "$tmp" "$m" || exit 4
   done
   settle "$f"
 done

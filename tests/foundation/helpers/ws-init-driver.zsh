@@ -18,7 +18,13 @@ wsyml::validate >&2 || exit $?
 wsgraph::check_acyclic >&2 || exit $?
 
 ws_name="$(wsyml::get '.workspace.name')"
-meta_dir="$ws_parent/${ws_name}-meta"
+# WS_DRIVER_LAYOUT=nested builds the new layout: the meta repo is the workspace root, so its config
+# file is SPINE.md. Until workspace-init itself moves, the default stays the old sibling layout.
+if [[ "${WS_DRIVER_LAYOUT:-}" == nested ]]; then
+  meta_dir="$ws_parent" config_name=SPINE.md
+else
+  meta_dir="$ws_parent/${ws_name}-meta" config_name=CLAUDE-spine-toolkit.md
+fi
 mkdir -p "$meta_dir"
 
 # Copy meta-repo templates with placeholder substitution. Walk recursively so any
@@ -34,14 +40,15 @@ while IFS= read -r src; do
   dst="$meta_dir/$rel"
   mkdir -p "${dst:h}"
   sed "s|{{WORKSPACE_NAME}}|$ws_name|g" "$src" > "$dst"
+  [[ -x "$src" ]] && chmod +x "$dst"
 done < <(find "$templates_root/meta-repo" -type f -name '*.tmpl')
 
 # s02b: the skill has spine-toolkit:setup write this; the stub carries only what the
 # suite reads, so it cannot grow back into a copy of core's template.
-config="$meta_dir/CLAUDE-spine-toolkit.md"
+config="$meta_dir/$config_name"
 if [[ ! -f "$config" ]]; then
   cat > "$config" <<EOF
-# CLAUDE-spine-toolkit.md — Toolkit Configuration
+# ${config_name} — Toolkit Configuration
 
 ## Project settings
 

@@ -8,14 +8,14 @@ description: |
 
 # workspace-docs-regen
 
-Rewrites what `workspace.yml` and the package sources determine: the content between the `WORKSPACE_*_BEGIN` / `_END` markers of the meta-repo and package docs and of each package's `Package.swift`, `<workspace>.xcworkspace`, and the `folders` of `<workspace>.code-workspace`. A marker is an HTML comment in a markdown file and a `//` line comment in a Swift one. Text outside the markers, the rest of the `.code-workspace` and the rest of the manifest are never touched.
+Rewrites what `workspace.yml` and the package sources determine: the content between the `WORKSPACE_*_BEGIN` / `_END` markers of the meta-repo files and package docs and of each package's `Package.swift`, `<workspace>.xcworkspace`, and the `folders` of `<workspace>.code-workspace`. A marker is an HTML comment in a markdown file, a `//` line comment in a Swift one and a `#` line comment in `bootstrap.sh` and `.gitignore`. Text outside the markers, the rest of the `.code-workspace` and the rest of the manifest are never touched.
 
 `<platform-root>` is the plugin root two directories above this `SKILL.md`. Resolve it from the
 loaded skill location, not from the project working directory.
 
 ## Language Resolution
 
-Read `[LANG]` from the meta-repo's project config (`SPINE.md`, or `CLAUDE-spine-toolkit.md` where it has not migrated). Fallback: `en`.
+Read `[LANG]` from the meta root's project config (`SPINE.md`, or `CLAUDE-spine-toolkit.md` where it has not migrated). Fallback: `en`.
 
 ## Run
 
@@ -25,7 +25,7 @@ Read `[LANG]` from the meta-repo's project config (`SPINE.md`, or `CLAUDE-spine-
 "<platform-root>/scripts/workspace-docs-regen.zsh" [--check | --repair | --adopt] [--yes] [--pkg <name>]
 ```
 
-It runs from the meta-repo or from any repository beside it, and finds `workspace.yml` itself.
+It runs from the meta root or any folder inside it — the meta-repo is the workspace root, and the package repositories sit under it — and finds `workspace.yml` itself: the nearest ancestor that holds one is the root.
 
 | Flag | Behaviour |
 |------|-----------|
@@ -42,7 +42,7 @@ It runs from the meta-repo or from any repository beside it, and finds `workspac
 
 ## Result
 
-The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n> missing=<n> pending=<n>`; `missing` counts files of packages not cloned here.
+The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n> missing=<n> pending=<n>`; `missing` counts registered files that are not here: packages not cloned yet, or a meta file such as `SPINE.md` that has not been created.
 
 | Exit | Emit |
 |------|------|
@@ -53,7 +53,7 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | 2, `malformed` > 0 | `error_malformed_markers` with `malformed` |
 | 2, otherwise | `error_validation`, then the script's stderr — unless it opens with `usage:`, a bug in the call: show that line instead |
 | 3 | `error_yq_missing` when stderr names yq (`yq not on PATH`); otherwise jq is missing or older than 1.7 — the script's stderr names what was found, show that line as is |
-| 4 | `error_missing_workspace_yml` when stderr names the search (`no workspace.yml`, `several workspaces`, `is not inside`); otherwise a write failed — the script's stderr names the file, show that line as is |
+| 4 | `error_old_layout` when stderr names `docs/migrations/workspace-nested-layout.md` (the meta repo still sits beside the packages in a `*-meta` folder); `error_missing_workspace_yml` when stderr names the search (`no workspace.yml`); otherwise a write failed — the script's stderr names the file, show that line as is |
 
 ## What it owns
 
@@ -62,6 +62,9 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | meta `README.md` | `PKG_LIST` under `## Packages`, `CLONE` under `## Quickstart`, `DAILY_OPS` under `## Daily ops`, `SCHEMA` under `## Schema` |
 | meta `ARCHITECTURE.md` | `LAYERS`, `GRAPH` |
 | meta `CONTRIBUTING.md` | `ARCHETYPE_RULES` under `## Archetype rules`; `## Project-specific rules` is the user's |
+| meta `.gitignore` | `REPOS`: one `/<path>/` line per repository `bootstrap.sh` clones, so the root repo does not track them |
+| meta `bootstrap.sh` | `REPOS`: one `<path>` and `<remote url>` line per repository, tab-separated, inside the script's heredoc; the script stays executable |
+| meta `SPINE.md` | `META` under `## Workspace meta`: the repo map, where agents start and what each repository is |
 | package `README.md` | `PKG_HEADER` (holds the title), `PKG_DEPS` (holds `## Dependencies`) |
 | package `CLAUDE.md` | `PKG_META`; `PKG_BOUNDARY`, the archetype paragraph under `## Boundary contract` — lines below its end marker are the package's own constraints; `PKG_PUBLIC_API` (holds `## Public API`) |
 | package `Package.swift` | `PKG_MANIFEST_DEPS` inside `dependencies:` of the package, `PKG_TARGET_DEPS` inside `dependencies:` of its main target. The tools version, `platforms`, `products` and every other target are the user's |
