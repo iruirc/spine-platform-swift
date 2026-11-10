@@ -8,7 +8,7 @@
 
 typeset -g _WSDOCS_TEMPLATES="${${(%):-%x}:A:h:h}"
 
-# <dir>/<name> relative to the workspace parent.
+# <dir>/<name> relative to the workspace root.
 wsdocs::pkg_dir() {
   local pkg="$1" group dir
   group="$(wsyml::package_field "$pkg" group 2>/dev/null || true)"
@@ -104,21 +104,14 @@ wsdocs::graph() {
   print -r -- '```'
 }
 
-# workspace.yml records no URL for the meta-repo or an app repo, so those lines keep a placeholder.
+# What a fresh checkout runs: the meta repo is the workspace root, and bootstrap.sh clones the rest.
 wsdocs::clone() {
-  local ws remote p url key repo
+  local ws
   ws="$(wsyml::get '.workspace.name')"
-  remote="$(wsyml::remotes | head -1)"
   print -r -- '```bash'
-  print -r -- "git clone <meta-repo-url> $ws-meta"
-  print -r -- "cd $ws-meta"
-  for p in ${(f)"$(wsyml::packages)"}; do
-    url="$(wsyml::package_field "$p" "git.$remote" 2>/dev/null || print -r -- "<$p-url>")"
-    print -r -- "git clone $url ../$(wsdocs::pkg_dir "$p")"
-  done
-  wsdocs::apps | while read -r key repo; do
-    print -r -- "git clone <$repo-url> ../$repo"
-  done
+  print -r -- "git clone <meta-repo-url> $ws"
+  print -r -- "cd $ws"
+  print -r -- "./bootstrap.sh"
   [[ "$(wsyml::get '.workspace.xcworkspace' 2>/dev/null)" == false ]] || print -r -- "open $ws.xcworkspace"
   print -r -- '```'
 }
@@ -166,12 +159,12 @@ wsdocs::pkg_meta() {
   local p="$1" ws dir up="" allowed ext
   ws="$(wsyml::get '.workspace.name')"
   dir="$(wsdocs::pkg_dir "$p")" || return $?
-  repeat ${#${(s:/:)dir}} up+="../"
+  up="${(j:/:)${(@)${(s:/:)dir}/*/..}}"
   allowed="$(wsyml::package_field "$p" 'allowed_deps[]' 2>/dev/null || true)"
   ext="$(wsyml::get ".packages[] | select(.name == \"$p\") | .external_deps[]? | select(tag == \"!!str\") // .url" 2>/dev/null || true)"
   print -r -- "**Archetype**: $(wsyml::package_field "$p" archetype)"
   print -r -- "**Group**: $(wsyml::package_field "$p" group 2>/dev/null || print -- —)"
-  print -r -- "**Workspace**: $ws (${up}$ws-meta)"
+  print -r -- "**Workspace**: $ws ($up)"
   print -r -- "**Archetype rule exceptions**: ${${(j:, :)${(f)allowed}}:-—}"
   print -r -- "**External deps**: ${${(j:, :)${(f)ext}}:-—}"
   print -r -- "**Version**: $(wsyml::package_field "$p" version)"
@@ -202,10 +195,10 @@ wsdocs::xcworkspace() {
   tmp="$(mktemp -t wsdocs-xcws.XXXXXX)" || return 4
   cp -- "$_WSDOCS_TEMPLATES/meta-repo/xcworkspace-contents.xml.tmpl" "$tmp" || { rm -f -- "$tmp"; return 4; }
   while read -r key repo; do
-    [[ -n "$repo" ]] && projects+="   <FileRef location=\"group:../$repo/$repo.xcodeproj\"></FileRef>"$'\n'
+    [[ -n "$repo" ]] && projects+="   <FileRef location=\"group:$(wsdocs::app_dir "$key")/$repo.xcodeproj\"></FileRef>"$'\n'
   done < <(wsdocs::apps)
   for p in ${(f)"$(wsyml::packages)"}; do
-    pkgs+="   <FileRef location=\"group:../$(wsdocs::pkg_dir "$p")\"></FileRef>"$'\n'
+    pkgs+="   <FileRef location=\"group:$(wsdocs::pkg_dir "$p")\"></FileRef>"$'\n'
   done
   if [[ -n "$projects" ]]; then
     print -r -- "${projects%$'\n'}" | wsmark::write "$tmp" PROJECT_REFS || { rm -f -- "$tmp"; return 4; }
@@ -225,21 +218,21 @@ wsdocs::code_workspace_folders() {
   local ws p key repo block def mode bpath
   local -a items
   ws="$(wsyml::get '.workspace.name')"
-  items+=("$(_wsdocs_folder "$ws-meta" .)")
+  items+=("$(_wsdocs_folder "$ws" .)")
   while read -r key repo; do
-    [[ -n "$repo" ]] && items+=("$(_wsdocs_folder "$repo" "../$repo")")
+    [[ -n "$repo" ]] && items+=("$(_wsdocs_folder "$repo" "$(wsdocs::app_dir "$key")")")
   done < <(wsdocs::apps)
   for p in ${(f)"$(wsyml::packages)"}; do
-    items+=("$(_wsdocs_folder "$p" "../$(wsdocs::pkg_dir "$p")")")
+    items+=("$(_wsdocs_folder "$p" "$(wsdocs::pkg_dir "$p")")")
   done
   for block def in tasks Tasks docs Docs; do
     [[ "$(wsyml::get ".workspace.$block.enabled" 2>/dev/null)" == false ]] && continue
     mode="$(wsyml::get ".workspace.$block.mode" 2>/dev/null || print sibling)"
     bpath="$(wsyml::get ".workspace.$block.path" 2>/dev/null || print "./$def")"
     if [[ "$mode" == path ]]; then
-      items+=("$(_wsdocs_folder "${bpath:t}" "../${bpath#./}")")
+      items+=("$(_wsdocs_folder "${bpath:t}" "${bpath#./}")")
     else
-      items+=("$(_wsdocs_folder "$def" "../$def")")
+      items+=("$(_wsdocs_folder "$def" "$def")")
     fi
   done
   print -r -- "[${(j:,:)items}]"

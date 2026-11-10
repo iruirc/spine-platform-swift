@@ -3,7 +3,7 @@
 <!-- WORKSPACE_PKG_META_BEGIN -->
 **Archetype**: engine
 **Group**: common
-**Workspace**: RegenWS (../../RegenWS-meta)
+**Workspace**: RegenWS (../..)
 **Archetype rule exceptions**: AKit
 **External deps**: —
 **Version**: 0.2.0

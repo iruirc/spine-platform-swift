@@ -3,7 +3,7 @@
 <!-- WORKSPACE_PKG_META_BEGIN -->
 **Archetype**: feature
 **Group**: domain
-**Workspace**: RegenWS (../../RegenWS-meta)
+**Workspace**: RegenWS (../..)
 **Archetype rule exceptions**: —
 **External deps**: —
 **Version**: 1.0.0

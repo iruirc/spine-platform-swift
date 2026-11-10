@@ -14,11 +14,9 @@ Multi-package SPM workspace.
 
 <!-- WORKSPACE_CLONE_BEGIN -->
 ```bash
-git clone <meta-repo-url> RegenWS-meta
-cd RegenWS-meta
-git clone git@github.com:user/AKit.git ../sharedPackages/AKit
-git clone git@github.com:user/BEngine.git ../sharedPackages/BEngine
-git clone git@github.com:user/CFeature.git ../domainPackages/CFeature
+git clone <meta-repo-url> RegenWS
+cd RegenWS
+./bootstrap.sh
 open RegenWS.xcworkspace
 ```
 <!-- WORKSPACE_CLONE_END -->

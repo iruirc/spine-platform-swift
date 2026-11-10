@@ -11,6 +11,9 @@ platform="${3:?}"
 repo_name="${4:?}"
 
 source "${0:A:h}/../../../templates/workspace/lib/workspace-yml-parser.zsh"
+source "${0:A:h}/../../../templates/workspace/lib/workspace-doc-markers.zsh"
+source "${0:A:h}/../../../templates/workspace/lib/workspace-archetypes.zsh"
+source "${0:A:h}/../../../templates/workspace/lib/workspace-docs.zsh"
 source "${0:A:h}/../../../templates/workspace/lib/workspace-project.zsh"
 
 wsyml::load "$ws_yml" >&2 || exit $?
@@ -73,7 +76,7 @@ manual
 EOF
 
 # s06c: inject deps + run xcodegen
-wsproj::inject_deps "$repo_dir" "$repo_name"
+wsproj::inject_deps "$repo_dir" "$repo_name" "$platform"
 ( cd "$repo_dir" && xcodegen generate >&2 ) || {
   print -u2 "ws-project-init-driver: xcodegen generate failed in $repo_dir"
   exit 1

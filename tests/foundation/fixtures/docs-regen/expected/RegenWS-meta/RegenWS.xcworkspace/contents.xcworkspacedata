@@ -4,8 +4,8 @@
 <!-- WORKSPACE_PROJECT_REFS_BEGIN -->
 <!-- WORKSPACE_PROJECT_REFS_END -->
 <!-- WORKSPACE_PKG_REFS_BEGIN -->
-   <FileRef location="group:../sharedPackages/AKit"></FileRef>
-   <FileRef location="group:../sharedPackages/BEngine"></FileRef>
-   <FileRef location="group:../domainPackages/CFeature"></FileRef>
+   <FileRef location="group:sharedPackages/AKit"></FileRef>
+   <FileRef location="group:sharedPackages/BEngine"></FileRef>
+   <FileRef location="group:domainPackages/CFeature"></FileRef>
 <!-- WORKSPACE_PKG_REFS_END -->
 </Workspace>

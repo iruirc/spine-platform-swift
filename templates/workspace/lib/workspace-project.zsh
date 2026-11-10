@@ -1,39 +1,47 @@
 #!/usr/bin/env zsh
 # workspace-project.zsh — project-repo helpers (deps injection + workspace meta append).
 # Public API: wsproj::package_path, wsproj::inject_deps, wsproj::append_workspace_meta, wsproj::swift_init_flags
-# swift_init_flags needs workspace-package.zsh loaded (wspkg::tests_kind).
+# swift_init_flags needs workspace-package.zsh loaded (wspkg::tests_kind); package_path needs
+# workspace-docs.zsh.
 
+# The path from the app repo to a package, as project.yml's `packages.<name>.path` needs it. Both
+# sit under the workspace root (wsdocs::app_dir, wsdocs::pkg_dir), so the shared head is dropped and
+# each segment left on the app side climbs one `..`; the last segment of either is never dropped.
+# Needs workspace-docs.zsh loaded.
 wsproj::package_path() {
-  local pkg="$1"
-  if [[ -z "$pkg" ]]; then
-    print -u2 "wsproj::package_path: missing package name"
+  local app="$1" pkg="$2" from to up=""
+  local -a f t
+  if [[ -z "$app" || -z "$pkg" ]]; then
+    print -u2 "wsproj::package_path: usage: <app-key> <package>"
     return 4
   fi
   if [[ -z "${_WSYML_STATE[json]:-}" ]]; then
     print -u2 "wsproj::package_path: no document loaded; call wsyml::load first"
     return 4
   fi
-  local pkg_group
-  pkg_group="$(wsyml::package_field "$pkg" group 2>/dev/null || true)"
-  if [[ -z "$pkg_group" ]]; then
-    print -r -- "../packages/$pkg"
-    return 0
-  fi
-  local group_dir
-  group_dir="$(wsyml::get ".package_groups[] | select(.name == \"$pkg_group\") | .dir" 2>/dev/null || true)"
-  if [[ -z "$group_dir" ]]; then
-    print -u2 "wsproj::package_path: group '$pkg_group' has no dir"
+  from="$(wsdocs::app_dir "$app")" || {
+    print -u2 "wsproj::package_path: no app '$app' declared"
     return 2
-  fi
-  print -r -- "../$group_dir/$pkg"
-  return 0
+  }
+  to="$(wsdocs::pkg_dir "$pkg")" || {
+    print -u2 "wsproj::package_path: group of '$pkg' has no dir"
+    return 2
+  }
+  f=(${(s:/:)from}) t=(${(s:/:)to})
+  while (( ${#f} > 1 && ${#t} > 1 )) && [[ "${f[1]}" == "${t[1]}" ]]; do
+    shift f
+    shift t
+  done
+  repeat ${#f} up+="../"
+  print -r -- "${up}${(j:/:)t}"
 }
 
 wsproj::inject_deps() {
   local repo_dir="$1"
   local main_target="$2"
-  if [[ -z "$repo_dir" || -z "$main_target" ]]; then
-    print -u2 "wsproj::inject_deps: usage: <repo-dir> <main-target-name>"
+  local app_key="$3"
+  if [[ -z "$repo_dir" || -z "$main_target" || -z "$app_key" ]]; then
+    print -u2 "wsproj::inject_deps: usage: <repo-dir> <main-target-name> <app-key>"
     return 4
   fi
   local proj_yml="$repo_dir/project.yml"
@@ -60,7 +68,7 @@ wsproj::inject_deps() {
   local p path_rel already
   for p in ${(f)pkgs}; do
     [[ -z "$p" ]] && continue
-    path_rel="$(wsproj::package_path "$p")" || return $?
+    path_rel="$(wsproj::package_path "$app_key" "$p")" || return $?
     yq eval -i ".packages.\"$p\".path = \"$path_rel\"" "$proj_yml" || return 4
     already="$(yq eval ".targets.\"$main_target\".dependencies[]? | select(.package == \"$p\") | .package" "$proj_yml" 2>/dev/null || true)"
     if [[ -z "$already" ]]; then

@@ -48,9 +48,9 @@ teardown() { ws_cleanup_tmpdirs; }
     "$(ws_fixture_path workspace-yml/with-project-full.yml)" "$parent" >&2
   local xcws="$parent/FullProj-meta/FullProj.xcworkspace/contents.xcworkspacedata"
   [ -f "$xcws" ]
-  run grep -F 'group:../FullApp-iOS/FullApp-iOS.xcodeproj' "$xcws"
+  run grep -F 'group:FullApp-iOS/FullApp-iOS.xcodeproj' "$xcws"
   [ "$status" -eq 0 ]
-  run grep -F 'group:../FullApp-macOS/FullApp-macOS.xcodeproj' "$xcws"
+  run grep -F 'group:FullApp-macOS/FullApp-macOS.xcodeproj' "$xcws"
   [ "$status" -eq 0 ]
 }
 

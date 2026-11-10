@@ -63,22 +63,19 @@ docs() {
 | — | OnePkg | — | — | — |
 **Archetype**: api-contract
 **Group**: —
-**Workspace**: minimal-ws (../../minimal-ws-meta)
+**Workspace**: minimal-ws (../..)
 **Archetype rule exceptions**: —
 **External deps**: —
 **Version**: 0.1.0" ] || { echo "$output"; return 1; }
 }
 
-@test "apps get a clone line, a project ref and a folder" {
+@test "apps get a project ref and a folder; the clone block is the four lines of a fresh checkout" {
   local yml="$(ws_fixture_path workspace-yml/with-project-full.yml)"
   run docs "$yml" 'wsdocs::clone'
   [ "$output" = '```bash
-git clone <meta-repo-url> FullProj-meta
-cd FullProj-meta
-git clone git@github.com:user/CoreKit.git ../packages/CoreKit
-git clone git@github.com:user/Engine.git ../packages/Engine
-git clone <FullApp-iOS-url> ../FullApp-iOS
-git clone <FullApp-macOS-url> ../FullApp-macOS
+git clone <meta-repo-url> FullProj
+cd FullProj
+./bootstrap.sh
 open FullProj.xcworkspace
 ```' ] || { echo "$output"; return 1; }
   run docs "$yml" 'wsdocs::xcworkspace'
@@ -86,16 +83,27 @@ open FullProj.xcworkspace
 <Workspace
    version = "1.0">
 <!-- WORKSPACE_PROJECT_REFS_BEGIN -->
-   <FileRef location="group:../FullApp-iOS/FullApp-iOS.xcodeproj"></FileRef>
-   <FileRef location="group:../FullApp-macOS/FullApp-macOS.xcodeproj"></FileRef>
+   <FileRef location="group:FullApp-iOS/FullApp-iOS.xcodeproj"></FileRef>
+   <FileRef location="group:FullApp-macOS/FullApp-macOS.xcodeproj"></FileRef>
 <!-- WORKSPACE_PROJECT_REFS_END -->
 <!-- WORKSPACE_PKG_REFS_BEGIN -->
-   <FileRef location="group:../packages/CoreKit"></FileRef>
-   <FileRef location="group:../packages/Engine"></FileRef>
+   <FileRef location="group:packages/CoreKit"></FileRef>
+   <FileRef location="group:packages/Engine"></FileRef>
 <!-- WORKSPACE_PKG_REFS_END -->
 </Workspace>' ] || { echo "$output"; return 1; }
   run docs "$yml" 'wsdocs::code_workspace_folders'
-  [ "$output" = '[{"name": "FullProj-meta", "path": "."},{"name": "FullApp-iOS", "path": "../FullApp-iOS"},{"name": "FullApp-macOS", "path": "../FullApp-macOS"},{"name": "CoreKit", "path": "../packages/CoreKit"},{"name": "Engine", "path": "../packages/Engine"},{"name": "Tasks", "path": "../Tasks"},{"name": "Docs", "path": "../Docs"}]' ] || { echo "$output"; return 1; }
+  [ "$output" = '[{"name": "FullProj", "path": "."},{"name": "FullApp-iOS", "path": "FullApp-iOS"},{"name": "FullApp-macOS", "path": "FullApp-macOS"},{"name": "CoreKit", "path": "packages/CoreKit"},{"name": "Engine", "path": "packages/Engine"},{"name": "Tasks", "path": "Tasks"},{"name": "Docs", "path": "Docs"}]' ] || { echo "$output"; return 1; }
+}
+
+@test "an app nested under projects/ keeps its dir in the xcworkspace ref and the folder path" {
+  local yml="$(ws_fixture_path workspace-yml/nested-apps.yml)"
+  run docs "$yml" 'wsdocs::xcworkspace'
+  [[ "$output" == *'<FileRef location="group:projects/App/App.xcodeproj"></FileRef>'* ]]
+  [[ "$output" == *'<FileRef location="group:packages/OnePkg"></FileRef>'* ]]
+  run docs "$yml" 'wsdocs::code_workspace_folders'
+  [[ "$output" == '[{"name": "Nested", "path": "."},'* ]]
+  [[ "$output" == *'{"name": "App", "path": "projects/App"}'* ]]
+  [[ "$output" == *'{"name": "Tasks", "path": "Tasks"}'* ]]
 }
 
 @test "Tasks in path mode is named after its last segment; disabled Docs and xcworkspace are left out" {
@@ -111,12 +119,17 @@ packages:
   - { name: A, archetype: library, git: { origin: x }, version: 0.1.0 }
 YML
   run docs "$yml" 'wsdocs::code_workspace_folders; wsdocs::clone'
-  [ "$output" = '[{"name": "Modes-meta", "path": "."},{"name": "A", "path": "../packages/A"},{"name": "Tasks", "path": "../work/Tasks"}]
+  [ "$output" = '[{"name": "Modes", "path": "."},{"name": "A", "path": "packages/A"},{"name": "Tasks", "path": "work/Tasks"}]
 ```bash
-git clone <meta-repo-url> Modes-meta
-cd Modes-meta
-git clone x ../packages/A
+git clone <meta-repo-url> Modes
+cd Modes
+./bootstrap.sh
 ```' ] || { echo "$output"; return 1; }
+}
+
+@test "pkg_meta climbs one .. per segment of the package dir, without a trailing slash" {
+  run docs "$(ws_fixture_path workspace-yml/grouped.yml)" 'wsdocs::pkg_meta BEngine'
+  [[ "$output" == *'**Workspace**: GroupedWS (../..)'* ]]
 }
 
 @test "external deps: a map version, a bare-string version, a bare-string entry, and no version" {

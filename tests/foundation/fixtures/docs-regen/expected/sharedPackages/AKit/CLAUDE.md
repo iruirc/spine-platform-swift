@@ -3,7 +3,7 @@
 <!-- WORKSPACE_PKG_META_BEGIN -->
 **Archetype**: api-contract
 **Group**: common
-**Workspace**: RegenWS (../../RegenWS-meta)
+**Workspace**: RegenWS (../..)
 **Archetype rule exceptions**: —
 **External deps**: https://github.com/apple/swift-collections.git, https://github.com/apple/swift-algorithms.git
 **Version**: 0.1.0

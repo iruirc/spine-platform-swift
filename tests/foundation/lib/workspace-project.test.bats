@@ -4,16 +4,57 @@ load "$(dirname "$BATS_TEST_FILENAME")/../helpers/ws-test-helpers"
 setup() { WS_TEST_TMPDIRS=(); }
 teardown() { ws_cleanup_tmpdirs; }
 
-@test "wsproj::package_path returns flat layout path" {
-  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; source '$(ws_lib_path workspace-project.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-minimal.yml)'; wsproj::package_path CoreKit"
+# Usage: proj <yml> <zsh commands>
+proj() {
+  local lib; lib="$(ws_repo_root)/templates/workspace/lib"
+  zsh -c "for f in workspace-yml-parser workspace-doc-markers workspace-archetypes workspace-docs workspace-project; do source '$lib/'\$f.zsh; done
+    wsyml::load '$1' || exit 9
+    $2"
+}
+
+@test "wsproj::package_path counts from the app repo: a repo at the root reaches packages/ with one .." {
+  run proj "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsproj::package_path ios CoreKit'
   [ "$status" -eq 0 ]
   [ "$output" = "../packages/CoreKit" ]
 }
 
-@test "wsproj::package_path returns grouped path" {
-  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; source '$(ws_lib_path workspace-project.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/grouped.yml)'; wsproj::package_path BEngine"
+@test "wsproj::package_path returns the grouped path" {
+  local yml; yml="$(ws_mktemp_dir)/workspace.yml"
+  { cat "$(ws_fixture_path workspace-yml/grouped.yml)"; printf 'project:\n  name: G\n  apps:\n    ios: GApp\n'; } > "$yml"
+  run proj "$yml" 'wsproj::package_path ios BEngine'
   [ "$status" -eq 0 ]
   [ "$output" = "../sharedPackages/BEngine" ]
+}
+
+@test "wsproj::package_path from an app nested under projects/ climbs one .. per segment" {
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsproj::package_path ios OnePkg'
+  [ "$status" -eq 0 ]
+  [ "$output" = "../../packages/OnePkg" ]
+}
+
+@test "wsproj::package_path drops the head an app and a package share" {
+  local yml; yml="$(ws_mktemp_dir)/workspace.yml"
+  cat > "$yml" <<'YML'
+workspace:
+  name: Shared
+remotes: [origin]
+project:
+  name: S
+  apps:
+    ios: { repo: App, dir: packages/ }
+packages:
+  - { name: P, archetype: library, git: { origin: x }, version: 0.1.0 }
+YML
+  run proj "$yml" 'wsproj::package_path ios P'
+  [ "$status" -eq 0 ]
+  [ "$output" = "../P" ]
+}
+
+@test "wsproj::package_path fails on an undeclared app key and on a missing argument" {
+  run proj "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsproj::package_path macos CoreKit'
+  [ "$status" -eq 2 ]
+  run proj "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsproj::package_path ios'
+  [ "$status" -eq 4 ]
 }
 
 @test "wsproj::inject_deps adds packages: block and target dependencies" {
@@ -33,9 +74,12 @@ targets:
 EOF
   run zsh -c "
     source '$(ws_lib_path workspace-yml-parser.zsh)'
+    source '$(ws_lib_path workspace-doc-markers.zsh)'
+    source '$(ws_lib_path workspace-archetypes.zsh)'
+    source '$(ws_lib_path workspace-docs.zsh)'
     source '$(ws_lib_path workspace-project.zsh)'
     wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
-    cd '$tmpd/MyApp-iOS' && wsproj::inject_deps . MyApp-iOS
+    cd '$tmpd/MyApp-iOS' && wsproj::inject_deps . MyApp-iOS ios
   "
   [ "$status" -eq 0 ]
   run yq eval '.packages.CoreKit.path' "$tmpd/MyApp-iOS/project.yml"
@@ -66,9 +110,12 @@ targets:
 EOF
   run zsh -c "
     source '$(ws_lib_path workspace-yml-parser.zsh)'
+    source '$(ws_lib_path workspace-doc-markers.zsh)'
+    source '$(ws_lib_path workspace-archetypes.zsh)'
+    source '$(ws_lib_path workspace-docs.zsh)'
     source '$(ws_lib_path workspace-project.zsh)'
     wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)'
-    cd '$tmpd/MyApp-iOS' && wsproj::inject_deps . MyApp-iOS
+    cd '$tmpd/MyApp-iOS' && wsproj::inject_deps . MyApp-iOS ios
   "
   [ "$status" -eq 0 ]
   run yq eval '.packages.Alamofire.url' "$tmpd/MyApp-iOS/project.yml"
@@ -258,4 +305,21 @@ EOF
     done
     [ "$checked" -gt 0 ] || { echo "$1 $2 $3: checked 0 flags"; return 1; }
   done
+}
+
+@test "wsproj::inject_deps writes the package paths of an app nested under projects/" {
+  local tmpd; tmpd="$(ws_mktemp_dir)"
+  mkdir -p "$tmpd/App"
+  printf 'name: App\ntargets:\n  App:\n    type: application\n    platform: iOS\n    sources: [Sources]\n    dependencies: []\n' > "$tmpd/App/project.yml"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::inject_deps '$tmpd/App' App ios"
+  [ "$status" -eq 0 ]
+  run yq eval '.packages.OnePkg.path' "$tmpd/App/project.yml"
+  [ "$output" = "../../packages/OnePkg" ]
+}
+
+@test "wsproj::inject_deps needs the app key" {
+  local tmpd; tmpd="$(ws_mktemp_dir)"
+  printf 'targets:\n  App: {}\n' > "$tmpd/project.yml"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::inject_deps '$tmpd' App"
+  [ "$status" -eq 4 ]
 }
