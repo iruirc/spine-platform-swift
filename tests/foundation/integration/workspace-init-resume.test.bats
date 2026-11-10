@@ -75,3 +75,23 @@ tree_hash() { (cd "$1" && find . -type f -not -path '*/.git/*' -not -name '*.pbx
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ -x "$root/bootstrap.sh" ]
 }
+
+@test "a later app interrupted after its project.yml but before its Modules row gets the row on resume, once" {
+  command -v xcodegen >/dev/null 2>&1 || skip "xcodegen not on PATH"
+  local yml="$(ws_fixture_path workspace-yml/with-project-full.yml)"
+  local clean="$(ws_mktemp_dir)" root="$(ws_mktemp_dir)"
+  run "$DRIVER" "$yml" "$clean"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  WS_DRIVER_STOP_AT=s06b_project_macos run "$DRIVER" "$yml" "$root"
+  [ "$status" -eq 75 ]
+  # swift-init wrote the project, then stopped before wsproj::append_module.
+  mkdir -p "$root/FullApp-macOS/Sources" "$root/FullApp-macOS/Tests"
+  cp "$clean/FullApp-macOS/project.yml" "$root/FullApp-macOS/project.yml"
+  run grep -c '^- FullApp-macOS:' "$root/SPINE.md"
+  [ "$output" = 0 ]
+  run "$DRIVER" "$yml" "$root"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  run grep -c '^- FullApp-macOS:' "$root/SPINE.md"
+  [ "$output" = 1 ] || { cat "$root/SPINE.md"; return 1; }
+  cmp "$clean/SPINE.md" "$root/SPINE.md"
+}

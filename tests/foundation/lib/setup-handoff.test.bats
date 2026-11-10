@@ -95,7 +95,17 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
 
 @test "s06b counts swift-init done by its project and config, not by a marker" {
   step_row 's06b_project_<app>' \
-    | grep -qF "\`[[ -f <root>/<app_dir>/project.yml ]] && grep -q '^## Platform\$' <root>/SPINE.md\`"
+    | grep -qF "\`[[ -f <root>/<app_dir>/project.yml ]] && grep -q '^## Platform\$' <root>/SPINE.md && { [[ <key> == \$(wsdocs::apps \\| head -n 1 \\| cut -d' ' -f1) ]] \\|\\| grep -qF -- \"- <repo>: /<app_dir>\" <root>/SPINE.md; }\`"
+}
+
+@test "s06b re-entry appends the missing Modules row and never reruns swift-init over the app" {
+  run step_row 's06b_project_<app>'
+  [[ "$output" == *'do NOT run swift-init over the existing app'* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *'`note_app_stack_reconfirm`'* ]] || { echo "$output"; return 1; }
+  local l
+  for l in en ru; do
+    grep -qx '## note_app_stack_reconfirm' "$ROOT/skills/workspace-init/locales/$l.md" || { echo "$l.md lacks the key"; return 1; }
+  done
 }
 
 @test "s06_pkg recovers its own interrupted render on --resume" {

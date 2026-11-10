@@ -161,5 +161,8 @@ swift-init failed for {app}: {details}
 ## error_root_has_workspace
 {root} already holds a workspace: workspace.yml is there and no interrupted run left .workspace-init.state. Run workspace-init in an empty folder (or pass --dir <path>); to finish an interrupted run, use --resume. exit 4.
 
+## note_app_stack_reconfirm
+{app}: the project is already on disk, but swift-init stopped before adding it to ## Modules of SPINE.md. Stack to record: {stack}. Confirm it, or give the corrected values, and the row is added without running swift-init again.
+
 ## error_xcodegen_missing
 xcodegen not on PATH (required for project generation when project block is present). Install: brew install xcodegen

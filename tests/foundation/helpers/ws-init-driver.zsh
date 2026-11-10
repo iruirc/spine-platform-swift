@@ -96,11 +96,16 @@ s06_pkg() {
   git -C "$d" init -q -b "$branch"
 }
 
+# s06b is done once the app's project.yml is on disk and the root config names its platform; every
+# app but the first also needs its `## Modules` row.
+s06b_done() {
+  local key="$1" dir; dir="$(wsdocs::app_dir "$key")"
+  [[ -f "$root/$dir/project.yml" ]] && grep -q '^## Platform$' "$root/SPINE.md" 2>/dev/null || return 1
+  [[ "$key" == "${apps[1]}" ]] || grep -qF -- "- ${dir:t}: /$dir" "$root/SPINE.md"
+}
+
 s06_app() {   # <key> <s06b|s06c|s06e>
-  if [[ "$2" == s06b && -f "$root/$(wsdocs::app_dir "$1")/project.yml" ]] \
-     && grep -q '^## Platform$' "$root/SPINE.md" 2>/dev/null; then
-    return 0
-  fi
+  [[ "$2" == s06b ]] && s06b_done "$1" && return 0
   "$helpers/ws-project-init-driver.zsh" "$root/workspace.yml" "$root" "$1" "$2" >&2
 }
 

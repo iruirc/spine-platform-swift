@@ -44,6 +44,12 @@ s06b() {
   [[ -n "$baseline" ]] && axes+=("Baseline=$baseline")
   axes+=("Tests=$(wsstub::axis_value Tests "${v[tests]}")")
 
+  # Re-entry: the project is already on disk and only its `## Modules` row is missing. swift-init is
+  # not run over it again; the row is appended from the stack the yml declares.
+  if [[ -f "$app_dir/project.yml" ]]; then
+    wsproj::append_module "${v[config-dir]}" "$key" "${axes[@]}"
+    return
+  fi
   mkdir -p "$app_dir/Sources" "$app_dir/Tests"
   cat > "$app_dir/project.yml" <<EOF
 name: ${v[main-target-name]}
