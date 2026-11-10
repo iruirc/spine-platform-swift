@@ -78,11 +78,11 @@ PY
     grep -qF "source \"<platform-root>/templates/workspace/lib/$lib.zsh\"" "$init" \
       || { echo "workspace-init: $lib is not sourced"; return 1; }
   done
-  for lib in workspace-yml-parser workspace-graph workspace-package; do
+  for lib in workspace-yml-parser workspace-graph workspace-doc-markers workspace-archetypes workspace-docs workspace-package; do
     grep -qF "source \"<platform-root>/templates/workspace/lib/$lib.zsh\"" "$add" \
       || { echo "workspace-add: $lib is not sourced"; return 1; }
   done
-  grep -qF 'wsyml::load "<resolved-workspace.yml>"' "$add" \
+  grep -qF 'wsyml::load "<root>/workspace.yml"' "$add" \
     || { echo "workspace-add: workspace.yml is not loaded"; return 1; }
   grep -qF 'wsyml::load "<workspace.yml>"' "$init" \
     || { echo "workspace-init: workspace.yml is not loaded"; return 1; }

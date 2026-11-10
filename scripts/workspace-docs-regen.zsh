@@ -31,41 +31,15 @@ while (( $# )); do
   shift
 done
 
-# The nearest ancestor holding workspace.yml is the workspace root. A *-meta folder with one beside
-# an ancestor is the old layout: it is only reported, never used.
-ws_yml="" old_yml="" d="$PWD"
-while :; do
-  if [[ -f "$d/workspace.yml" ]]; then ws_yml="$d/workspace.yml"; break; fi
-  if [[ -z "$old_yml" ]]; then cands=("$d"/*-meta/workspace.yml(N)); (( ${#cands} )) && old_yml="${cands[1]}"; fi
-  [[ "$d" == / ]] && break
-  d="${d:h}"
-done
-if [[ -z "$ws_yml" && -n "$old_yml" ]]; then
-  print -u2 "workspace-docs-regen: $old_yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md"
-  exit 4
-fi
-if [[ -z "$ws_yml" ]]; then
-  print -u2 "workspace-docs-regen: no workspace.yml in $PWD or its ancestors"
-  exit 4
-fi
-
+# The nearest ancestor holding workspace.yml is the workspace root; the old layout is reported, never
+# used (wsdocs::find_workspace_yml, wsdocs::refuse_old_layout).
+WSDOCS_CALLER=workspace-docs-regen
+ws_yml="$(wsdocs::find_workspace_yml)" || exit $?
 wsyml::load "$ws_yml" || exit $?
 wsyml::validate || exit 2
 wsgraph::check_acyclic || exit 2
 meta="${ws_yml:h}" parent="$meta" ws="$(wsyml::get '.workspace.name')"
-# Inside an old <ws>-meta folder workspace.yml is right here, so the walk above took it for a root.
-# It is the old layout when none of the declared repositories is under it and one is beside it.
-if [[ "${meta:t}" == "$ws-meta" ]]; then
-  inside=0 beside=0
-  for rpath in ${(f)"$(wsdocs::repos | cut -f1)"}; do
-    [[ -e "$meta/$rpath" ]] && inside=1
-    [[ -e "${meta:h}/$rpath" ]] && beside=1
-  done
-  if (( ! inside && beside )); then
-    print -u2 "workspace-docs-regen: $ws_yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md"
-    exit 4
-  fi
-fi
+wsdocs::refuse_old_layout "$ws_yml" || exit $?
 # jq, not yq, writes the .code-workspace: from 1.7 it prints every number it does not change as written.
 # --check never calls jq — it only diffs — so the gate does not apply to it.
 if [[ "$mode" != check && "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then

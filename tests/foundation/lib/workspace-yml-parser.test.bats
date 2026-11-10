@@ -160,7 +160,7 @@ teardown() {
 @test "validate rejects tasks.path that is absolute" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-absolute-path.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"tasks.path must be relative"* ]]
+  [[ "$output" == *"tasks.path must be relative to the workspace root"* ]]
 }
 
 @test "validate rejects tasks.enabled that is not a boolean" {
@@ -189,7 +189,7 @@ teardown() {
 @test "validate rejects docs.path that is absolute" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/docs-absolute-path.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"docs.path must be relative"* ]]
+  [[ "$output" == *"docs.path must be relative to the workspace root"* ]]
 }
 
 @test "validate rejects docs.mode that is not sibling|path|symlink" {
@@ -512,4 +512,9 @@ skeleton_live() {
            architecture async tests min_platforms; do
     grep -qE "(^|[[:space:]#])$k:" "$s" || { echo "the skeleton never shows $k"; return 1; }
   done
+}
+
+@test "no template or lib speaks of a workspace-parent: the meta repo is the workspace root" {
+  run grep -rIn -i 'workspace[- ]parent' "$(ws_repo_root)/templates"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
 }

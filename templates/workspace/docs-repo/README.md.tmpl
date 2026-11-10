@@ -2,10 +2,11 @@
 
 Shared documentation tracker for the **{{WORKSPACE_NAME}}** workspace.
 
-When provisioned in `sibling` or `path` mode, this repository sits at the
-workspace-parent level, alongside the meta-repo, package repos, and project
-repos. It is its own git repository so documentation history can be versioned
-and synced independently of the source code.
+When provisioned in `sibling` or `path` mode, this repository sits in the
+workspace root, next to the meta-repo's own files and the package and project
+repos; the meta-repo's `.gitignore` keeps it out. It is its own git repository
+so documentation history can be versioned and synced independently of the
+source code.
 
 When provisioned in `symlink` mode, this folder is a symbolic link to an
 external directory shared across multiple checkouts (e.g. across worktrees or

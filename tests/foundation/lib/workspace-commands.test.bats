@@ -82,3 +82,13 @@ setup() {
     grep -qx '## error_root_has_workspace' "$d/locales/$l.md" || { echo "$l.md lacks error_root_has_workspace"; return 1; }
   done
 }
+
+@test "workspace-add names the workspace root <root>, places packages by pkg_dir and runs the url check" {
+  local s="$ROOT/skills/workspace-add/SKILL.md"
+  run grep -nE '<meta>|<workspace-parent>|workspace-parent|-meta/' "$s"
+  [ "$status" -eq 1 ] || { echo "$output"; return 1; }
+  for want in '`<root>`' 'wsdocs::pkg_dir' 'wsdocs::find_workspace_yml' 'wsdocs::refuse_old_layout' \
+              'wspkg::url_matches_name' '`warn_url_name_mismatch`' '`error_old_layout`'; do
+    grep -qF -- "$want" "$s" || { echo "workspace-add never names $want"; return 1; }
+  done
+}

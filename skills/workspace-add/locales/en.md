@@ -43,6 +43,9 @@ Version requirement — from, exact, branch or revision, then the value (empty =
 ## qa_allowed_deps
 Exceptions to the archetype rule (packages, default none):
 
+## warn_url_name_mismatch
+warning: the last part of {pkg}'s git url ({url}) is not '{pkg}'; the package folder is named {pkg}, so a fresh clone from bootstrap.sh lands under that name. Rename the repository or the package if they should agree.
+
 ## warn_existing_claude_md
 warning: {path}/CLAUDE.md already exists; not overwritten.
 to bring it under toolkit management: workspace-docs-regen --adopt --pkg {name}
@@ -58,6 +61,12 @@ swift is not on PATH; a new package's manifest is generated for Swift 6. Install
 
 ## preflight_required_swift_too_old
 Swift {version} is older than 6.0; a new package's manifest is generated for Swift 6 language mode. Update the toolchain. exit 3.
+
+## error_missing_workspace_yml
+workspace.yml not found in this directory or its ancestors; cd into the workspace root or a folder inside it first. exit 1.
+
+## error_old_layout
+This workspace uses the old layout, where the meta repo sits beside the packages in a *-meta folder. Move it to the new layout first: docs/migrations/workspace-nested-layout.md. exit 1.
 
 ## error_validation
 workspace.yml is invalid after add (errors above); the edit was rolled back.

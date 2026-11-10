@@ -1,13 +1,54 @@
 #!/usr/bin/env zsh
 # workspace-docs.zsh — the content of every toolkit-owned section and workspace file, derived from
 # the loaded workspace.yml. Each generator prints its content without the marker lines.
-# Public API: wsdocs::pkg_dir, wsdocs::apps, wsdocs::app_dir, wsdocs::app_url,
+# Public API: wsdocs::find_workspace_yml, wsdocs::refuse_old_layout,
+#   wsdocs::pkg_dir, wsdocs::apps, wsdocs::app_dir, wsdocs::app_url,
 #   wsdocs::pkg_list, wsdocs::layers, wsdocs::graph,
 #   wsdocs::repos, wsdocs::gitignore_repos, wsdocs::repo_map,
 #   wsdocs::clone, wsdocs::fragment, wsdocs::pkg_header, wsdocs::pkg_deps, wsdocs::pkg_meta,
 #   wsdocs::pkg_boundary, wsdocs::pkg_public_api, wsdocs::xcworkspace, wsdocs::code_workspace_folders
 
 typeset -g _WSDOCS_TEMPLATES="${${(%):-%x}:A:h:h}"
+
+# Messages of the two root checks below name the command that asked.
+typeset -g WSDOCS_CALLER="${WSDOCS_CALLER:-workspace}"
+
+# The workspace.yml of the nearest ancestor of <dir> (default: the cwd) that holds one; that
+# ancestor is the workspace root. A *-meta folder with a workspace.yml beside an ancestor is the old
+# layout: it is reported (exit 4), never used. Exit 4 too when there is no workspace.yml at all.
+wsdocs::find_workspace_yml() {
+  local d="${1:-$PWD}" old_yml="" cands
+  while :; do
+    if [[ -f "$d/workspace.yml" ]]; then print -r -- "$d/workspace.yml"; return 0; fi
+    if [[ -z "$old_yml" ]]; then cands=("$d"/*-meta/workspace.yml(N)); (( ${#cands} )) && old_yml="${cands[1]}"; fi
+    [[ "$d" == / ]] && break
+    d="${d:h}"
+  done
+  if [[ -n "$old_yml" ]]; then
+    print -u2 "$WSDOCS_CALLER: $old_yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md"
+  else
+    print -u2 "$WSDOCS_CALLER: no workspace.yml in ${1:-$PWD} or its ancestors"
+  fi
+  return 4
+}
+
+# Needs the workspace.yml loaded. Inside an old <ws>-meta folder workspace.yml is right there, so
+# wsdocs::find_workspace_yml took it for a root. It is the old layout when none of the declared
+# repositories is under it and one is beside it: exit 4, the same pointer. Otherwise 0.
+wsdocs::refuse_old_layout() {
+  local yml="$1" meta="${1:h}" ws rpath inside=0 beside=0
+  ws="$(wsyml::get '.workspace.name')"
+  [[ "${meta:t}" == "$ws-meta" ]] || return 0
+  for rpath in ${(f)"$(wsdocs::repos | cut -f1)"}; do
+    [[ -e "$meta/$rpath" ]] && inside=1
+    [[ -e "${meta:h}/$rpath" ]] && beside=1
+  done
+  if (( ! inside && beside )); then
+    print -u2 "$WSDOCS_CALLER: $yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md"
+    return 4
+  fi
+  return 0
+}
 
 # <dir>/<name> relative to the workspace root.
 wsdocs::pkg_dir() {

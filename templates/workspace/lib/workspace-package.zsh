@@ -2,7 +2,7 @@
 # workspace-package.zsh — the package manifest: the stack it is generated with, and the two
 # dependency arrays regen owns. Needs workspace-yml-parser.zsh and workspace-docs.zsh loaded.
 # Public API: wspkg::tools_version, wspkg::platform_floor, wspkg::platforms_inline, wspkg::tests_kind,
-#   wspkg::rel_path, wspkg::manifest_deps, wspkg::target_deps, wspkg::test_framework_manifest_deps,
+#   wspkg::rel_path, wspkg::url_matches_name, wspkg::manifest_deps, wspkg::target_deps, wspkg::test_framework_manifest_deps,
 #   wspkg::test_framework_target_deps, wspkg::adopt_to, wspkg::diagnose, wspkg::render_to
 
 # The language mode is what matters, and any tools version from 6.0 up defaults to Swift 6.
@@ -96,7 +96,7 @@ wspkg::tests_kind() {
 }
 
 # The path from one package's directory to another's, as `.package(path:)` needs it. Both come from
-# wsdocs::pkg_dir, which counts from the workspace parent, so the shared head is dropped first.
+# wsdocs::pkg_dir, which counts from the workspace root, so the shared head is dropped first.
 wspkg::rel_path() {
   local from="$1" to="$2" fdir tdir up=""
   local -a f t
@@ -109,6 +109,23 @@ wspkg::rel_path() {
   done
   repeat ${#f} up+="../"
   print -r -- "${up}${(j:/:)t}"
+}
+
+# 0 when the last path component of the package's url under the first remote, without `.git`, is the
+# package's name; 1 when it is another name; 2 when the package has no url there. Covers
+# git@host:o/Pkg.git, https://host/o/Pkg.git, https://host/o/Pkg and a trailing slash.
+wspkg::url_matches_name() {
+  local p="$1" remote url last
+  [[ -n "$p" ]] || { print -u2 "wspkg::url_matches_name: usage: <package>"; return 4; }
+  remote="$(wsyml::remotes 2>/dev/null | head -n 1)"
+  [[ -n "$remote" ]] || return 2
+  url="$(wsyml::package_field "$p" "git.\"$remote\"" 2>/dev/null || true)"
+  [[ -n "$url" && "$url" != null ]] || return 2
+  while [[ "$url" == */ ]]; do url="${url%/}"; done
+  [[ "$url" == *.git ]] && url="${url%.git}"
+  while [[ "$url" == */ ]]; do url="${url%/}"; done
+  last="${${url##*/}##*:}"
+  [[ "$last" == "$p" ]]
 }
 
 # "<key> <value>" of an external dep's version requirement; nothing when it declares none.

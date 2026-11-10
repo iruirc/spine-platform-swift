@@ -43,6 +43,9 @@ URL внешней зависимости:
 ## qa_allowed_deps
 Исключения из правил архетипа (пакеты, по умолчанию нет):
 
+## warn_url_name_mismatch
+предупреждение: последний компонент git url пакета {pkg} ({url}) не равен '{pkg}'; папка пакета называется {pkg}, и свежий клон из bootstrap.sh ляжет под этим именем. Если имена должны совпадать, переименуй репозиторий или пакет.
+
 ## warn_existing_claude_md
 предупреждение: {path}/CLAUDE.md уже существует; не перезаписан.
 чтобы взять под управление toolkit: workspace-docs-regen --adopt --pkg {name}
@@ -58,6 +61,12 @@ swift не найден в PATH; манифест нового пакета ге
 
 ## preflight_required_swift_too_old
 Swift {version} старше 6.0; манифест нового пакета генерируется под языковой режим Swift 6. Обнови тулчейн. exit 3.
+
+## error_missing_workspace_yml
+workspace.yml не найден ни в этой папке, ни в её предках; перейди в корень workspace'а или в папку внутри него. exit 1.
+
+## error_old_layout
+Этот workspace в старой раскладке: meta-repo лежит рядом с пакетами в папке *-meta. Сначала переведи его на новую раскладку: docs/migrations/workspace-nested-layout.md. exit 1.
 
 ## error_validation
 workspace.yml невалиден после добавления (ошибки выше); изменения откатаны.

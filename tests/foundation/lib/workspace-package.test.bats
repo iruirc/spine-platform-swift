@@ -256,3 +256,51 @@ packages/Core/Package.swift: external dep https://github.com/apple/swift-testing
   grep -qF '.package(path: "../../sharedPackages/AKit"),' "$m"
   grep -qF '            .product(name: "AKit", package: "AKit"),' "$m"
 }
+
+# url_matches_name: the last path component of remotes[0]'s url, without .git, against the package.
+# The git map is built from two args, never a flow map: bash 3.2 brace-expands a comma inside a
+# quoted word of a nested "$(...)".
+url_yml() {   # <package> <origin-url-or-empty> [mirror-url]
+  local f="$(ws_mktemp_dir)/ws.yml"
+  { printf 'workspace: { name: UrlWS }\nremotes: [origin, mirror]\npackages:\n  - name: %s\n    archetype: engine\n    version: 0.1.0\n' "$1"
+    [ -z "$2$3" ] || printf '    git:\n'
+    [ -z "$2" ] || printf "      origin: '%s'\n" "$2"
+    [ -z "$3" ] || printf "      mirror: '%s'\n" "$3"
+  } > "$f"
+  printf '%s\n' "$f"
+}
+
+@test "url_matches_name is 0 for every url form whose last component is the package" {
+  local u
+  for u in 'git@x:o/Pkg.git' 'https://host/o/Pkg.git' 'https://host/o/Pkg' 'https://host/o/Pkg/' 'https://host/o/Pkg.git/' 'ssh://git@host:22/o/Pkg.git'; do
+    run pkg "$(url_yml Pkg "$u")" 'wspkg::url_matches_name Pkg'
+    [ "$status" -eq 0 ] || { echo "$u -> $status $output"; return 1; }
+  done
+}
+
+@test "url_matches_name is 1 when the last component differs, case included" {
+  local u
+  for u in 'git@x:o/pkg-ios.git' 'https://host/o/pkg.git' 'https://host/o/Pkg-extra' 'git@x:o/Pkg.gitx'; do
+    run pkg "$(url_yml Pkg "$u")" 'wspkg::url_matches_name Pkg'
+    [ "$status" -eq 1 ] || { echo "$u -> $status $output"; return 1; }
+  done
+}
+
+@test "url_matches_name reads remotes[0] only" {
+  run pkg "$(url_yml Pkg 'git@x:o/Pkg.git' 'git@y:o/other.git')" 'wspkg::url_matches_name Pkg'
+  [ "$status" -eq 0 ] || { echo "$status $output"; return 1; }
+  run pkg "$(url_yml Pkg 'git@x:o/other.git' 'git@y:o/Pkg.git')" 'wspkg::url_matches_name Pkg'
+  [ "$status" -eq 1 ] || { echo "$status $output"; return 1; }
+}
+
+@test "url_matches_name is 2 when the package has no url for remotes[0]" {
+  run pkg "$(url_yml Pkg '')" 'wspkg::url_matches_name Pkg'
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+  run pkg "$(url_yml Pkg '' 'git@y:o/Pkg.git')" 'wspkg::url_matches_name Pkg'
+  [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
+}
+
+@test "rel_path's header speaks of the workspace root, not the workspace parent" {
+  run grep -n 'workspace parent' "$(ws_lib_path workspace-package.zsh)"
+  [ "$status" -eq 1 ]
+}

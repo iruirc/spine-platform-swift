@@ -262,7 +262,7 @@ wsyml::validate() {
   esac
   if [[ "$tasks_mode" == "sibling" || "$tasks_mode" == "path" ]]; then
     if [[ "$tasks_path" = /* ]]; then
-      print -u2 "$_path: tasks.path must be relative to workspace-parent; got absolute '$tasks_path'"
+      print -u2 "$_path: tasks.path must be relative to the workspace root; got absolute '$tasks_path'"
       ((errs++))
     fi
     if [[ "$tasks_path" == *..* ]]; then
@@ -296,7 +296,7 @@ wsyml::validate() {
   esac
   if [[ "$docs_mode" == "sibling" || "$docs_mode" == "path" ]]; then
     if [[ "$docs_path" = /* ]]; then
-      print -u2 "$_path: docs.path must be relative to workspace-parent; got absolute '$docs_path'"
+      print -u2 "$_path: docs.path must be relative to the workspace root; got absolute '$docs_path'"
       ((errs++))
     fi
     if [[ "$docs_path" == *..* ]]; then
