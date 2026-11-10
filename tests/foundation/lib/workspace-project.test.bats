@@ -145,7 +145,8 @@ cfg() {
   [ "$output" = "<!-- WORKSPACE_META_BEGIN -->" ]
   run awk '/WORKSPACE_META_BEGIN/{getline; print; exit}' "$root/SPINE.md"
   [ "$output" = "<!-- WORKSPACE_META_END -->" ]
-  ! grep -qF -- '-meta' "$root/SPINE.md"
+  run grep -qF -- '-meta' "$root/SPINE.md"
+  [ "$status" -eq 1 ]
 }
 
 @test "wsproj::append_workspace_meta falls back to the legacy config name, and prefers SPINE.md" {
@@ -240,7 +241,8 @@ cfg() {
   run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_paths '$root'"
   [ "$status" -eq 0 ]
   grep -qx -- '- External packages: /packages/\*' "$root/SPINE.md"
-  ! grep -q -- '/sharedPackages' "$root/SPINE.md"
+  run grep -q -- '/sharedPackages' "$root/SPINE.md"
+  [ "$status" -eq 1 ]
   local yml; yml="$(ws_mktemp_dir)/workspace.yml"
   cat > "$yml" <<'YML'
 workspace:
@@ -255,19 +257,22 @@ YML
   run proj "$yml" "wsproj::append_paths '$root'"
   [ "$status" -eq 0 ]
   grep -qx -- '- External packages: /sharedPackages/\*' "$root/SPINE.md"
-  ! grep -q -- '/packages/\*' "$root/SPINE.md"
+  run grep -q -- '/packages/\*' "$root/SPINE.md"
+  [ "$status" -eq 1 ]
 }
 
 @test "wsproj::append_paths leaves out the root of a disabled block and follows a path-mode path" {
   local root; root="$(cfg '# T\n')"
   run proj "$(ws_fixture_path workspace-yml/tasks-disabled.yml)" "wsproj::append_paths '$root'"
   [ "$status" -eq 0 ]
-  ! grep -q -- '- Roots: /Tasks' "$root/SPINE.md"
+  run grep -q -- '- Roots: /Tasks' "$root/SPINE.md"
+  [ "$status" -eq 1 ]
   grep -qx -- '- Roots: /Docs' "$root/SPINE.md"
   root="$(cfg '# T\n')"
   run proj "$(ws_fixture_path workspace-yml/docs-disabled.yml)" "wsproj::append_paths '$root'"
   grep -qx -- '- Roots: /Tasks' "$root/SPINE.md"
-  ! grep -q -- '- Roots: /Docs' "$root/SPINE.md"
+  run grep -q -- '- Roots: /Docs' "$root/SPINE.md"
+  [ "$status" -eq 1 ]
   local yml; yml="$(ws_mktemp_dir)/workspace.yml"
   cat > "$yml" <<'YML'
 workspace:
