@@ -250,3 +250,14 @@ YML
   [ "$status" -eq 4 ] || { echo "$status: $output"; return 1; }
   [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]]
 }
+
+@test "refuse_old_layout: a new root named <ws>-meta in another case that holds its repositories is a root" {
+  local root; root="$(ws_mktemp_dir)/myapp-meta"
+  mkdir -p "$root/myapp" "$root/packages/myapp-core"
+  printf '%s\n' 'workspace: { name: MyApp }' 'remotes: [origin]' \
+    'project: { name: MyApp, apps: { ios: { repo: myapp } } }' \
+    'packages:' '  - { name: myapp-core, archetype: library, git: { origin: git@x:c.git }, version: 0.1.0 }' \
+    > "$root/workspace.yml"
+  run docs "$root/workspace.yml" "wsdocs::refuse_old_layout '$root/workspace.yml'"
+  [ "$status" -eq 0 ] || { echo "$status: $output"; return 1; }
+}

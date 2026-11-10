@@ -109,7 +109,8 @@ repository, `CLAUDE.md` and `AGENTS.md`, the `.xcworkspace` and `bootstrap.sh`; 
 `<dir>/<repo>` under it (`project.apps.<key>.dir`, `.` by default) and each package at
 `packages/<name>` or `<group-dir>/<name>`, kept out of the meta repo by its `.gitignore`. A fresh
 machine runs `git clone <meta-url> <Name> && cd <Name> && ./bootstrap.sh`, which clones every
-repository that is missing and reports `ok` for the ones already there. Launch `claude` or `codex`
+repository that is missing and reports `ok` for the ones already there; run it before
+`workspace-docs-regen --check`, since the `.xcworkspace` names the `.xcodeproj` each app folder holds. Launch `claude` or `codex`
 from the root: from there they see every repository without extra flags. A workspace made before
 this layout, with the meta repo in a `<name>-meta` folder beside the repositories, is refused by
 the workspace commands; [docs/migrations/workspace-nested-layout.md](docs/migrations/workspace-nested-layout.md)

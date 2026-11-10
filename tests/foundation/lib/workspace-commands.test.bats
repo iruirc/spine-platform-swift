@@ -119,3 +119,13 @@ setup() {
   run grep -nF -- '-meta' "$ROOT/templates/workspace/meta-repo/code-workspace.json.tmpl"
   [ "$status" -eq 1 ] || { echo "the .code-workspace template still names the meta folder <name>-meta: $output"; return 1; }
 }
+
+@test "the migration guide's shell blocks paste into a zsh with interactivecomments off: no # comment, no backtick" {
+  local g="$ROOT/docs/migrations/workspace-nested-layout.md"
+  local n; n="$(grep -cE '^ *```(bash|zsh|sh)$' "$g")"
+  [ "$n" -ge 10 ] || { echo "found $n shell blocks; the scan went vacuous"; return 1; }
+  run awk '/^ *```(bash|zsh|sh)$/ {on = 1; next} on && /^ *```$/ {on = 0; next}
+    on && !/^ *#!/ && (/(^|[[:space:]])#/ || /`/) {print NR ": " $0}' "$g"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "comment or backtick in a shell block:"; echo "$output"; return 1; }
+}
