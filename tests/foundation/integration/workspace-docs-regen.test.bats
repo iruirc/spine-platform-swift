@@ -67,7 +67,8 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   cd "$META"
   run "$REGEN"
   [ "$status" -eq 0 ]
-  ! grep -Fxq -- '- stale' "$META/README.md"
+  run grep -Fxq -- '- stale' "$META/README.md"
+  [ "$status" -ne 0 ]
   grep -Fxq -- '- AKit (api-contract) — common' "$META/README.md"
   grep -Fxq 'MANUAL_OUTSIDE_MARKERS' "$META/README.md"
 }
@@ -191,16 +192,50 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   [ ! -e "$PARENT/sharedPackages/AKit/Sources/workspace.yml" ]
 }
 
-@test "the old layout, a *-meta folder beside the packages, exits 4 and points at the migration guide" {
-  local old="$(ws_mktemp_dir)"
-  mkdir -p "$old/RegenWS-meta" "$old/packages/p"
-  cp "$META/workspace.yml" "$old/RegenWS-meta/workspace.yml"
-  cd "$old/packages/p"
+# The old layout: <ws>/RegenWS-meta holds workspace.yml, the packages sit beside it in <ws>.
+old_layout() {
+  OLD="$(ws_mktemp_dir)"
+  mkdir -p "$OLD/RegenWS-meta" "$OLD/sharedPackages/AKit/Sources" "$OLD/domainPackages/CFeature"
+  cp "$META/workspace.yml" "$OLD/RegenWS-meta/workspace.yml"
+  OLD_HASH="$(find "$OLD" -type f -exec md5 -q {} + | md5 -q)"
+}
+
+@test "the old layout, run from a package beside the *-meta folder, exits 4 and points at the migration guide" {
+  old_layout
+  cd "$OLD/sharedPackages/AKit/Sources"
   run "$REGEN"
   [ "$status" -eq 4 ]
   [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]] || return 1
-  [ ! -e "$old/RegenWS.xcworkspace" ]
-  [ ! -e "$old/RegenWS.code-workspace" ]
+  [ "$(find "$OLD" -type f -exec md5 -q {} + | md5 -q)" = "$OLD_HASH" ]
+}
+
+@test "the old layout, run from the folder that holds the *-meta folder, exits 4 and points at the migration guide" {
+  old_layout
+  cd "$OLD"
+  run "$REGEN"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]] || return 1
+  [ "$(find "$OLD" -type f -exec md5 -q {} + | md5 -q)" = "$OLD_HASH" ]
+}
+
+@test "the old layout, run from inside the *-meta folder, exits 4 and rewrites nothing" {
+  old_layout
+  cd "$OLD/RegenWS-meta"
+  run "$REGEN"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]] || return 1
+  [ "$(find "$OLD" -type f -exec md5 -q {} + | md5 -q)" = "$OLD_HASH" ]
+  [ ! -e "$OLD/RegenWS-meta/RegenWS.xcworkspace" ]
+  [ ! -e "$OLD/RegenWS-meta/RegenWS.code-workspace" ]
+}
+
+@test "a new root that happens to be named <ws>-meta and holds its packages is still a root" {
+  local root="$(ws_mktemp_dir)/RegenWS-meta"
+  mkdir -p "$root/sharedPackages/AKit"
+  cp "$META/workspace.yml" "$root/workspace.yml"
+  cd "$root"
+  run "$REGEN" --check
+  [ "$status" -ne 4 ]
 }
 
 @test "regen fills .gitignore, bootstrap.sh and SPINE.md, and --check passes afterwards" {

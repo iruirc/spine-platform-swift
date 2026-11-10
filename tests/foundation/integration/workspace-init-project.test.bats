@@ -43,9 +43,10 @@ teardown() { ws_cleanup_tmpdirs; }
     skip "xcodegen not on PATH"
   fi
   local parent="$(ws_mktemp_dir)"
-  "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+  # nested: the old layout's driver no longer runs regen (it refuses the old layout); Task 8 moves the rest.
+  WS_DRIVER_LAYOUT=nested "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
     "$(ws_fixture_path workspace-yml/with-project-full.yml)" "$parent" >&2
-  local xcws="$parent/FullProj-meta/FullProj.xcworkspace/contents.xcworkspacedata"
+  local xcws="$parent/FullProj.xcworkspace/contents.xcworkspacedata"
   [ -f "$xcws" ]
   run grep -F 'group:FullApp-iOS/FullApp-iOS.xcodeproj' "$xcws"
   [ "$status" -eq 0 ]
@@ -72,17 +73,18 @@ teardown() { ws_cleanup_tmpdirs; }
 
 @test "a workspace with an app and no packages generates and regenerates cleanly" {
   local parent="$(ws_mktemp_dir)"
-  run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+  # nested: the old layout's driver no longer runs regen (it refuses the old layout); Task 8 moves the rest.
+  WS_DRIVER_LAYOUT=nested run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
     "$(ws_fixture_path workspace-yml/with-project-zero-packages.yml)" "$parent"
   [ "$status" -eq 0 ]
-  [ -d "$parent/AppOnly-meta" ]
+  [ -f "$parent/workspace.yml" ]
   [ -f "$parent/AppOnly-ios/project.yml" ]
   [ ! -d "$parent/packages" ]
-  xc="$parent/AppOnly-meta/AppOnly.xcworkspace/contents.xcworkspacedata"
+  xc="$parent/AppOnly.xcworkspace/contents.xcworkspacedata"
   # The package pair stays empty: no blank line between its markers.
   awk '/WORKSPACE_PKG_REFS_BEGIN/ {getline n; print n; exit}' "$xc" | grep -q 'WORKSPACE_PKG_REFS_END'
   grep -qF 'AppOnly-ios/AppOnly-ios.xcodeproj' "$xc"
-  cd "$parent/AppOnly-meta"
+  cd "$parent"
   run "$(ws_repo_root)/scripts/workspace-docs-regen.zsh" --check
   [ "$status" -eq 0 ]
 }

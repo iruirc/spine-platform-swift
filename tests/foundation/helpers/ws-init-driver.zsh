@@ -162,4 +162,7 @@ fi
 
 # s07_regen
 regen="${0:A:h}/../../../scripts/workspace-docs-regen.zsh"
-( cd "$meta_dir" && "$regen" >&2 )
+# old layout: removed in Task 8 (regen refuses the old layout, so only the nested mode runs it)
+if [[ "${WS_DRIVER_LAYOUT:-}" == nested ]]; then
+  ( cd "$meta_dir" && "$regen" >&2 )
+fi

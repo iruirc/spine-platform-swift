@@ -52,6 +52,20 @@ fi
 wsyml::load "$ws_yml" || exit $?
 wsyml::validate || exit 2
 wsgraph::check_acyclic || exit 2
+meta="${ws_yml:h}" parent="$meta" ws="$(wsyml::get '.workspace.name')"
+# Inside an old <ws>-meta folder workspace.yml is right here, so the walk above took it for a root.
+# It is the old layout when none of the declared repositories is under it and one is beside it.
+if [[ "${meta:t}" == "$ws-meta" ]]; then
+  inside=0 beside=0
+  for rpath in ${(f)"$(wsdocs::repos | cut -f1)"}; do
+    [[ -e "$meta/$rpath" ]] && inside=1
+    [[ -e "${meta:h}/$rpath" ]] && beside=1
+  done
+  if (( ! inside && beside )); then
+    print -u2 "workspace-docs-regen: $ws_yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md"
+    exit 4
+  fi
+fi
 # jq, not yq, writes the .code-workspace: from 1.7 it prints every number it does not change as written.
 # --check never calls jq — it only diffs — so the gate does not apply to it.
 if [[ "$mode" != check && "$(wsyml::get '.workspace.code_workspace' 2>/dev/null)" != false ]]; then
@@ -68,7 +82,6 @@ if [[ -n "$only" ]] && ! wsyml::packages | grep -qxF -- "$only"; then
   print -u2 "workspace-docs-regen: workspace.yml declares no package '$only'"
   exit 2
 fi
-meta="${ws_yml:h}" parent="$meta" ws="$(wsyml::get '.workspace.name')"
 
 typeset -a files
 typeset -A markers adopt pkg_of dir_of
