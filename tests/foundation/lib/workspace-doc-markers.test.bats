@@ -336,6 +336,8 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; print -r -- 'a b' | wsmark::write '$d/bootstrap.sh' REPOS"
   [ "$status" -eq 0 ]
   run sed -n 3p "$d/bootstrap.sh"; [ "$output" = "a b" ]
+  [ "$(sed -n 2p "$d/bootstrap.sh")" = "# WORKSPACE_REPOS_BEGIN" ]
+  [ "$(sed -n 4p "$d/bootstrap.sh")" = "# WORKSPACE_REPOS_END" ]
 }
 @test "wsmark::has finds a hash-comment pair in .gitignore" {
   d="$(ws_mktemp_dir)"; printf '# WORKSPACE_REPOS_BEGIN\n# WORKSPACE_REPOS_END\n' > "$d/.gitignore"
@@ -386,4 +388,61 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; print -r -- 'a b' | wsmark::write '$d/bootstrap.sh' REPOS"
   [ "$status" -eq 0 ]
   [ -x "$d/bootstrap.sh" ]
+}
+
+# Runs <writer> on a mode-755 copy of a file that needs it, and prints the permission string.
+_ws_mode_after() {
+  local writer="$1" d="$2" f="$d/f.md"
+  case "$writer" in
+    write)  cp "$(ws_fixture_path markers/well-formed.md)" "$f"; chmod 755 "$f"
+            zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; print -r -- x | wsmark::write '$f' PKG_LIST" ;;
+    repair) cp "$(ws_fixture_path markers/missing-end.md)" "$f"; chmod 755 "$f"
+            zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; print y | wsmark::repair '$f'" >/dev/null ;;
+    wrap)   printf '%s\n' '## Quickstart' '' 'text' > "$f"; chmod 755 "$f"
+            zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$f' '## Quickstart' CLONE body" ;;
+    unwrap) cp "$(ws_fixture_path markers/well-formed.md)" "$f"; chmod 755 "$f"
+            zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::unwrap '$f' PKG_LIST" ;;
+  esac || return 1
+  ls -l "$f" | cut -c1-10
+}
+
+@test "every marker writer keeps the mode of the file it rewrites" {
+  local w d
+  for w in write repair wrap unwrap; do
+    d="$(ws_mktemp_dir)"
+    run _ws_mode_after "$w" "$d"
+    [ "$status" -eq 0 ] || { echo "$w: status $status: $output"; return 1; }
+    [ "$output" = "-rwxr-xr-x" ] || { echo "$w: $output"; return 1; }
+  done
+}
+
+# A bin dir whose <tool> writes half a result and fails, ahead of the real one on PATH.
+_ws_failing_tool() {
+  local bin="$1" tool="$2"
+  mkdir -p "$bin"
+  printf '#!/bin/sh\nprintf "half a line\\n"\nexit 1\n' > "$bin/$tool"
+  chmod 755 "$bin/$tool"
+}
+
+@test "a writer that fails midway leaves the original byte-for-byte and no scratch file behind" {
+  local w d bin before
+  for w in write repair wrap unwrap; do
+    d="$(ws_mktemp_dir)"; bin="$d/bin"
+    case "$w" in
+      write)  cp "$(ws_fixture_path markers/well-formed.md)" "$d/f.md"; _ws_failing_tool "$bin" awk
+              cmd="print -r -- x | wsmark::write '$d/f.md' PKG_LIST" ;;
+      repair) cp "$(ws_fixture_path markers/missing-end.md)" "$d/f.md"; _ws_failing_tool "$bin" mv
+              cmd="print y | wsmark::repair '$d/f.md'" ;;
+      wrap)   printf '%s\n' '## Quickstart' '' 'text' > "$d/f.md"; _ws_failing_tool "$bin" awk
+              cmd="wsmark::wrap '$d/f.md' '## Quickstart' CLONE body" ;;
+      unwrap) cp "$(ws_fixture_path markers/well-formed.md)" "$d/f.md"; _ws_failing_tool "$bin" mv
+              cmd="wsmark::unwrap '$d/f.md' PKG_LIST" ;;
+    esac
+    cp "$d/f.md" "$d/before.md"; mkdir "$d/work"; mv "$d/before.md" "$d/work/"
+    run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; PATH='$bin':\$PATH; $cmd"
+    [ "$status" -ne 0 ] || { echo "$w: expected a failure"; return 1; }
+    cmp "$d/f.md" "$d/work/before.md" || { echo "$w: original changed"; return 1; }
+    [ "$(ls -A "$d" | grep -vxF -e f.md -e bin -e work | wc -l | tr -d ' ')" = 0 ] \
+      || { echo "$w: left $(ls -A "$d")"; return 1; }
+  done
 }

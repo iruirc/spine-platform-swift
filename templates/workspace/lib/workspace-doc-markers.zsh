@@ -47,6 +47,22 @@ _wsmark_regexes() {
   esac
 }
 
+# A writer rewrites a scratch copy and renames it over the file, so a failure midway leaves the
+# original whole. The copy is made with cp -p in the file's own directory (a rename cannot cross
+# filesystems), which keeps the mode (the executable bit of bootstrap.sh) a bare mktemp file would
+# reset to 0600; a symlinked file is rewritten where it points, not replaced by a regular file.
+# _wsmark_scratch prints the scratch path; _wsmark_commit renames it over the file or removes it.
+_wsmark_scratch() {
+  local real="${1:A}" tmp
+  tmp="$(mktemp "${real:h}/.${real:t}.wsmark.XXXXXX")" || return 4
+  cp -p -- "$real" "$tmp" || { rm -f -- "$tmp"; return 4; }
+  print -r -- "$tmp"
+}
+
+_wsmark_commit() {
+  mv -f -- "$1" "${2:A}" || { rm -f -- "$1"; return 4; }
+}
+
 # True when <file> carries the BEGIN marker of <name>.
 wsmark::has() {
   local file="$1" name="$2" begin
@@ -112,7 +128,7 @@ wsmark::write() {
   nc_file="$(mktemp -t wsmark-nc.XXXXXX)" || return 4
   cat - > "$nc_file"
   local tmp
-  tmp="$(mktemp -t wsmark.XXXXXX)" || { rm -f "$nc_file"; return 4; }
+  tmp="$(_wsmark_scratch "$file")" || { rm -f "$nc_file"; return 4; }
   awk -v b="$begin" -v e="$end" -v nc_file="$nc_file" -v lax="$(_wsmark_lax "$file")" '
     function key(s) { if (lax) sub(/^[ \t]+/, "", s); return s }
     BEGIN {
@@ -131,11 +147,8 @@ wsmark::write() {
     inside { next }
     { print }
   ' "$file" > "$tmp" || { rm -f "$tmp" "$nc_file"; return 4; }
-  # Overwrite in place: a rename would swap in the scratch file's 0600 mode and drop the executable
-  # bit of bootstrap.sh.
-  cat -- "$tmp" > "$file" || { rm -f "$tmp" "$nc_file"; return 4; }
-  rm -f "$tmp" "$nc_file"
-  return 0
+  rm -f "$nc_file"
+  _wsmark_commit "$tmp" "$file"
 }
 
 wsmark::lint() {
@@ -291,7 +304,7 @@ wsmark::repair() {
     print -u2 "wsmark::repair: cannot read+write $file"
     return 4
   fi
-  tmp="$(mktemp -t wsmark-repair.XXXXXX)" || return 4
+  tmp="$(_wsmark_scratch "$file")" || return 4
   wsmark::repair_to "$file" "$tmp" || { rc=$?; rm -f "$tmp"; return $rc; }
   print "Proposed changes to $file:"
   diff -u "$file" "$tmp" || true
@@ -301,8 +314,7 @@ wsmark::repair() {
     rm -f "$tmp"
     return 1
   fi
-  mv -- "$tmp" "$file"
-  return 0
+  _wsmark_commit "$tmp" "$file"
 }
 
 # Puts an unmarked section under a marker so regen can own it. <scope> is where the pair goes:
@@ -316,8 +328,7 @@ wsmark::wrap() {
     print -u2 "wsmark::wrap: usage: <file> <heading> <marker-name> body|paragraph|section"
     return 4
   fi
-  # D-2: markdown-only. It hardcodes the HTML comment and hunts for headings, neither of which a
-  # Swift manifest has.
+  # Markdown-only on purpose: the marker is the HTML comment, hardcoded below, and any other file is rejected.
   if [[ "${file:e}" != md ]]; then
     print -u2 "wsmark::wrap: $file is not markdown"
     return 4
@@ -326,7 +337,7 @@ wsmark::wrap() {
   grep -qxF -- "<!-- WORKSPACE_${name}_BEGIN -->" "$file" && return 0
   grep -qxF -- "$heading" "$file" || return 1
   local tmp
-  tmp="$(mktemp -t wsmark-wrap.XXXXXX)" || return 4
+  tmp="$(_wsmark_scratch "$file")" || return 4
   awk -v h="$heading" -v b="<!-- WORKSPACE_${name}_BEGIN -->" -v e="<!-- WORKSPACE_${name}_END -->" -v scope="$scope" '
     { line[NR] = $0 }
     END {
@@ -360,8 +371,7 @@ wsmark::wrap() {
       }
     }
   ' "$file" > "$tmp" || { rm -f "$tmp"; return 1; }
-  mv -- "$tmp" "$file"
-  return 0
+  _wsmark_commit "$tmp" "$file"
 }
 
 # Drops a marker pair and keeps what it held, handing the section back to the user.
@@ -369,12 +379,13 @@ wsmark::unwrap() {
   local file="$1" name="$2"
   [[ -r "$file" && -w "$file" && -n "$name" ]] || { print -u2 "wsmark::unwrap: usage: <file> <marker-name>"; return 4; }
   local tmp
-  tmp="$(mktemp -t wsmark-unwrap.XXXXXX)" || return 4
+  tmp="$(_wsmark_scratch "$file")" || return 4
+  # grep exits 1 when nothing is left (a file of only the two marker lines), which is still a result.
   if [[ "$(_wsmark_lax "$file")" == 1 ]]; then
     grep -vE -- "^[[:space:]]*$(_wsmark_begin "$file" "$name")\$|^[[:space:]]*$(_wsmark_end "$file" "$name")\$" "$file" > "$tmp"
   else
     grep -vxF -e "$(_wsmark_begin "$file" "$name")" -e "$(_wsmark_end "$file" "$name")" -- "$file" > "$tmp"
   fi
-  mv -- "$tmp" "$file"
-  return 0
+  (( $? > 1 )) && { rm -f "$tmp"; return 4; }
+  _wsmark_commit "$tmp" "$file"
 }
