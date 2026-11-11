@@ -44,7 +44,7 @@ wsdocs::find_workspace_yml() {
 wsdocs::refuse_old_layout() {
   local yml="$1" meta="${1:h}" ws rpath inside=0 beside=0
   ws="$(wsyml::get '.workspace.name')"
-  # Case-insensitive: a folder made by hand often lowercases the workspace name (myapp-meta).
+  # Case-insensitive: a folder made by hand often lowercases the workspace name (myapp-meta for MyApp).
   [[ "${meta:t:l}" == "${ws:l}-meta" ]] || return 0
   for rpath in ${(f)"$(wsdocs::repos | cut -f1)"}; do
     [[ -e "$meta/$rpath" ]] && inside=1

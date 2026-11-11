@@ -116,18 +116,19 @@ setup() {
     || { echo "--resume does not say an empty state file is valid"; return 1; }
 }
 
-@test "the migration guide exists, walks the general order and has a section per real workspace" {
+@test "the migration guide exists, walks the general order and names no real workspace" {
   local g="$ROOT/docs/migrations/workspace-nested-layout.md"
   [ -f "$g" ] || { echo "no $g"; return 1; }
   local h
-  for h in '## Before you start' '## General order' '## Rollback' '## MyApp' '## OtherApp' '## ThirdApp' '## TeamApp'; do
+  for h in '## Before you start' '## General order' '## Rollback' '## Special cases'; do
     grep -qx -- "$h" "$g" || { echo "the guide has no '$h' heading"; return 1; }
   done
   local want
-  for want in './bootstrap.sh' 'workspace-docs-regen.zsh" --adopt --yes' 'MyApp/SourceCode/develop' \
-              'OtherApp/SourceCode/develop' 'ThirdApp/SourceCode/develop' 'TeamApp/develop'; do
+  for want in './bootstrap.sh' 'workspace-docs-regen.zsh" --adopt --yes'; do
     grep -qF -- "$want" "$g" || { echo "the guide never names $want"; return 1; }
   done
+  run grep -nE '/Volumes/|/Users/' "$g"
+  [ "$status" -eq 1 ] || { echo "the guide names a local path: $output"; return 1; }
 }
 
 @test "the generated sections describe the nested layout: bootstrap in daily ops, dir and git in the schema" {
