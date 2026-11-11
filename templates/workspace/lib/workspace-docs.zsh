@@ -308,8 +308,10 @@ _wsdocs_public_decls() {
 # Sources/<name> when that folder exists; otherwise every folder directly under Sources/ in byte
 # order (a target named unlike its package, or several targets): one folder gives the flat list,
 # several give a `### <folder>` group each, `- none` for a folder with no declarations; no folder
-# gives `- none`. Package.swift is not read, so a target with a custom `path:` outside Sources/ is
-# out of scope.
+# gives `- none`. A folder is a directory or a symlink to one (a package may be symlinked, so its
+# targets may be too); a name starting with `.`, a file, a symlink to a file and a dangling symlink
+# are not target folders. Package.swift is not read, so a target with a custom `path:` outside
+# Sources/ is out of scope.
 wsdocs::pkg_public_api() {
   local p="$1" root="$2/Sources" d
   local -a dirs
@@ -320,7 +322,8 @@ wsdocs::pkg_public_api() {
     return
   fi
   if [[ -d "$root" ]]; then
-    dirs=(${(f)"$(cd "$root" && find . -mindepth 1 -maxdepth 1 -type d | sed 's|^\./||' | LC_ALL=C sort)"})
+    dirs=("$root"/*(N-/:t))
+    dirs=(${(f)"$(print -rl -- "${dirs[@]}" | LC_ALL=C sort)"})
   fi
   case ${#dirs} in
     0) print -r -- "- none" ;;

@@ -233,6 +233,58 @@ External packages:
 - `public func lower()`' ] || { echo "$output"; return 1; }
 }
 
+@test "public API ignores a hidden folder under Sources, so one real folder still gives the flat list" {
+  local pkg="$(ws_mktemp_dir)"
+  mkdir -p "$pkg/Sources/Real" "$pkg/Sources/.swiftpm"
+  printf '%s\n' 'public struct Real {}' > "$pkg/Sources/Real/R.swift"
+  printf '%s\n' 'public struct Hidden {}' > "$pkg/Sources/.swiftpm/x.swift"
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" "wsdocs::pkg_public_api Whatever '$pkg'"
+  [ "$status" -eq 0 ]
+  [ "$output" = '## Public API
+
+- `public struct Real`' ] || { echo "$output"; return 1; }
+}
+
+@test "public API counts a symlink to a directory as a target folder; a symlink to a file or a dangling one is not" {
+  local pkg="$(ws_mktemp_dir)" real="$(ws_mktemp_dir)"
+  mkdir -p "$pkg/Sources/Own" "$real/Linked"
+  printf '%s\n' 'public struct Own {}' > "$pkg/Sources/Own/O.swift"
+  printf '%s\n' 'public struct Linked {}' > "$real/Linked/L.swift"
+  printf '%s\n' 'public struct File {}' > "$real/F.swift"
+  ln -s "$real/Linked" "$pkg/Sources/Linked"
+  ln -s "$real/F.swift" "$pkg/Sources/AFile"
+  ln -s "$real/missing" "$pkg/Sources/Dangling"
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" "wsdocs::pkg_public_api Whatever '$pkg'"
+  [ "$status" -eq 0 ]
+  [ "$output" = '## Public API
+
+### Linked
+
+- `public struct Linked`
+
+### Own
+
+- `public struct Own`' ] || { echo "$output"; return 1; }
+}
+
+@test "public API keeps a folder name with a space or a dot whole" {
+  local pkg="$(ws_mktemp_dir)"
+  mkdir -p "$pkg/Sources/My Target" "$pkg/Sources/Kit.Core"
+  printf '%s\n' 'public struct Spaced {}' > "$pkg/Sources/My Target/S.swift"
+  printf '%s\n' 'public struct Dotted {}' > "$pkg/Sources/Kit.Core/D.swift"
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" "wsdocs::pkg_public_api Whatever '$pkg'"
+  [ "$status" -eq 0 ]
+  [ "$output" = '## Public API
+
+### Kit.Core
+
+- `public struct Dotted`
+
+### My Target
+
+- `public struct Spaced`' ] || { echo "$output"; return 1; }
+}
+
 @test "public API without a Sources folder, or with an empty one, is none" {
   local pkg="$(ws_mktemp_dir)" empty="$(ws_mktemp_dir)"
   mkdir -p "$empty/Sources"
