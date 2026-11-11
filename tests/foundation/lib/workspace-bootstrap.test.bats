@@ -114,3 +114,16 @@ both_repos() {
   run git -C "$(ws_repo_root)" ls-files -s templates/workspace/meta-repo/bootstrap.sh.tmpl
   [[ "$output" == 100755* ]]
 }
+
+@test "a dangling symlink at a repository path is an error, and the others are still cloned" {
+  both_repos
+  mkdir -p "$ROOT/ws/packages"
+  ln -s "$ROOT/nowhere" "$ROOT/ws/packages/Pkg"
+  [ ! -e "$ROOT/ws/packages/Pkg" ]
+  run "$BOOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"error packages/Pkg: exists and is not a git repository"* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *"clone projects/App"* ]]
+  [ -d "$ROOT/ws/projects/App/.git" ]
+  [ -L "$ROOT/ws/packages/Pkg" ]
+}

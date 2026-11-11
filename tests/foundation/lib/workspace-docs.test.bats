@@ -193,6 +193,12 @@ External packages:
   [ "$output" = $'SimpleApp-iOS\t' ]
 }
 
+@test "repos: both apps come ios first, then macos, then the packages in packages[] order" {
+  run docs "$(ws_fixture_path workspace-yml/with-project-full.yml)" 'wsdocs::repos | cut -f1'
+  [ "$status" -eq 0 ]
+  [ "$output" = $'FullApp-iOS\nFullApp-macOS\npackages/CoreKit\npackages/Engine' ] || { echo "$output"; return 1; }
+}
+
 @test "gitignore_repos: one /<path> line per repository, without a trailing slash, then the Tasks and Docs repos" {
   run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::gitignore_repos'
   [ "$output" = $'/projects/App\n/packages/OnePkg\n/Tasks\n/Docs' ] || { echo "$output"; return 1; }
