@@ -464,6 +464,27 @@ YML
   [ "$output" = "$(printf '## Modules\n\n```sh\n# a comment, not a heading\nrun\n```\n- Other: /o\n- App: /projects/App — UI: UIKit\n\n## Stack')" ] || { echo "$output"; return 1; }
 }
 
+@test "wsproj::append_module keeps a section together across a ~~~ fence that quotes a backtick fence line and a heading" {
+  local root; root="$(cfg '# T\n\n## Modules\n\n~~~md\n```\n## Not a heading\n~~~\n- Other: /o\n\n## Stack\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  run sed -n '/^## Modules$/,/^## Stack$/p' "$root/SPINE.md"
+  [ "$output" = "$(printf '## Modules\n\n~~~md\n```\n## Not a heading\n~~~\n- Other: /o\n- App: /projects/App — UI: UIKit\n\n## Stack')" ] || { echo "$output"; return 1; }
+}
+
+@test "wsproj::append_module writes through a SPINE.md symlink and keeps the link" {
+  local root shared; root="$(cfg '# T\n\n## Modules\n')"; shared="$(ws_mktemp_dir)"
+  mv "$root/SPINE.md" "$shared/SPINE.md"
+  ln -s "$shared/SPINE.md" "$root/SPINE.md"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  [ -L "$root/SPINE.md" ]
+  [ "$(readlink "$root/SPINE.md")" = "$shared/SPINE.md" ]
+  grep -qxF -- '- App: /projects/App — UI: UIKit' "$shared/SPINE.md"
+  [ "$(ls -A "$root")" = "SPINE.md" ] || { ls -A "$root"; return 1; }
+  [ "$(ls -A "$shared")" = "SPINE.md" ] || { ls -A "$shared"; return 1; }
+}
+
 @test "wsproj::append_module keeps the mode (via a rename) and leaves no scratch file" {
   local root; root="$(cfg '# T\n\n## Modules\n')"
   chmod 755 "$root/SPINE.md"

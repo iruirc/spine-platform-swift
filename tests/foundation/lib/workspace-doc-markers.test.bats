@@ -143,6 +143,25 @@ teardown() { ws_cleanup_tmpdirs; }
   [ "$(cat "$tmp")" = "$(printf '%s\n' '## Fenced' '```' '## Public API' '```' '' '<!-- WORKSPACE_PKG_PUBLIC_API_BEGIN -->' '## Public API' '' '- a' '<!-- WORKSPACE_PKG_PUBLIC_API_END -->' '' '## Test')" ]
 }
 
+@test "wsmark::wrap section skips a heading inside a ~~~ fence that a backtick fence line does not close" {
+  local tmp="$(ws_mktemp_dir)/file.md"
+  printf '%s\n' '## Fenced' '~~~' '```' '## Public API' '~~~' '' '## Public API' '' '- a' '' '## Test' > "$tmp"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$tmp' '## Public API' PKG_PUBLIC_API section"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$tmp")" = "$(printf '%s\n' '## Fenced' '~~~' '```' '## Public API' '~~~' '' '<!-- WORKSPACE_PKG_PUBLIC_API_BEGIN -->' '## Public API' '' '- a' '<!-- WORKSPACE_PKG_PUBLIC_API_END -->' '' '## Test')" ]
+}
+
+@test "wsmark::wrap writes through a symlink and keeps the link" {
+  local dir shared; dir="$(ws_mktemp_dir)"; shared="$(ws_mktemp_dir)"
+  printf '%s\n' '## Quickstart' '' 'text' > "$shared/SPINE.md"
+  ln -s "$shared/SPINE.md" "$dir/SPINE.md"
+  run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::wrap '$dir/SPINE.md' '## Quickstart' CLONE body"
+  [ "$status" -eq 0 ]
+  [ -L "$dir/SPINE.md" ]
+  [ "$(cat "$shared/SPINE.md")" = "$(printf '%s\n' '## Quickstart' '' '<!-- WORKSPACE_CLONE_BEGIN -->' 'text' '<!-- WORKSPACE_CLONE_END -->')" ]
+  [ "$(ls -A "$dir")" = "SPINE.md" ] && [ "$(ls -A "$shared")" = "SPINE.md" ]
+}
+
 @test "wsmark::wrap returns 1 and changes nothing when the only heading is inside a code fence" {
   local tmp="$(ws_mktemp_dir)/file.md"
   printf '%s\n' '## Fenced' '```' '## Public API' '```' '' '## Test' > "$tmp"

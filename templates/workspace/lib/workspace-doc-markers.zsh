@@ -346,26 +346,32 @@ wsmark::wrap() {
   local tmp
   tmp="$(_wsmark_scratch wrap "$file")" || return 4
   awk -v h="$heading" -v b="<!-- WORKSPACE_${name}_BEGIN -->" -v e="<!-- WORKSPACE_${name}_END -->" -v scope="$scope" '
+    function fenced(x) {
+      if (!match(x, /^(```+|~~~+)/)) return 0
+      if (fc == "") { fc = substr(x, 1, 1); fl = RLENGTH; return 1 }
+      if (substr(x, 1, 1) == fc && RLENGTH >= fl && substr(x, RLENGTH + 1) ~ /^[ \t\r]*$/) { fc = ""; return 1 }
+      return 0
+    }
     { line[NR] = $0 }
     END {
-      fence = 0; hl = 0
+      fc = ""; hl = 0
       for (i = 1; i <= NR; i++) {
-        if (line[i] ~ /^```/) fence = !fence
-        if (!fence && line[i] == h) { hl = i; break }
+        if (fenced(line[i])) continue
+        if (fc == "" && line[i] == h) { hl = i; break }
       }
       if (!hl) exit 1
-      fence = 0; last = NR
+      fc = ""; last = NR
       for (i = hl + 1; i <= NR; i++) {
-        if (line[i] ~ /^```/) fence = !fence
-        if (!fence && (line[i] ~ /^##? / || line[i] ~ /^<!-- WORKSPACE_[A-Z_]+_(BEGIN|END) -->$/)) { last = i - 1; break }
+        if (fenced(line[i])) continue
+        if (fc == "" && (line[i] ~ /^##? / || line[i] ~ /^<!-- WORKSPACE_[A-Z_]+_(BEGIN|END) -->$/)) { last = i - 1; break }
       }
       first = 0
       for (i = hl + 1; i <= last; i++) if (line[i] != "") { first = i; break }
       if (first && scope == "paragraph") {
-        fence = 0
+        fc = ""
         for (i = first; i <= last; i++) {
-          if (line[i] ~ /^```/) fence = !fence
-          if (!fence && line[i] == "") { last = i - 1; break }
+          if (fenced(line[i])) continue
+          if (fc == "" && line[i] == "") { last = i - 1; break }
         }
       }
       while (last > hl && line[last] == "") last--

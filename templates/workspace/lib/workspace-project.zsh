@@ -110,7 +110,7 @@ wsproj::append_workspace_meta() {
 # Appends <line> to the `<heading>` section of <file>, after the section's last non-blank line, and
 # creates the section at the end of the file when it is absent. A line of the section that starts with
 # <prefix> (default: the whole line) counts as already there. The heading is found whatever trailing
-# spaces or CR it carries, and the section ends at the next H1 or H2 outside a ``` fence, as
+# spaces or CR it carries, and the section ends at the next H1 or H2 outside a ``` or ~~~ fence, as
 # wsmark::wrap's does; a file whose first line ends in CR gets CR on the lines added. The file is
 # rewritten through a scratch copy made with cp -p in its own directory and renamed over it (like the
 # marker lib's writers), so a failure leaves it whole and its mode survives.
@@ -123,13 +123,19 @@ _wsproj_section_add() {
   cp -p -- "$real" "$scratch" || { rm -f -- "$scratch"; return 4; }
   awk -v heading="$heading" -v line="$line" -v prefix="$prefix" '
     function trim(x) { sub(/[ \t\r]+$/, "", x); return x }
+    function fenced(x) {
+      if (!match(x, /^(```+|~~~+)/)) return 0
+      if (fc == "") { fc = substr(x, 1, 1); fl = RLENGTH; return 1 }
+      if (substr(x, 1, 1) == fc && RLENGTH >= fl && substr(x, RLENGTH + 1) ~ /^[ \t\r]*$/) { fc = ""; return 1 }
+      return 0
+    }
     { a[NR] = $0 }
     END {
-      n = NR; s = 0; fence = 0
+      n = NR; s = 0; fc = ""
       cr = (n && a[1] ~ /\r$/) ? "\r" : ""
       for (i = 1; i <= n; i++) {
-        if (a[i] ~ /^```/) { fence = !fence; continue }
-        if (!fence && trim(a[i]) == heading) { s = i; break }
+        if (fenced(a[i]) || fc != "") continue
+        if (trim(a[i]) == heading) { s = i; break }
       }
       if (!s) {
         for (i = 1; i <= n; i++) print a[i]
@@ -137,10 +143,10 @@ _wsproj_section_add() {
         print heading cr; print cr; print line cr
         exit
       }
-      e = n + 1; fence = 0
+      e = n + 1; fc = ""
       for (i = s + 1; i <= n; i++) {
-        if (a[i] ~ /^```/) { fence = !fence; continue }
-        if (!fence && a[i] ~ /^##? /) { e = i; break }
+        if (fenced(a[i]) || fc != "") continue
+        if (a[i] ~ /^##? /) { e = i; break }
       }
       last = s
       for (i = s + 1; i < e; i++) {
