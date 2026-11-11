@@ -4,7 +4,9 @@
 # Run Foundation bats tests.
 # Usage: scripts/test-foundation.sh [unit|integration|all|changed]
 #   changed  runs what the branch touches since its merge base with $TEST_BASE (default main),
-#            uncommitted and untracked files included; the map is tests/foundation/README.md.
+#            or on main what is not pushed, uncommitted and untracked files included, plus unit
+#            when the spine-toolkit checkout beside it has changes; the map is
+#            tests/foundation/README.md.
 set -euo pipefail
 
 target="${1:-all}"
@@ -17,22 +19,43 @@ if ! command -v bats >/dev/null 2>&1; then
   exit 3
 fi
 
+# Prints the files of <repo> that differ from <base> — committed since the merge base, uncommitted
+# and untracked. On <base> itself the merge base is HEAD and would hide every local commit, so the
+# comparison is with origin/<base>: what has not been pushed. A fresh clone of a branch has
+# origin/<base> and no local <base>.
+diff_files() {   # <repo> <base>
+  local repo="$1" base_ref="$2" base
+  if [ "$(git -C "$repo" symbolic-ref --short -q HEAD || true)" = "$base_ref" ] ||
+     ! git -C "$repo" rev-parse -q --verify "$base_ref^{commit}" >/dev/null; then
+    base_ref="origin/$base_ref"
+  fi
+  base="$(git -C "$repo" merge-base HEAD "$base_ref")" || {
+    echo "error: $repo has no merge base with '$base_ref'; set TEST_BASE" >&2; return 2; }
+  { git -C "$repo" diff --name-only "$base"
+    git -C "$repo" ls-files --others --exclude-standard; } | sort -u
+}
+
 # Prints the bats arguments for the changed files, one per line, and why to stderr.
 # Keep in step with the table in tests/foundation/README.md.
 changed_suites() {
-  local base_ref="${TEST_BASE:-main}" base files f need_all=0 need_unit=0 extra=""
-  # A fresh clone of a branch has origin/main and no local main.
-  git -C "$root" rev-parse -q --verify "$base_ref^{commit}" >/dev/null ||
-    base_ref="origin/$base_ref"
-  base="$(git -C "$root" merge-base HEAD "$base_ref")" || {
-    echo "error: no merge base with '$base_ref'; set TEST_BASE" >&2; exit 2; }
-  files="$( { git -C "$root" diff --name-only "$base"
-              git -C "$root" ls-files --others --exclude-standard; } | sort -u)"
-  if [ -z "$files" ]; then
-    echo "changed: nothing differs from $base_ref" >&2
+  local files core core_files f need_all=0 need_unit=0 extra="" where="here"
+  files="$(diff_files "$root" "${TEST_BASE:-main}")" || exit 2
+  # Tests under lib/ read the spine-toolkit checkout beside this one, so a change there can turn
+  # them red with nothing changed here.
+  core="${SPINE_TOOLKIT_CORE:-$root/../spine-toolkit}"
+  if git -C "$core" rev-parse -q --git-dir >/dev/null 2>&1; then
+    where="here or in $core"
+    core_files="$(diff_files "$core" main)" || exit 2
+    if [ -n "$core_files" ]; then
+      echo "changed: $(printf '%s\n' "$core_files" | wc -l | tr -d ' ') file(s) in $core -> unit" >&2
+      need_unit=1
+    fi
+  fi
+  if [ -z "$files" ] && [ "$need_unit" -eq 0 ]; then
+    echo "changed: nothing differs from main $where" >&2
     return 0
   fi
-  while IFS= read -r f; do
+  [ -n "$files" ] && while IFS= read -r f; do
     case "$f" in
       templates/workspace/*|scripts/workspace-docs-regen.zsh|tests/foundation/helpers/*|tests/foundation/fixtures/*)
         echo "changed: $f -> all" >&2; need_all=1 ;;
