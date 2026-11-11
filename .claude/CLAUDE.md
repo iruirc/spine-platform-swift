@@ -58,3 +58,7 @@ which the self-containment guard rejects.
 - A reference guide keeps only what its SKILL.md does not; its format and load table are held by
   `tests/foundation/lib/skill-references.test.bats`. A Swift block that must compile carries
   `<!-- typecheck -->` above its fence, and `scripts/typecheck-snippets.sh` compiles it.
+- This repository is public, and `spine-ops: leak-guard` checks every commit, commit message, tag
+  and push for absolute local paths and the owner's real project names. Never pass `--no-verify`
+  and never change `core.hooksPath`. When the check stops you, replace the data with a neutral
+  placeholder (`/Users/foo`, `com.example.app`, `MyApp`) instead of working around it.
