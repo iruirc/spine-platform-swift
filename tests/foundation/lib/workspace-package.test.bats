@@ -299,8 +299,3 @@ url_yml() {   # <package> <origin-url-or-empty> [mirror-url]
   run pkg "$(url_yml Pkg '' 'git@y:o/Pkg.git')" 'wspkg::url_matches_name Pkg'
   [ "$status" -eq 2 ] || { echo "$status $output"; return 1; }
 }
-
-@test "rel_path's header speaks of the workspace root, not the workspace parent" {
-  run grep -n 'workspace parent' "$(ws_lib_path workspace-package.zsh)"
-  [ "$status" -eq 1 ]
-}

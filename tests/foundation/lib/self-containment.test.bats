@@ -50,12 +50,13 @@ setup() {
   # lets a test pass on a config the orchestrator cannot route. Discovery keys on
   # ## Stack / ## Task defaults. Both drivers share one stub (helpers/ws-setup-stub.zsh), so one
   # file is the floor.
-  found=0; missing=""
+  found=0; missing=""; names=" "
   while IFS= read -r f; do
-    found=$((found + 1))
+    found=$((found + 1)); names+="${f##*/} "
     grep -q '^## Platform$' "$f" || missing="$missing $f"
   done < <(grep -rlE '^## (Stack|Task defaults)$' "$ROOT/templates" "$ROOT/tests/foundation/helpers")
   [ "$found" -ge 1 ] || { echo "discovery matched $found file(s); the scan went vacuous"; return 1; }
+  [[ "$names" == *" ws-setup-stub.zsh "* ]] || { echo "the scan never reached ws-setup-stub.zsh; found:$names"; return 1; }
   [ -z "$missing" ] || { echo "config template(s) with no ## Platform block:$missing"; return 1; }
 }
 
