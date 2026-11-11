@@ -117,6 +117,15 @@ teardown() {
   [[ "$output" == *"project.apps.ios uses unknown remote 'x'"* ]]
 }
 
+@test "validate rejects an app git url that is empty" {
+  local yml; yml="$(ws_mktemp_dir)/w.yml"
+  sed 's|git: { origin: git@x:o/app.git }|git: { origin: "" }|' "$(ws_fixture_path workspace-yml/nested-apps.yml)" > "$yml"
+  ! cmp -s "$yml" "$(ws_fixture_path workspace-yml/nested-apps.yml)"
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$yml' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"project.apps.ios has empty git URL for remote 'origin'"* ]] || { echo "$output"; return 1; }
+}
+
 @test "validate accepts an app with dir and git" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/nested-apps.yml)' && wsyml::validate"
   [ "$status" -eq 0 ]

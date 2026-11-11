@@ -450,7 +450,7 @@ wsyml::validate() {
     done
   done
 
-  # Project block validation (P-rules 1, 2, 3, 3a, 4-8)
+  # Project block validation (P-rules 1, 2, 3, 3a, 4-11, numbered in the order the code checks them)
   has_project="$(wsyml::get '.project | length' 2>/dev/null || echo 0)"
   if (( has_project > 0 )); then
     # P-rule 1: project.name regex
@@ -511,8 +511,8 @@ wsyml::validate() {
       fi
     done
 
-    # P-rule 10: project.apps.<key>.dir stays inside the workspace; the app repo sits at <root>/<dir>/<repo>.
-    # P-rule 11: project.apps.<key>.git remotes are declared in top-level remotes[], URLs non-empty.
+    # P-rule 4: project.apps.<key>.dir stays inside the workspace; the app repo sits at <root>/<dir>/<repo>.
+    # P-rule 5: project.apps.<key>.git remotes are declared in top-level remotes[], URLs non-empty.
     for ak in ${(f)app_keys}; do
       [[ "$ak" =~ ^(ios|macos)$ ]] || continue
       v="$(wsyml::get ".project.apps.$ak.dir" 2>/dev/null || true)"
@@ -534,40 +534,40 @@ wsyml::validate() {
       done
     done
 
-    # P-rules 4-7: stack enum validation (per app)
+    # P-rules 6-11: stack validation (per app)
     for ak in ${(f)app_keys}; do
       [[ "$ak" =~ ^(ios|macos)$ ]] || continue
-      # P-rule 4: ui_framework
+      # P-rule 6: ui_framework
       v="$(wsyml::get ".project.apps.$ak.stack.ui_framework" 2>/dev/null || true)"
       if [[ -n "$v" && ! "$v" =~ ^(swiftui|uikit|appkit)$ ]]; then
         print -u2 "$_path: project.apps.$ak.stack.ui_framework '$v' must be swiftui|uikit|appkit"
         ((errs++))
       fi
-      # P-rule 5: di
+      # P-rule 7: di
       v="$(wsyml::get ".project.apps.$ak.stack.di" 2>/dev/null || true)"
       if [[ -n "$v" && ! "$v" =~ ^(factory|swinject|manual-factory|plain)$ ]]; then
         print -u2 "$_path: project.apps.$ak.stack.di '$v' must be factory|swinject|manual-factory|plain"
         ((errs++))
       fi
-      # P-rule 6: architecture; mvvm-coordinator is kept as a retired synonym of mvvm
+      # P-rule 8: architecture; mvvm-coordinator is kept as a retired synonym of mvvm
       v="$(wsyml::get ".project.apps.$ak.stack.architecture" 2>/dev/null || true)"
       if [[ -n "$v" && ! "$v" =~ ^(mvvm|mvi|tca|viper|clean|mvc|mvvm-coordinator)$ ]]; then
         print -u2 "$_path: project.apps.$ak.stack.architecture '$v' must be mvvm|mvi|tca|viper|clean|mvc (mvvm-coordinator reads as mvvm)"
         ((errs++))
       fi
-      # P-rule 7: async
+      # P-rule 9: async
       v="$(wsyml::get ".project.apps.$ak.stack.async" 2>/dev/null || true)"
       if [[ -n "$v" && ! "$v" =~ ^(async-await|combine|rxswift)$ ]]; then
         print -u2 "$_path: project.apps.$ak.stack.async '$v' must be async-await|combine|rxswift"
         ((errs++))
       fi
-      # P-rule 9: tests. The app's own answer; absent, the app follows defaults.tests.
+      # P-rule 10: tests. The app's own answer; absent, the app follows defaults.tests.
       v="$(wsyml::get ".project.apps.$ak.stack.tests" 2>/dev/null || true)"
       if [[ -n "$v" ]] && (( ! ${WSYML_TESTS_KINDS[(Ie)$v]} )); then
         print -u2 "$_path: project.apps.$ak.stack.tests '$v' must be ${(j:|:)WSYML_TESTS_KINDS}"
         ((errs++))
       fi
-      # P-rule 8: min_platforms.<sub-platform> semver (M.m.p flexible: 1, 1.0, 1.0.0)
+      # P-rule 11: min_platforms.<sub-platform> semver (M.m.p flexible: 1, 1.0, 1.0.0)
       mp_keys="$(wsyml::get ".project.apps.$ak.stack.min_platforms | keys | .[]?" 2>/dev/null || true)"
       for mpk in ${(f)mp_keys}; do
         [[ -z "$mpk" ]] && continue

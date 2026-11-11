@@ -33,16 +33,17 @@ docs() {
 }
 
 @test "app_dir: ./projects/, projects/ and . normalize without a leading ./ or trailing /" {
-  local d f
+  local d f want
   f="$(mktemp -d)"; WS_TEST_TMPDIRS+=("$f")
   for d in './projects/' 'projects' 'projects/' '.' './' './a/b/'; do
     sed "s|dir: projects/|dir: $d|" "$(ws_fixture_path workspace-yml/nested-apps.yml)" > "$f/w.yml"
     run docs "$f/w.yml" 'wsdocs::app_dir ios'
     case "$d" in
-      .|./) [ "$output" = 'App' ] ;;
-      ./a/b/) [ "$output" = 'a/b/App' ] ;;
-      *) [ "$output" = 'projects/App' ] ;;
+      .|./) want='App' ;;
+      ./a/b/) want='a/b/App' ;;
+      *) want='projects/App' ;;
     esac
+    [ "$output" = "$want" ] || { echo "dir '$d': want '$want', got '$output'"; return 1; }
   done
 }
 
