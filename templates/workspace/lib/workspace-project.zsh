@@ -99,47 +99,55 @@ wsproj::append_workspace_meta() {
     return 4
   fi
   file="$(_wsproj_config_file wsproj::append_workspace_meta "$root")" || return $?
+  if (( ! $+functions[_wsmark_begin] )); then
+    print -u2 "wsproj::append_workspace_meta: workspace-doc-markers.zsh is not sourced; it writes the marker pair"
+    return 4
+  fi
   grep -q '^## Workspace meta' "$file" && return 0
   printf '\n## Workspace meta\n\n%s\n%s\n' "$(_wsmark_begin "$file" META)" "$(_wsmark_end "$file" META)" >> "$file"
 }
 
 # Appends <line> to the `<heading>` section of <file>, after the section's last non-blank line, and
 # creates the section at the end of the file when it is absent. A line of the section that starts with
-# <prefix> (default: the whole line) counts as already there. The file is rewritten in place, so its
-# mode survives.
+# <prefix> (default: the whole line) counts as already there. The heading is found whatever trailing
+# spaces or CR it carries, and the section ends at the next H1 or H2, as wsmark::wrap's does; a file
+# whose first line ends in CR gets CR on the lines added. The file is rewritten in place, so its mode
+# survives.
 _wsproj_section_add() {
   local file="$1" heading="$2" line="$3" prefix="${4:-$3}" scratch rc
   scratch="$(mktemp -t wsproj.XXXXXX)" || return 4
   awk -v heading="$heading" -v line="$line" -v prefix="$prefix" '
+    function trim(x) { sub(/[ \t\r]+$/, "", x); return x }
     { a[NR] = $0 }
     END {
       n = NR; s = 0
-      for (i = 1; i <= n; i++) if (a[i] == heading) { s = i; break }
+      cr = (n && a[1] ~ /\r$/) ? "\r" : ""
+      for (i = 1; i <= n; i++) if (trim(a[i]) == heading) { s = i; break }
       if (!s) {
         for (i = 1; i <= n; i++) print a[i]
-        if (n && a[n] != "") print ""
-        print heading; print ""; print line
+        if (n && trim(a[n]) != "") print cr
+        print heading cr; print cr; print line cr
         exit
       }
       e = n + 1
-      for (i = s + 1; i <= n; i++) if (a[i] ~ /^## /) { e = i; break }
+      for (i = s + 1; i <= n; i++) if (a[i] ~ /^##? /) { e = i; break }
       last = s
       for (i = s + 1; i < e; i++) {
-        if (a[i] != "") last = i
+        if (trim(a[i]) != "") last = i
         if (index(a[i], prefix) == 1) dup = 1
       }
       if (dup) { for (i = 1; i <= n; i++) print a[i]; exit }
       if (last == s) {
         # empty section: the row goes under the heading, after its blank line
-        p = (s + 1 < e && a[s + 1] == "") ? s + 1 : s
+        p = (s + 1 < e && trim(a[s + 1]) == "") ? s + 1 : s
         for (i = 1; i <= p; i++) print a[i]
-        if (p == s) print ""
-        print line
-        if (p + 1 == e && e <= n) print ""
+        if (p == s) print cr
+        print line cr
+        if (p + 1 == e && e <= n) print cr
         for (i = p + 1; i <= n; i++) print a[i]
       } else {
         for (i = 1; i <= last; i++) print a[i]
-        print line
+        print line cr
         for (i = last + 1; i <= n; i++) print a[i]
       }
     }

@@ -400,3 +400,58 @@ YML
   [ "$status" -eq 2 ]
   [[ "$output" == *"group of 'BEngine' has no dir"* ]] || { echo "$output"; return 1; }
 }
+
+@test "wsproj::append_module is idempotent on a CRLF file and keeps its line endings" {
+  local root; root="$(cfg '# T\r\n\r\n## Modules\r\n\r\n## Stack\r\n\r\nmvvm\r\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  cp "$root/SPINE.md" "$root/after-first"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  cmp "$root/SPINE.md" "$root/after-first"
+  [ "$(grep -c '^- App:' "$root/SPINE.md")" -eq 1 ]
+  [ "$(grep -c '^## Modules' "$root/SPINE.md")" -eq 1 ]
+  # no bare-LF line among the CRLF ones
+  [ "$(grep -c -v $'\r$' "$root/SPINE.md")" -eq 0 ]
+}
+
+@test "wsproj::append_module finds a heading with trailing spaces and puts the row inside it" {
+  local root; root="$(cfg '# T\n\n## Modules  \n\n- Other: /o\n\n## Stack\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^## Modules' "$root/SPINE.md")" -eq 1 ]
+  run awk '/^## Modules/{f=1;next} /^## /{f=0} f&&/^- /{print}' "$root/SPINE.md"
+  [ "$output" = $'- Other: /o\n- App: /projects/App — UI: UIKit' ]
+}
+
+@test "wsproj::append_module ends the section at an H1, as the marker lib does" {
+  local root; root="$(cfg '# T\n\n## Modules\n\n- Other: /o\n\n# Appendix\n\nsome text\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  run sed -n '/^## Modules$/,/^# Appendix$/p' "$root/SPINE.md"
+  [ "$output" = "$(printf '## Modules\n\n- Other: /o\n- App: /projects/App — UI: UIKit\n\n# Appendix')" ]
+  [ "$(tail -n 1 "$root/SPINE.md")" = "some text" ]
+}
+
+@test "wsproj::append_paths ends ## Paths at an H1 and stays idempotent on CRLF" {
+  local root; root="$(cfg '# T\r\n\r\n## Paths\r\n\r\n# Appendix\r\n\r\ntext\r\n')"
+  run proj "$(ws_fixture_path workspace-yml/grouped.yml)" "wsproj::append_paths '$root'"
+  [ "$status" -eq 0 ]
+  cp "$root/SPINE.md" "$root/after-first"
+  run proj "$(ws_fixture_path workspace-yml/grouped.yml)" "wsproj::append_paths '$root'"
+  cmp "$root/SPINE.md" "$root/after-first"
+  [ "$(grep -c '^## Paths' "$root/SPINE.md")" -eq 1 ]
+  run awk '/^## Paths/{f=1;next} /^#+ /{f=0} f&&/^- /{n++} END{print n}' "$root/SPINE.md"
+  [ "$output" -ge 3 ]
+  [ "$(tail -n 1 "$root/SPINE.md" | tr -d '\r')" = "text" ]
+}
+
+@test "wsproj::append_workspace_meta without the marker lib exits 4 and writes nothing" {
+  local root lib; root="$(cfg '# T\n')"; lib="$(ws_repo_root)/templates/workspace/lib"
+  run zsh -c "for f in workspace-yml-parser workspace-archetypes workspace-docs workspace-project; do source '$lib/'\$f.zsh; done
+    wsyml::load '$(ws_fixture_path workspace-yml/grouped.yml)' || exit 9
+    wsproj::append_workspace_meta '$root'"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"workspace-doc-markers.zsh"* ]] || { echo "$output"; return 1; }
+  [ "$(cat "$root/SPINE.md")" = "# T" ]
+}
