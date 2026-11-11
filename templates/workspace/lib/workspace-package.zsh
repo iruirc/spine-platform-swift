@@ -98,17 +98,10 @@ wspkg::tests_kind() {
 # The path from one package's directory to another's, as `.package(path:)` needs it. Both come from
 # wsdocs::pkg_dir, which counts from the workspace root, so the shared head is dropped first.
 wspkg::rel_path() {
-  local from="$1" to="$2" fdir tdir up=""
-  local -a f t
+  local from="$1" to="$2" fdir tdir
   fdir="$(wsdocs::pkg_dir "$from")" || return $?
   tdir="$(wsdocs::pkg_dir "$to")" || return $?
-  f=(${(s:/:)fdir}) t=(${(s:/:)tdir})
-  while (( ${#f} > 1 && ${#t} > 1 )) && [[ "${f[1]}" == "${t[1]}" ]]; do
-    shift f
-    shift t
-  done
-  repeat ${#f} up+="../"
-  print -r -- "${up}${(j:/:)t}"
+  wsdocs::rel_between "$fdir" "$tdir"
 }
 
 # 0 when the last path component of the package's url under the first remote, without `.git`, is the

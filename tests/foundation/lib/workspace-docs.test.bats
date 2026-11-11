@@ -278,3 +278,29 @@ YML
   run docs "$root/workspace.yml" "wsdocs::refuse_old_layout '$root/workspace.yml'"
   [ "$status" -eq 0 ] || { echo "$status: $output"; return 1; }
 }
+
+@test "rel_between: drops the shared head, one .. per segment left on the from side" {
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" 'wsdocs::rel_between a/B a/C; wsdocs::rel_between a/b/C a/d/E; wsdocs::rel_between packages/A sharedPackages/B'
+  [ "$status" -eq 0 ]
+  [ "$output" = $'../C\n../../d/E\n../../sharedPackages/B' ] || { echo "$output"; return 1; }
+}
+
+@test "rel_between: never drops the last segment of either side" {
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" 'wsdocs::rel_between packages/P packages/P; wsdocs::rel_between packages/App packages/App/Sub'
+  [ "$output" = $'../P\n../App/Sub' ] || { echo "$output"; return 1; }
+}
+
+@test "rel_between: a nested app reaches a package at the top with one .. per segment" {
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" 'wsdocs::rel_between projects/ios/App packages/Core; wsdocs::rel_between App packages/Core'
+  [ "$output" = $'../../../packages/Core\n../packages/Core' ] || { echo "$output"; return 1; }
+}
+
+@test "rel_between: ./-prefixed, trailing-/ and . dirs are normalized" {
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" 'wsdocs::rel_between ./projects/App/ ./projects/Lib//; wsdocs::rel_between . packages/Core; wsdocs::rel_between ./App ./packages/Core'
+  [ "$output" = $'../Lib\npackages/Core\n../packages/Core' ] || { echo "$output"; return 1; }
+}
+
+@test "rel_between: needs both dirs" {
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" 'wsdocs::rel_between a'
+  [ "$status" -eq 4 ]
+}

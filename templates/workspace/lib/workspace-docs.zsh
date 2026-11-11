@@ -2,7 +2,7 @@
 # workspace-docs.zsh — the content of every toolkit-owned section and workspace file, derived from
 # the loaded workspace.yml. Each generator prints its content without the marker lines.
 # Public API: wsdocs::find_workspace_yml, wsdocs::refuse_old_layout, wsdocs::migration_guide,
-#   wsdocs::pkg_dir, wsdocs::apps, wsdocs::app_dir, wsdocs::app_xcodeproj, wsdocs::app_url,
+#   wsdocs::pkg_dir, wsdocs::rel_between, wsdocs::apps, wsdocs::app_dir, wsdocs::app_xcodeproj, wsdocs::app_url,
 #   wsdocs::pkg_list, wsdocs::layers, wsdocs::graph,
 #   wsdocs::repos, wsdocs::gitignore_repos, wsdocs::repo_map,
 #   wsdocs::clone, wsdocs::fragment, wsdocs::pkg_header, wsdocs::pkg_deps, wsdocs::pkg_meta,
@@ -67,6 +67,26 @@ wsdocs::pkg_dir() {
   fi
   dir="$(wsyml::get ".package_groups[] | select(.name == \"$group\") | .dir")" || return 2
   print -r -- "$dir/$pkg"
+}
+
+# The path from the directory <from-dir> to <to-dir>, both counted from the workspace root: the shared
+# head is dropped, each segment left on the from side climbs one `../`, and the last segment of either
+# side is never dropped. `./`, a trailing `/` and `.` are normalized away.
+wsdocs::rel_between() {
+  local up=""
+  local -a f t
+  if [[ -z "$1" || -z "$2" ]]; then
+    print -u2 "wsdocs::rel_between: usage: <from-dir> <to-dir>"
+    return 4
+  fi
+  f=(${(s:/:)1}) t=(${(s:/:)2})
+  f=(${f:#(.|)}) t=(${t:#(.|)})
+  while (( ${#f} > 1 && ${#t} > 1 )) && [[ "${f[1]}" == "${t[1]}" ]]; do
+    shift f
+    shift t
+  done
+  repeat ${#f} up+="../"
+  print -r -- "${up}${(j:/:)t}"
 }
 
 # One "<key> <repo>" line per declared app, ios before macos; the short form `ios: <repo>` counts.

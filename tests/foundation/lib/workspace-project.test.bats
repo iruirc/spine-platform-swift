@@ -384,3 +384,19 @@ YML
   run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::inject_deps '$tmpd' App"
   [ "$status" -eq 4 ]
 }
+
+@test "wsproj::package_path names an undeclared package as such" {
+  run proj "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsproj::package_path ios Nope'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"package 'Nope' is not declared"* ]] || { echo "$output"; return 1; }
+  [[ "$output" != *"has no dir"* ]]
+}
+
+@test "wsproj::package_path names the group without a dir as the cause" {
+  local yml; yml="$(ws_mktemp_dir)/workspace.yml"
+  { cat "$(ws_fixture_path workspace-yml/grouped.yml)"; printf 'project:\n  name: G\n  apps:\n    ios: GApp\n'; } \
+    | yq eval 'del(.package_groups[].dir)' - > "$yml"
+  run proj "$yml" 'wsproj::package_path ios BEngine'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"group of 'BEngine' has no dir"* ]] || { echo "$output"; return 1; }
+}

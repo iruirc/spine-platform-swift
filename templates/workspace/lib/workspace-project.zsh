@@ -6,12 +6,10 @@
 # and append_paths need workspace-docs.zsh; append_workspace_meta needs workspace-doc-markers.zsh.
 
 # The path from the app repo to a package, as project.yml's `packages.<name>.path` needs it. Both
-# sit under the workspace root (wsdocs::app_dir, wsdocs::pkg_dir), so the shared head is dropped and
-# each segment left on the app side climbs one `..`; the last segment of either is never dropped.
+# sit under the workspace root (wsdocs::app_dir, wsdocs::pkg_dir); wsdocs::rel_between does the climb.
 # Needs workspace-docs.zsh loaded.
 wsproj::package_path() {
-  local app="$1" pkg="$2" from to up=""
-  local -a f t
+  local app="$1" pkg="$2" from to
   if [[ -z "$app" || -z "$pkg" ]]; then
     print -u2 "wsproj::package_path: usage: <app-key> <package>"
     return 4
@@ -24,17 +22,16 @@ wsproj::package_path() {
     print -u2 "wsproj::package_path: no app '$app' declared"
     return 2
   }
+  # wsdocs::pkg_dir names an undeclared package packages/<name>, so declaration is checked first.
+  if ! wsyml::packages 2>/dev/null | grep -qxF -- "$pkg"; then
+    print -u2 "wsproj::package_path: package '$pkg' is not declared"
+    return 2
+  fi
   to="$(wsdocs::pkg_dir "$pkg")" || {
     print -u2 "wsproj::package_path: group of '$pkg' has no dir"
     return 2
   }
-  f=(${(s:/:)from}) t=(${(s:/:)to})
-  while (( ${#f} > 1 && ${#t} > 1 )) && [[ "${f[1]}" == "${t[1]}" ]]; do
-    shift f
-    shift t
-  done
-  repeat ${#f} up+="../"
-  print -r -- "${up}${(j:/:)t}"
+  wsdocs::rel_between "$from" "$to"
 }
 
 wsproj::inject_deps() {
