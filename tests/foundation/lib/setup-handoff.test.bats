@@ -108,6 +108,13 @@ step_row() { grep -E "^\| $1 \|" "$WS"; }
   done
 }
 
+@test "s06b re-entry of the first app, project.yml without a ## Platform, goes to setup and not to swift-init" {
+  run step_row 's06b_project_<app>'
+  [[ "$output" == *'<root>/SPINE.md` has no `## Platform`'* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *'invoke `spine-toolkit:setup` with `<root>` as the working directory'* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *'`stack` = this app'* ]] || { echo "$output"; return 1; }
+}
+
 @test "s06_pkg recovers its own interrupted render on --resume" {
   step_row 's06_pkg_<name>' | grep -qF "own interrupted render" || { echo "s06_pkg row lacks recovery clause"; return 1; }
 }

@@ -162,7 +162,7 @@ swift-init упал для {app}: {details}
 В {root} уже есть workspace: лежит workspace.yml, а .workspace-init.state от прерванного запуска нет. Запусти workspace-init в пустой папке (или передай --dir <path>); прерванный запуск продолжает --resume. exit 4.
 
 ## note_app_stack_reconfirm
-{app}: проект уже на диске, но swift-init остановился до записи в ## Modules файла SPINE.md. Стек для записи: {stack}. Подтверди его или дай исправленные значения — строка будет добавлена без повторного запуска swift-init.
+{app}: проект уже на диске, но swift-init остановился до того, как SPINE.md его записал (сам конфиг для первого приложения, строка в ## Modules для следующих). Стек для записи: {stack}. Подтверди его или дай исправленные значения — запись будет сделана без повторного запуска swift-init.
 
 ## error_xcodegen_missing
 xcodegen не найден в PATH (нужен для генерации project'а при наличии project-блока). Установка: brew install xcodegen

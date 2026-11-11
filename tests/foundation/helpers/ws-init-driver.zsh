@@ -97,7 +97,8 @@ s06_pkg() {
 }
 
 # s06b is done once the app's project.yml is on disk and the root config names its platform; every
-# app but the first also needs its `## Modules` row.
+# app but the first also needs its `## Modules` row. A project.yml without that config (the first app,
+# stopped before setup) or without the row (a later app) is re-entered by ws-project-init-driver.zsh.
 s06b_done() {
   local key="$1" dir; dir="$(wsdocs::app_dir "$key")"
   [[ -f "$root/$dir/project.yml" ]] && grep -q '^## Platform$' "$root/SPINE.md" 2>/dev/null || return 1

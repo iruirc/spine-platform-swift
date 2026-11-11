@@ -95,3 +95,23 @@ tree_hash() { (cd "$1" && find . -type f -not -path '*/.git/*' -not -name '*.pbx
   [ "$output" = 1 ] || { cat "$root/SPINE.md"; return 1; }
   cmp "$clean/SPINE.md" "$root/SPINE.md"
 }
+
+@test "the first app interrupted after its project.yml but before the config gets setup on resume, once" {
+  command -v xcodegen >/dev/null 2>&1 || skip "xcodegen not on PATH"
+  local yml="$(ws_fixture_path workspace-yml/with-project-full.yml)"
+  local clean="$(ws_mktemp_dir)" root="$(ws_mktemp_dir)"
+  run "$DRIVER" "$yml" "$clean"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  WS_DRIVER_STOP_AT=s06b_project_ios run "$DRIVER" "$yml" "$root"
+  [ "$status" -eq 75 ]
+  # swift-init wrote the project, then stopped before spine-toolkit:setup wrote the config.
+  mkdir -p "$root/FullApp-iOS/Sources" "$root/FullApp-iOS/Tests"
+  cp "$clean/FullApp-iOS/project.yml" "$root/FullApp-iOS/project.yml"
+  [ ! -e "$root/SPINE.md" ]
+  run "$DRIVER" "$yml" "$root"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ "$(grep -c '^## Platform$' "$root/SPINE.md")" -eq 1 ]
+  [ "$(grep -c '^## Stack$' "$root/SPINE.md")" -eq 1 ]
+  [ "$(grep -c '^- FullApp-macOS:' "$root/SPINE.md")" -eq 1 ]
+  cmp "$clean/SPINE.md" "$root/SPINE.md"
+}
