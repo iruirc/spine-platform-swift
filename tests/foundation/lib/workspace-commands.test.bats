@@ -93,6 +93,14 @@ setup() {
   done
 }
 
+@test "workspace-add's preamble block calls find_workspace_yml, wsyml::load, refuse_old_layout in the order its prose fixes" {
+  local block order
+  block="$(awk '/^```zsh$/{f=1;next} /^```$/{if(f)exit} f' "$ROOT/skills/workspace-add/SKILL.md")"
+  [ -n "$block" ] || { echo "no zsh block"; return 1; }
+  order="$(grep -noE 'wsdocs::find_workspace_yml|wsyml::load|wsdocs::refuse_old_layout' <<<"$block" | sed 's/^[0-9]*://' | tr '\n' ' ')"
+  [ "$order" = "wsdocs::find_workspace_yml wsyml::load wsdocs::refuse_old_layout " ] || { echo "order: $order"; return 1; }
+}
+
 @test "<root> is an absolute path in workspace-init, and swift-init's --config-dir takes an absolute path" {
   local r="$(ws_repo_root)"
   grep -qF -- '`<root>` is an absolute path: resolve it with' "$r/skills/workspace-init/SKILL.md" \

@@ -1,7 +1,7 @@
 ---
 name: swift-init
 description: |
-  Bootstraps a new Swift/Apple project: iOS/macOS apps or SPM packages. Generates exactly one artifact per invocation. For a multi-module project run multiple times; assemble the .xcworkspace manually in Xcode. To attach the toolkit to an existing project use `/setup`. Initializes SwiftLint, a minimal user-owned `CLAUDE.md` (with `@./SPINE.md` import line), and the toolkit-owned `SPINE.md`. Interactive — always confirms stack choices before generating.
+  Bootstraps a new Swift/Apple project: iOS/macOS apps or SPM packages. Generates exactly one artifact per invocation. For a multi-module project run multiple times; assemble the .xcworkspace manually in Xcode. To attach the toolkit to an existing project use `/setup`. Initializes SwiftLint, a minimal user-owned `CLAUDE.md` (with `@./SPINE.md` import line), and the toolkit-owned `SPINE.md`; with `--config-dir` naming a folder that already has a `SPINE.md`, it writes neither and adds one `## Modules` row to that config instead. Interactive — always confirms stack choices before generating.
   Use when (en): "create new Swift project", "scaffold iOS app", "generate SPM package", "init macOS app from scratch", "/swift-init"
   Use when (ru): "создай Swift-проект", "новый iOS-проект", "сгенерируй SPM-пакет", "инициализируй macOS-приложение", "/swift-init"
 color: blue
@@ -86,7 +86,7 @@ swift-init [--no-prompt]
 - **Output dir** defaults to `cwd` per existing behavior.
 - **`--config-dir=<dir>`** → `<dir>` is an absolute path; a relative one is resolved against the cwd before anything else uses it, since this agent changes directory and the config must stay in the one folder the caller meant. The toolkit config lives in `<dir>` instead of the artifact's root; `workspace-init` passes the workspace root, run from inside the app folder it holds. There is no CLAUDE.md in the artifact, and no `SPINE.md` either: one config serves the whole folder `<dir>` names. What happens depends on `<dir>/SPINE.md`:
   - **absent** → invoke `spine-toolkit:setup` with `<dir>` — not the artifact's root — as the working directory, with `tasks = skip` and `docs_map = skip` whatever `--tasks` and `--docs-map` say. Setup writes `SPINE.md` and the user-owned `CLAUDE.md` / `AGENTS.md` into `<dir>`; this agent writes none into the artifact.
-  - **present** → do not invoke `spine-toolkit:setup`: the config already exists and a second run would rewrite it. Add this artifact to `## Modules` of `<dir>/SPINE.md` instead. `<platform-root>` is the plugin root one directory above this file; resolve it from the loaded agent location, not from the working directory. In one `zsh` command, source `<platform-root>/templates/workspace/lib/workspace-yml-parser.zsh`, `workspace-docs.zsh`, `workspace-doc-markers.zsh` and `workspace-project.zsh`, run `wsyml::load "<dir>/workspace.yml"`, then `wsproj::append_module "<dir>" <platform> <Axis=value>...` — `<platform>` is the `--platform` value (`ios` or `macos`), and each `<Axis=value>` takes its axis from the `## Axes` label (`UI`, `Async`, `DI`, `Architecture`, `Baseline`, `Tests`) and its value from **Flag values in `## Stack`**; a `—` cell has no catalog value, so that axis gets no argument. The function is idempotent: a row for this repo already there is left as it is.
+  - **present** → do not invoke `spine-toolkit:setup`: the config already exists and a second run would rewrite it. Add this artifact to `## Modules` of `<dir>/SPINE.md` instead. `<platform-root>` is the plugin root one directory above this file; resolve it from the loaded agent location, not from the working directory. In one `zsh` command, source `<platform-root>/templates/workspace/lib/workspace-yml-parser.zsh`, `workspace-docs.zsh`, `workspace-doc-markers.zsh` and `workspace-project.zsh`, run `wsyml::load "<dir>/workspace.yml"`, then `wsproj::append_module "<dir>" <platform> <Axis=value>...` — `<platform>` is the `--platform` value (`ios` or `macos`), and each `<Axis=value>` takes its axis from the capitalised axis name, as `swift-setup` writes it under `## Stack` (`UI`, `Async`, `DI`, `Architecture`, `Baseline`, `Tests`) and its value from **Flag values in `## Stack`**; a `—` cell has no catalog value, so that axis gets no argument. The function is idempotent: a row for this repo already there is left as it is.
   - Without the flag, none of this applies: setup runs in the artifact's root, as **Generated Artifacts** describes.
 
 ### Per-platform defaults (when `--no-prompt` set + decision-flag missing)
@@ -347,7 +347,7 @@ After generating, produce a short report to the user:
 - `## Next Steps` — exact commands to build and run the project. **For app modes always include**:
   - the project regeneration command: `xcodegen generate` (run it after editing `project.yml`);
   - a note about local packages: "If you need local SPM packages, run `/swift-init` separately in any folder on disk, then in Xcode use `File → New → Workspace`, drag the app's `.xcodeproj` and the package folders into the workspace. From then on, open the **`.xcworkspace`**, not the `.xcodeproj` — otherwise Xcode won't see the local packages."
-- `## SPINE.md Highlights` — what `## Stack` and `## Modules` received
+- `## SPINE.md Highlights` — what `## Stack` and `## Modules` received. With `--config-dir` and a config already there, it is the one new `## Modules` row (or the line that row already was); the artifact holds no `SPINE.md` or `CLAUDE.md` to describe
 
 ## Multi-module projects
 
@@ -364,7 +364,7 @@ The `swift-init` agent **does not generate the workspace itself** — that's an 
 
 - Never overwrite existing files — refuse and ask the user to run in an empty directory (or a dedicated subdirectory)
 - Never commit changes
-- Never write `SPINE.md` or `CLAUDE.md` yourself — both come from `spine-toolkit:setup`, which renders core's own template
+- Never write `SPINE.md` or `CLAUDE.md` yourself — both come from `spine-toolkit:setup`, which renders core's own template. The one edit you make to a config that exists is the `## Modules` row of `--config-dir`, through `wsproj::append_module`
 - Always ask before generating — confirm mode, stack, platforms
 - Do not invent third-party dependencies; use only Swift + Apple SDKs
 - Do not attach labels like "(recommended)" / "(default)" next to architectural options (UI framework, async approach, DI, architecture) unless the recommendation is recorded in the project's `SPINE.md` or in one of the `spine-platform-swift:*` skills. Ask neutrally, without hinting at the "correct" answer — the choice belongs to the user

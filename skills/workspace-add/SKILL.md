@@ -29,7 +29,9 @@ source "<platform-root>/templates/workspace/lib/workspace-doc-markers.zsh"
 source "<platform-root>/templates/workspace/lib/workspace-archetypes.zsh"
 source "<platform-root>/templates/workspace/lib/workspace-docs.zsh"
 source "<platform-root>/templates/workspace/lib/workspace-package.zsh"
+yml="$(wsdocs::find_workspace_yml)" || exit 1   # <root> is ${yml:h}
 wsyml::load "<root>/workspace.yml"
+wsdocs::refuse_old_layout "<root>/workspace.yml" || exit 1
 ```
 
 `wsyml::validate` and `wsgraph::check_acyclic` read that copy, not the file: a copy loaded before

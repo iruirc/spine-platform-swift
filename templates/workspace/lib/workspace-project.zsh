@@ -158,7 +158,7 @@ _wsproj_section_add() {
 }
 
 # Adds the row of one app to `## Modules`: `- <repo>: /<app dir> — <Axis>: <value>, ...`. The axes
-# arrive in the manifest's `## Axes` spelling (UI=UIKit DI=Swinject). Idempotent by `- <repo>:`.
+# arrive as the capitalised axis names swift-setup writes under `## Stack` (UI=UIKit DI=Swinject). Idempotent by `- <repo>:`.
 wsproj::append_module() {
   local root="$1" key="$2" file dir repo k v row=""
   if [[ -z "$root" || -z "$key" ]]; then
