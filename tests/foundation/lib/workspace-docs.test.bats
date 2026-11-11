@@ -185,6 +185,67 @@ External packages:
 - none' ] || { echo "$output"; return 1; }
 }
 
+@test "public API reads Sources/<pkg> alone when it exists, ignoring the other target folders" {
+  local pkg="$(ws_mktemp_dir)"
+  mkdir -p "$pkg/Sources/OnePkg" "$pkg/Sources/Other"
+  printf '%s\n' 'public struct Own {}' > "$pkg/Sources/OnePkg/Own.swift"
+  printf '%s\n' 'public struct Foreign {}' > "$pkg/Sources/Other/Foreign.swift"
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" "wsdocs::pkg_public_api OnePkg '$pkg'"
+  [ "$status" -eq 0 ]
+  [ "$output" = '## Public API
+
+- `public struct Own`' ] || { echo "$output"; return 1; }
+}
+
+@test "public API of a package whose only target folder is named differently reads that folder" {
+  local pkg="$(ws_mktemp_dir)"
+  mkdir -p "$pkg/Sources/Core"
+  printf '%s\n' 'public enum Core {}' > "$pkg/Sources/Core/Core.swift"
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" "wsdocs::pkg_public_api myapp-core '$pkg'"
+  [ "$status" -eq 0 ]
+  [ "$output" = '## Public API
+
+- `public enum Core`' ] || { echo "$output"; return 1; }
+}
+
+@test "public API of a package with several target folders groups them under ### <folder> in byte order, none for an empty one" {
+  local pkg="$(ws_mktemp_dir)"
+  mkdir -p "$pkg/Sources/B" "$pkg/Sources/A" "$pkg/Sources/alpha"
+  printf '%s\n' 'public struct InA {}' 'open class AlsoA {}' > "$pkg/Sources/A/A.swift"
+  printf '%s\n' 'struct Hidden {}' > "$pkg/Sources/B/B.swift"
+  printf '%s\n' 'public func lower() {}' > "$pkg/Sources/alpha/L.swift"
+  printf '%s\n' 'public struct Stray {}' > "$pkg/Sources/Stray.swift"
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" "wsdocs::pkg_public_api MediaKit '$pkg'"
+  [ "$status" -eq 0 ]
+  [ "$output" = '## Public API
+
+### A
+
+- `public struct InA`
+- `open class AlsoA`
+
+### B
+
+- none
+
+### alpha
+
+- `public func lower()`' ] || { echo "$output"; return 1; }
+}
+
+@test "public API without a Sources folder, or with an empty one, is none" {
+  local pkg="$(ws_mktemp_dir)" empty="$(ws_mktemp_dir)"
+  mkdir -p "$empty/Sources"
+  run docs "$(ws_fixture_path workspace-yml/minimal.yml)" "wsdocs::pkg_public_api Whatever '$pkg'; wsdocs::pkg_public_api Whatever '$empty'"
+  [ "$status" -eq 0 ]
+  [ "$output" = '## Public API
+
+- none
+## Public API
+
+- none' ] || { echo "$output"; return 1; }
+}
+
 @test "repos: apps first, then packages, as <path><TAB><url>; no url leaves the url empty" {
   run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::repos'
   [ "$status" -eq 0 ]

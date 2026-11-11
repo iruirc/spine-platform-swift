@@ -293,19 +293,49 @@ wsdocs::pkg_boundary() {
   wsarch::boundary_text "$(wsyml::package_field "$1" archetype)"
 }
 
-# Top-level `public` / `open` declarations of Sources/<name>, files in byte order, each cut at its
-# first brace. Members inside a type are not listed.
-wsdocs::pkg_public_api() {
-  local p="$1" src="$2/Sources/$1" f
+# `_wsdocs_public_decls <dir>`: top-level `public` / `open` declarations of the Swift files under
+# <dir>, files in byte order, each cut at its first brace. Members inside a type are not listed.
+_wsdocs_public_decls() {
+  local src="$1" f
   local -a decls
-  if [[ -d "$src" ]]; then
-    for f in ${(f)"$(cd "$src" && find . -type f -name '*.swift' | LC_ALL=C sort)"}; do
-      decls+=(${(f)"$(grep -E '^(public|open) ' -- "$src/$f" | grep -vE '^(public|open) import ' | sed -E 's/[[:space:]]*\{.*$//; s/^(.*)$/- `\1`/')"})
-    done
-  fi
+  for f in ${(f)"$(cd "$src" && find . -type f -name '*.swift' | LC_ALL=C sort)"}; do
+    decls+=(${(f)"$(grep -E '^(public|open) ' -- "$src/$f" | grep -vE '^(public|open) import ' | sed -E 's/[[:space:]]*\{.*$//; s/^(.*)$/- `\1`/')"})
+  done
+  if (( ${#decls} )); then print -r -- "${(F)decls}"; else print -r -- "- none"; fi
+}
+
+# The `## Public API` section: top-level `public` / `open` declarations of the package's sources.
+# Sources/<name> when that folder exists; otherwise every folder directly under Sources/ in byte
+# order (a target named unlike its package, or several targets): one folder gives the flat list,
+# several give a `### <folder>` group each, `- none` for a folder with no declarations; no folder
+# gives `- none`. Package.swift is not read, so a target with a custom `path:` outside Sources/ is
+# out of scope.
+wsdocs::pkg_public_api() {
+  local p="$1" root="$2/Sources" d
+  local -a dirs
   print -r -- "## Public API"
   print
-  if (( ${#decls} )); then print -r -- "${(F)decls}"; else print -r -- "- none"; fi
+  if [[ -d "$root/$p" ]]; then
+    _wsdocs_public_decls "$root/$p"
+    return
+  fi
+  if [[ -d "$root" ]]; then
+    dirs=(${(f)"$(cd "$root" && find . -mindepth 1 -maxdepth 1 -type d | sed 's|^\./||' | LC_ALL=C sort)"})
+  fi
+  case ${#dirs} in
+    0) print -r -- "- none" ;;
+    1) _wsdocs_public_decls "$root/${dirs[1]}" ;;
+    *)
+      local first=1
+      for d in "${dirs[@]}"; do
+        (( first )) || print
+        first=0
+        print -r -- "### $d"
+        print
+        _wsdocs_public_decls "$root/$d"
+      done
+      ;;
+  esac
 }
 
 # The app's project from the workspace root: the one *.xcodeproj its folder holds, whatever it is

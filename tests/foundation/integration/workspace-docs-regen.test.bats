@@ -64,6 +64,18 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   grep -Fxq -- '- `public struct Engine`' "$PARENT/sharedPackages/BEngine/CLAUDE.md"
 }
 
+@test "a package whose target folder is named differently from the package gets its declarations in ## Public API" {
+  rm -rf "$PARENT/sharedPackages/BEngine/Sources/BEngine"
+  mkdir -p "$PARENT/sharedPackages/BEngine/Sources/Core"
+  printf '%s\n' 'public enum Core {}' > "$PARENT/sharedPackages/BEngine/Sources/Core/Core.swift"
+  cd "$META"
+  run "$REGEN"
+  [ "$status" -eq 0 ]
+  grep -Fxq -- '- `public enum Core`' "$PARENT/sharedPackages/BEngine/CLAUDE.md"
+  run "$REGEN" --check
+  [ "$status" -eq 0 ]
+}
+
 @test "text outside the markers survives; a stale section does not" {
   printf '%s\n' '- stale' | zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::write '$META/README.md' PKG_LIST"
   echo "MANUAL_OUTSIDE_MARKERS" >> "$META/README.md"
