@@ -446,3 +446,25 @@ _ws_failing_tool() {
       || { echo "$w: left $(ls -A "$d")"; return 1; }
   done
 }
+
+@test "every marker writer says so when the file's directory is not writable, and changes nothing" {
+  [ "$(id -u)" -ne 0 ] || skip "root ignores directory modes"
+  local w d cmd
+  for w in write repair wrap unwrap; do
+    d="$(ws_mktemp_dir)"
+    case "$w" in
+      write)  cp "$(ws_fixture_path markers/well-formed.md)" "$d/f.md"; cmd="print -r -- x | wsmark::write '$d/f.md' PKG_LIST" ;;
+      repair) cp "$(ws_fixture_path markers/missing-end.md)" "$d/f.md"; cmd="print y | wsmark::repair '$d/f.md'" ;;
+      wrap)   printf '%s\n' '## Quickstart' '' 'text' > "$d/f.md"; cmd="wsmark::wrap '$d/f.md' '## Quickstart' CLONE body" ;;
+      unwrap) cp "$(ws_fixture_path markers/well-formed.md)" "$d/f.md"; cmd="wsmark::unwrap '$d/f.md' PKG_LIST" ;;
+    esac
+    cp "$d/f.md" "$BATS_TEST_TMPDIR/before-$w"
+    chmod 555 "$d"
+    run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; $cmd"
+    chmod 755 "$d"
+    [ "$status" -eq 4 ] || { echo "$w: status $status: $output"; return 1; }
+    [[ "$output" == *"wsmark::$w: cannot write next to $d/f.md (directory not writable)"* ]] || { echo "$w: $output"; return 1; }
+    [[ "$output" != *"Permission denied"* ]] || { echo "$w: raw error leaked: $output"; return 1; }
+    cmp "$d/f.md" "$BATS_TEST_TMPDIR/before-$w"
+  done
+}

@@ -482,7 +482,8 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   mkdir "$dir/scripts"; ln -s "$(ws_repo_root)/templates" "$dir/templates"
   copy="$dir/scripts/workspace-docs-regen.zsh"
   sed 's|"PKG_LIST CLONE DAILY_OPS SCHEMA"|"PKG_LIST CLONE DAILY_OPS SCHEMA REPOS"|' "$REGEN" > "$copy"
-  ! cmp -s "$REGEN" "$copy"
+  run cmp -s "$REGEN" "$copy"
+  [ "$status" -ne 0 ] || { echo "the sed changed nothing; the test went vacuous"; return 1; }
   chmod 755 "$copy"
   printf '\n<!-- WORKSPACE_REPOS_BEGIN -->\nkeep me\n<!-- WORKSPACE_REPOS_END -->\n' >> "$META/README.md"
   before="$(cat "$META/README.md")"

@@ -455,3 +455,31 @@ YML
   [[ "$output" == *"workspace-doc-markers.zsh"* ]] || { echo "$output"; return 1; }
   [ "$(cat "$root/SPINE.md")" = "# T" ]
 }
+
+@test "wsproj::append_module keeps a section together across a fenced block with a # comment line" {
+  local root; root="$(cfg '# T\n\n## Modules\n\n```sh\n# a comment, not a heading\nrun\n```\n- Other: /o\n\n## Stack\n')"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  run sed -n '/^## Modules$/,/^## Stack$/p' "$root/SPINE.md"
+  [ "$output" = "$(printf '## Modules\n\n```sh\n# a comment, not a heading\nrun\n```\n- Other: /o\n- App: /projects/App — UI: UIKit\n\n## Stack')" ] || { echo "$output"; return 1; }
+}
+
+@test "wsproj::append_module keeps the mode (via a rename) and leaves no scratch file" {
+  local root; root="$(cfg '# T\n\n## Modules\n')"
+  chmod 755 "$root/SPINE.md"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  [ "$status" -eq 0 ]
+  [ "$(ls -l "$root/SPINE.md" | cut -c1-10)" = "-rwxr-xr-x" ]
+  [ "$(ls -A "$root")" = "SPINE.md" ] || { ls -A "$root"; return 1; }
+}
+
+@test "wsproj::append_module on a file in a read-only directory says so and leaves the file" {
+  [ "$(id -u)" -ne 0 ] || skip "root ignores directory modes"
+  local root; root="$(cfg '# T\n\n## Modules\n')"
+  chmod 555 "$root"
+  run proj "$(ws_fixture_path workspace-yml/nested-apps.yml)" "wsproj::append_module '$root' ios UI=UIKit"
+  chmod 755 "$root"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"cannot write next to"* ]] || { echo "$output"; return 1; }
+  [ "$(cat "$root/SPINE.md")" = "$(printf '# T\n\n## Modules')" ]
+}

@@ -1,5 +1,9 @@
 #!/usr/bin/env zsh
 # workspace-doc-markers.zsh — parse + replace WORKSPACE_*_BEGIN / _END regions.
+# Public API: wsmark::has, read, write, lint, repair_to, repair, wrap, unwrap.
+# The writers (write, repair, wrap, unwrap) rewrite a scratch copy and rename it over the file, so
+# they need write access to the file's DIRECTORY, not only to the file; a run killed midway may leave
+# a hidden `.<name>.wsmark.XXXXXX` beside the target, which is safe to delete.
 
 # A marker's syntax follows the file it lives in: Swift takes a line comment, which may be indented
 # so it can sit inside the array it owns; shell scripts and .gitignore take a column-0 hash comment;
@@ -51,10 +55,13 @@ _wsmark_regexes() {
 # original whole. The copy is made with cp -p in the file's own directory (a rename cannot cross
 # filesystems), which keeps the mode (the executable bit of bootstrap.sh) a bare mktemp file would
 # reset to 0600; a symlinked file is rewritten where it points, not replaced by a regular file.
-# _wsmark_scratch prints the scratch path; _wsmark_commit renames it over the file or removes it.
+# _wsmark_scratch <caller> <file> prints the scratch path; _wsmark_commit renames it over the file or removes it.
 _wsmark_scratch() {
-  local real="${1:A}" tmp
-  tmp="$(mktemp "${real:h}/.${real:t}.wsmark.XXXXXX")" || return 4
+  local fn="$1" real="${2:A}" tmp
+  tmp="$(mktemp "${real:h}/.${real:t}.wsmark.XXXXXX" 2>/dev/null)" || {
+    print -u2 "wsmark::$fn: cannot write next to $2 (directory not writable)"
+    return 4
+  }
   cp -p -- "$real" "$tmp" || { rm -f -- "$tmp"; return 4; }
   print -r -- "$tmp"
 }
@@ -128,7 +135,7 @@ wsmark::write() {
   nc_file="$(mktemp -t wsmark-nc.XXXXXX)" || return 4
   cat - > "$nc_file"
   local tmp
-  tmp="$(_wsmark_scratch "$file")" || { rm -f "$nc_file"; return 4; }
+  tmp="$(_wsmark_scratch write "$file")" || { rm -f "$nc_file"; return 4; }
   awk -v b="$begin" -v e="$end" -v nc_file="$nc_file" -v lax="$(_wsmark_lax "$file")" '
     function key(s) { if (lax) sub(/^[ \t]+/, "", s); return s }
     BEGIN {
@@ -304,7 +311,7 @@ wsmark::repair() {
     print -u2 "wsmark::repair: cannot read+write $file"
     return 4
   fi
-  tmp="$(_wsmark_scratch "$file")" || return 4
+  tmp="$(_wsmark_scratch repair "$file")" || return 4
   wsmark::repair_to "$file" "$tmp" || { rc=$?; rm -f "$tmp"; return $rc; }
   print "Proposed changes to $file:"
   diff -u "$file" "$tmp" || true
@@ -337,7 +344,7 @@ wsmark::wrap() {
   grep -qxF -- "<!-- WORKSPACE_${name}_BEGIN -->" "$file" && return 0
   grep -qxF -- "$heading" "$file" || return 1
   local tmp
-  tmp="$(_wsmark_scratch "$file")" || return 4
+  tmp="$(_wsmark_scratch wrap "$file")" || return 4
   awk -v h="$heading" -v b="<!-- WORKSPACE_${name}_BEGIN -->" -v e="<!-- WORKSPACE_${name}_END -->" -v scope="$scope" '
     { line[NR] = $0 }
     END {
@@ -379,7 +386,7 @@ wsmark::unwrap() {
   local file="$1" name="$2"
   [[ -r "$file" && -w "$file" && -n "$name" ]] || { print -u2 "wsmark::unwrap: usage: <file> <marker-name>"; return 4; }
   local tmp
-  tmp="$(_wsmark_scratch "$file")" || return 4
+  tmp="$(_wsmark_scratch unwrap "$file")" || return 4
   # grep exits 1 when nothing is left (a file of only the two marker lines), which is still a result.
   if [[ "$(_wsmark_lax "$file")" == 1 ]]; then
     grep -vE -- "^[[:space:]]*$(_wsmark_begin "$file" "$name")\$|^[[:space:]]*$(_wsmark_end "$file" "$name")\$" "$file" > "$tmp"

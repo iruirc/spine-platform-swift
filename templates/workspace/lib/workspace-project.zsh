@@ -110,27 +110,38 @@ wsproj::append_workspace_meta() {
 # Appends <line> to the `<heading>` section of <file>, after the section's last non-blank line, and
 # creates the section at the end of the file when it is absent. A line of the section that starts with
 # <prefix> (default: the whole line) counts as already there. The heading is found whatever trailing
-# spaces or CR it carries, and the section ends at the next H1 or H2, as wsmark::wrap's does; a file
-# whose first line ends in CR gets CR on the lines added. The file is rewritten in place, so its mode
-# survives.
+# spaces or CR it carries, and the section ends at the next H1 or H2 outside a ``` fence, as
+# wsmark::wrap's does; a file whose first line ends in CR gets CR on the lines added. The file is
+# rewritten through a scratch copy made with cp -p in its own directory and renamed over it (like the
+# marker lib's writers), so a failure leaves it whole and its mode survives.
 _wsproj_section_add() {
-  local file="$1" heading="$2" line="$3" prefix="${4:-$3}" scratch rc
-  scratch="$(mktemp -t wsproj.XXXXXX)" || return 4
+  local file="$1" heading="$2" line="$3" prefix="${4:-$3}" real="${1:A}" scratch
+  scratch="$(mktemp "${real:h}/.${real:t}.wsproj.XXXXXX" 2>/dev/null)" || {
+    print -u2 "wsproj: cannot write next to $file (directory not writable)"
+    return 4
+  }
+  cp -p -- "$real" "$scratch" || { rm -f -- "$scratch"; return 4; }
   awk -v heading="$heading" -v line="$line" -v prefix="$prefix" '
     function trim(x) { sub(/[ \t\r]+$/, "", x); return x }
     { a[NR] = $0 }
     END {
-      n = NR; s = 0
+      n = NR; s = 0; fence = 0
       cr = (n && a[1] ~ /\r$/) ? "\r" : ""
-      for (i = 1; i <= n; i++) if (trim(a[i]) == heading) { s = i; break }
+      for (i = 1; i <= n; i++) {
+        if (a[i] ~ /^```/) { fence = !fence; continue }
+        if (!fence && trim(a[i]) == heading) { s = i; break }
+      }
       if (!s) {
         for (i = 1; i <= n; i++) print a[i]
         if (n && trim(a[n]) != "") print cr
         print heading cr; print cr; print line cr
         exit
       }
-      e = n + 1
-      for (i = s + 1; i <= n; i++) if (a[i] ~ /^##? /) { e = i; break }
+      e = n + 1; fence = 0
+      for (i = s + 1; i <= n; i++) {
+        if (a[i] ~ /^```/) { fence = !fence; continue }
+        if (!fence && a[i] ~ /^##? /) { e = i; break }
+      }
       last = s
       for (i = s + 1; i < e; i++) {
         if (trim(a[i]) != "") last = i
@@ -151,10 +162,8 @@ _wsproj_section_add() {
         for (i = last + 1; i <= n; i++) print a[i]
       }
     }
-  ' "$file" > "$scratch" && cat "$scratch" > "$file"
-  rc=$?
-  rm -f "$scratch"
-  return $rc
+  ' "$file" > "$scratch" || { rm -f -- "$scratch"; return 4; }
+  mv -f -- "$scratch" "$real" || { rm -f -- "$scratch"; return 4; }
 }
 
 # Adds the row of one app to `## Modules`: `- <repo>: /<app dir> — <Axis>: <value>, ...`. The axes
