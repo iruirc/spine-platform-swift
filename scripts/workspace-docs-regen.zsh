@@ -9,8 +9,10 @@
 # it. Runs from the root or any folder inside it. --repair and --adopt propose changes and write
 # nothing until rerun with --yes. --pkg limits package files; meta-repo files always run.
 # Exit: 0 done or no drift; 1 drift under --check, or changes awaiting --yes; 2 invalid workspace.yml
-# or malformed markers; 3 yq missing, or jq missing or older than 1.7; 4 workspace.yml not found, or
-# found only in a *-meta folder of the old layout.
+# or malformed markers; 3 yq missing, or jq missing or older than 1.7; 4 workspace.yml not found,
+# found only in a *-meta folder of the old layout, or run from inside such a folder; also 4 for a
+# file it cannot write, or a marker no generator serves (REPOS in a file other than bootstrap.sh and
+# .gitignore).
 # Last line: workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n> missing=<n> pending=<n>
 set -uo pipefail
 
@@ -82,7 +84,12 @@ done
 # generator follows the file's name.
 content() {
   case "$1" in
-    REPOS) case "${4:t}" in bootstrap.sh) wsdocs::repos ;; .gitignore) wsdocs::gitignore_repos ;; esac ;;
+    REPOS)
+      case "${4:t}" in
+        bootstrap.sh) wsdocs::repos ;;
+        .gitignore) wsdocs::gitignore_repos ;;
+        *) print -u2 "workspace-docs-regen: ${4}: no content for a REPOS marker in this file (only bootstrap.sh and .gitignore carry one)"; return 4 ;;
+      esac ;;
     META) wsdocs::repo_map ;;
     PKG_LIST) wsdocs::pkg_list ;;
     CLONE) wsdocs::clone ;;

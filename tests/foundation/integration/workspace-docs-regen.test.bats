@@ -475,3 +475,20 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   [ "${lines[${#lines[@]}-1]}" = "workspace-docs-regen: regenerated=0 drifted=0 malformed=0 missing=0 pending=1" ]
   cmp "$BATS_TEST_TMPDIR/hand-written.swift" "$m"
 }
+
+@test "a REPOS marker in a file that is neither bootstrap.sh nor .gitignore is an error, not a blanked section" {
+  # No shipped file carries it, so the script is copied with REPOS registered on the README.
+  local dir="$(ws_mktemp_dir)" copy
+  mkdir "$dir/scripts"; ln -s "$(ws_repo_root)/templates" "$dir/templates"
+  copy="$dir/scripts/workspace-docs-regen.zsh"
+  sed 's|"PKG_LIST CLONE DAILY_OPS SCHEMA"|"PKG_LIST CLONE DAILY_OPS SCHEMA REPOS"|' "$REGEN" > "$copy"
+  ! cmp -s "$REGEN" "$copy"
+  chmod 755 "$copy"
+  printf '\n<!-- WORKSPACE_REPOS_BEGIN -->\nkeep me\n<!-- WORKSPACE_REPOS_END -->\n' >> "$META/README.md"
+  before="$(cat "$META/README.md")"
+  cd "$META"
+  run "$copy"
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"README.md"* && "$output" == *"REPOS"* ]] || { echo "$output"; return 1; }
+  [ "$(cat "$META/README.md")" = "$before" ]
+}
