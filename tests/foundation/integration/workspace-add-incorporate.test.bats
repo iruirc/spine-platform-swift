@@ -3,12 +3,13 @@
 # root (the meta repo), and regen lists it in .gitignore and bootstrap.sh.
 load "$(dirname "$BATS_TEST_FILENAME")/../helpers/ws-test-helpers"
 
+setup_file() { ws_build_template workspace-yml/minimal.yml; }
+
 setup() {
   WS_TEST_TMPDIRS=()
   ROOT="$(ws_mktemp_dir)/ws"
   DRIVER="$(ws_repo_root)/tests/foundation/helpers/ws-add-driver.zsh"
-  "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
-    "$(ws_fixture_path workspace-yml/minimal.yml)" "$ROOT" >/dev/null 2>&1
+  ws_copy_template "$ROOT"
 }
 teardown() { ws_cleanup_tmpdirs; }
 

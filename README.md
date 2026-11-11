@@ -164,7 +164,7 @@ scripts/lint-core-refs.sh . --core "$SPINE_TOOLKIT_CORE"
 ```
 
 `changed` runs only the suites the branch touches; the full suite, `scripts/test-foundation.sh all`,
-takes about ten minutes and runs before a merge and before a release. Which change needs which
+takes about six minutes and runs before a merge and before a release. Which change needs which
 suite, and why: `tests/foundation/README.md`.
 
 The foundation suite also checks that the Claude Code and Codex manifests have the same plugin

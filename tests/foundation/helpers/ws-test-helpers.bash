@@ -35,6 +35,22 @@ ws_cleanup_tmpdirs() {
   WS_TEST_TMPDIRS=()
 }
 
+# Builds the workspace of a fixture once per test file; call from `setup_file`. A build takes
+# seconds and a copy a fraction of one, and a built workspace holds no absolute path and no
+# symlink, so each test's copy is the workspace the driver would have built in its place.
+# Usage: ws_build_template workspace-yml/<name>.yml
+ws_build_template() {
+  local out
+  out="$("$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" \
+    "$(ws_fixture_path "$1")" "$BATS_FILE_TMPDIR/template" 2>&1)" || {
+    echo "ws_build_template: ws-init-driver failed on $1"; echo "$out"; return 1; }
+}
+
+# Gives a test its own copy of the workspace ws_build_template built; <dest> may exist and be empty.
+ws_copy_template() {
+  mkdir -p -- "$1" && cp -Rp -- "$BATS_FILE_TMPDIR/template/." "$1"
+}
+
 # Run a zsh script under test with stdin/stdout captured.
 # Usage: ws_run_zsh "$(ws_lib_path workspace-yml-parser.zsh)" wsyml::load /path/to/yml
 ws_run_zsh() {
