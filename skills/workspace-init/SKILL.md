@@ -38,7 +38,10 @@ interactive step 10 has written it.
 ## Workspace root
 
 `<root>` is the folder the command runs in, or the one `--dir <path>` names (relative to the cwd;
-created by `s01_meta_dir` when it does not exist). The workspace root IS the meta repo: `git init`
+created by `s01_meta_dir` when it does not exist). `<root>` is an absolute path: resolve it with
+`${root:A}` right after it is chosen, before any step runs, because s06b runs swift-init from inside
+`<root>/<app_dir>` and `--config-dir=<root>` would otherwise name a different folder there. The
+workspace root IS the meta repo: `git init`
 runs in it, and `workspace.yml`, `bootstrap.sh`, `SPINE.md`, `CLAUDE.md`, `AGENTS.md`, the docs and
 the `.xcworkspace` live in it. Every app repo sits at `<root>/<app_dir>` (`<app_dir>` is
 `wsdocs::app_dir <key>`: `project.apps.<key>.dir`, default `.`, then the repo) and every package at
@@ -213,7 +216,7 @@ State file is deleted only after `s14_local_skills` completes successfully.
 
 ## --resume
 
-Read `<root>/.workspace-init.state`. If absent or malformed, emit error and exit 1. Otherwise, run the shared execution table — skipping completed step IDs and verifying idempotency for the rest.
+Read `<root>/.workspace-init.state`. If absent or malformed, emit error and exit 1. An empty file is valid — interactive step 10 writes one — and means no step is recorded as done: resume skips only the steps whose idempotency check passes. Otherwise, run the shared execution table — skipping completed step IDs and verifying idempotency for the rest.
 
 For project-block workflows: interruption of swift-init Q&A (Ctrl-C during s06b interactive) leaves state file unmodified; `--resume` re-enters Q&A for the interrupted app. State file marks s06b done only after swift-init returns, `<root>/<app_dir>/project.yml` is on disk and `<root>/SPINE.md` names its `## Platform` — the check in the table. No stack question outlives that point: every value swift-init hands to setup, `--di=plain` included, is one the catalog lists.
 

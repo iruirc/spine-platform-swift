@@ -53,7 +53,7 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | 2, `malformed` > 0 | `error_malformed_markers` with `malformed` |
 | 2, otherwise | `error_validation`, then the script's stderr — unless it opens with `usage:`, a bug in the call: show that line instead |
 | 3 | `error_yq_missing` when stderr names yq (`yq not on PATH`); otherwise jq is missing or older than 1.7 — the script's stderr names what was found, show that line as is |
-| 4 | `error_old_layout` when stderr names `docs/migrations/workspace-nested-layout.md` (the meta repo still sits beside the packages in a `*-meta` folder); `error_missing_workspace_yml` when stderr names the search (`no workspace.yml`); otherwise a write failed — the script's stderr names the file, show that line as is |
+| 4 | `error_old_layout` when stderr names `docs/migrations/workspace-nested-layout.md` (the meta repo still sits beside the packages in a `*-meta` folder), with `guide` the absolute path in the parentheses after that name; `error_missing_workspace_yml` when stderr names the search (`no workspace.yml`); otherwise a write failed — the script's stderr names the file, show that line as is |
 
 ## What it owns
 
@@ -62,7 +62,7 @@ The last line is `workspace-docs-regen: regenerated=<n> drifted=<n> malformed=<n
 | meta `README.md` | `PKG_LIST` under `## Packages`, `CLONE` under `## Quickstart`, `DAILY_OPS` under `## Daily ops`, `SCHEMA` under `## Schema` |
 | meta `ARCHITECTURE.md` | `LAYERS`, `GRAPH` |
 | meta `CONTRIBUTING.md` | `ARCHETYPE_RULES` under `## Archetype rules`; `## Project-specific rules` is the user's |
-| meta `.gitignore` | `REPOS`: one `/<path>/` line per repository `bootstrap.sh` clones, then one per Tasks/Docs repo of `sibling` or `path` mode, so the root repo does not track them; a Tasks/Docs symlink is not listed — the root repo commits it |
+| meta `.gitignore` | `REPOS`: one `/<path>` line per repository (no trailing slash: it would not match a symlinked package) `bootstrap.sh` clones, then one per Tasks/Docs repo of `sibling` or `path` mode, so the root repo does not track them; a Tasks/Docs symlink is not listed — the root repo commits it |
 | meta `bootstrap.sh` | `REPOS`: one `<path>` and `<remote url>` line per repository, tab-separated, inside the script's heredoc; the script stays executable |
 | meta `SPINE.md` | `META` under `## Workspace meta`: the repo map, where agents start and what each repository is |
 | package `README.md` | `PKG_HEADER` (holds the title), `PKG_DEPS` (holds `## Dependencies`) |

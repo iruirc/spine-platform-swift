@@ -66,7 +66,7 @@ Swift {version} старше 6.0; манифест нового пакета г�
 workspace.yml не найден ни в этой папке, ни в её предках; перейди в корень workspace'а или в папку внутри него. exit 1.
 
 ## error_old_layout
-Этот workspace в старой раскладке: meta-repo лежит рядом с пакетами в папке *-meta. Сначала переведи его на новую раскладку: docs/migrations/workspace-nested-layout.md. exit 1.
+Этот workspace в старой раскладке: meta-repo лежит рядом с пакетами в папке *-meta. Сначала переведи его на новую раскладку: docs/migrations/workspace-nested-layout.md ({guide}). exit 1.
 
 ## error_validation
 workspace.yml невалиден после добавления (ошибки выше); изменения откатаны.

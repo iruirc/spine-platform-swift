@@ -83,7 +83,7 @@ need_xcodegen() { command -v xcodegen >/dev/null 2>&1 || skip "xcodegen not on P
   [ -d "$root/projects/App/.git" ]
   run yq eval '.packages.OnePkg.path' "$root/projects/App/project.yml"
   [ "$output" = "../../packages/OnePkg" ]
-  grep -Fxq -- '/projects/App/' "$root/.gitignore"
+  grep -Fxq -- '/projects/App' "$root/.gitignore"
   run git -C "$root" status --porcelain
   [ -z "$output" ] || { echo "$output"; return 1; }
 }

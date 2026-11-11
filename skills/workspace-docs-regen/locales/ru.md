@@ -23,7 +23,7 @@ yq не найден в PATH (нужен этому тулкиту). Устан�
 workspace.yml не найден ни в этой папке, ни в её предках; перейди в корень workspace'а или в папку внутри него.
 
 ## error_old_layout
-Этот workspace в старой раскладке: meta-repo лежит рядом с пакетами в папке *-meta. Сначала переведи его на новую раскладку: docs/migrations/workspace-nested-layout.md.
+Этот workspace в старой раскладке: meta-repo лежит рядом с пакетами в папке *-meta. Сначала переведи его на новую раскладку: docs/migrations/workspace-nested-layout.md ({guide}).
 
 ## repair_prompt
 Применить? (y/N)

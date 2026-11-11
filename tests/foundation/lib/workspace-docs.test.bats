@@ -192,9 +192,9 @@ External packages:
   [ "$output" = $'SimpleApp-iOS\t' ]
 }
 
-@test "gitignore_repos: one /<path>/ line per repository, then the Tasks and Docs repos" {
+@test "gitignore_repos: one /<path> line per repository, without a trailing slash, then the Tasks and Docs repos" {
   run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::gitignore_repos'
-  [ "$output" = $'/projects/App/\n/packages/OnePkg/\n/Tasks/\n/Docs/' ] || { echo "$output"; return 1; }
+  [ "$output" = $'/projects/App\n/packages/OnePkg\n/Tasks\n/Docs' ] || { echo "$output"; return 1; }
 }
 
 @test "gitignore_repos: a Tasks repo in path mode by its path; a symlink and a disabled block are not ignored" {
@@ -209,10 +209,10 @@ packages:
   - { name: A, archetype: library, git: { origin: x }, version: 0.1.0 }
 YML
   run docs "$yml" 'wsdocs::gitignore_repos'
-  [ "$output" = $'/packages/A/\n/work/Tasks/' ] || { echo "$output"; return 1; }
+  [ "$output" = $'/packages/A\n/work/Tasks' ] || { echo "$output"; return 1; }
   run docs "$(ws_fixture_path workspace-yml/docs-disabled.yml)" 'wsdocs::gitignore_repos'
-  [[ "$output" != *'/Docs/'* ]] || { echo "$output"; return 1; }
-  [[ "$output" == *'/Tasks/'* ]] || { echo "$output"; return 1; }
+  [[ "$output" != *'/Docs'* ]] || { echo "$output"; return 1; }
+  [[ "$output" == *'/Tasks'* ]] || { echo "$output"; return 1; }
 }
 
 @test "repo_map: the workspace line, one line per repository, the commit rule" {
@@ -248,7 +248,24 @@ YML
     > "$ws/myapp-meta/workspace.yml"
   run docs "$ws/myapp-meta/workspace.yml" "wsdocs::refuse_old_layout '$ws/myapp-meta/workspace.yml'"
   [ "$status" -eq 4 ] || { echo "$status: $output"; return 1; }
-  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]]
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md ($(cd -P -- "$(ws_repo_root)" && pwd)/docs/migrations/workspace-nested-layout.md)"* ]] || { echo "$output"; return 1; }
+}
+
+@test "migration_guide: the absolute path of the guide in the plugin that holds the library" {
+  run docs "$(ws_fixture_path workspace-yml/nested-apps.yml)" 'wsdocs::migration_guide'
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(cd -P -- "$(ws_repo_root)" && pwd)/docs/migrations/workspace-nested-layout.md" ] || { echo "$output"; return 1; }
+  [ -f "$output" ]
+}
+
+@test "error_old_layout carries the {guide} placeholder in both locales of workspace-docs-regen and workspace-add" {
+  local s l body
+  for s in workspace-docs-regen workspace-add; do
+    for l in en ru; do
+      body="$(awk '/^## error_old_layout$/ {on = 1; next} /^## / {on = 0} on' "$(ws_repo_root)/skills/$s/locales/$l.md")"
+      [[ "$body" == *'docs/migrations/workspace-nested-layout.md ({guide})'* ]] || { echo "$s/$l lacks {guide}: $body"; return 1; }
+    done
+  done
 }
 
 @test "refuse_old_layout: a new root named <ws>-meta in another case that holds its repositories is a root" {

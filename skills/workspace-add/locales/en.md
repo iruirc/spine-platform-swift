@@ -66,7 +66,7 @@ Swift {version} is older than 6.0; a new package's manifest is generated for Swi
 workspace.yml not found in this directory or its ancestors; cd into the workspace root or a folder inside it first. exit 1.
 
 ## error_old_layout
-This workspace uses the old layout, where the meta repo sits beside the packages in a *-meta folder. Move it to the new layout first: docs/migrations/workspace-nested-layout.md. exit 1.
+This workspace uses the old layout, where the meta repo sits beside the packages in a *-meta folder. Move it to the new layout first: docs/migrations/workspace-nested-layout.md ({guide}). exit 1.
 
 ## error_validation
 workspace.yml is invalid after add (errors above); the edit was rolled back.

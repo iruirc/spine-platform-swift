@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # workspace-docs.zsh — the content of every toolkit-owned section and workspace file, derived from
 # the loaded workspace.yml. Each generator prints its content without the marker lines.
-# Public API: wsdocs::find_workspace_yml, wsdocs::refuse_old_layout,
+# Public API: wsdocs::find_workspace_yml, wsdocs::refuse_old_layout, wsdocs::migration_guide,
 #   wsdocs::pkg_dir, wsdocs::apps, wsdocs::app_dir, wsdocs::app_xcodeproj, wsdocs::app_url,
 #   wsdocs::pkg_list, wsdocs::layers, wsdocs::graph,
 #   wsdocs::repos, wsdocs::gitignore_repos, wsdocs::repo_map,
@@ -9,6 +9,12 @@
 #   wsdocs::pkg_boundary, wsdocs::pkg_public_api, wsdocs::xcworkspace, wsdocs::code_workspace_folders
 
 typeset -g _WSDOCS_TEMPLATES="${${(%):-%x}:A:h:h}"
+
+# The migration guide of the nested layout, as installed with this library: the templates root is
+# <plugin>/templates/workspace, so the plugin root is two folders up. Prints the absolute path.
+wsdocs::migration_guide() {
+  print -r -- "${_WSDOCS_TEMPLATES:h:h}/docs/migrations/workspace-nested-layout.md"
+}
 
 # Messages of the two root checks below name the command that asked.
 typeset -g WSDOCS_CALLER="${WSDOCS_CALLER:-workspace}"
@@ -25,7 +31,7 @@ wsdocs::find_workspace_yml() {
     d="${d:h}"
   done
   if [[ -n "$old_yml" ]]; then
-    print -u2 "$WSDOCS_CALLER: $old_yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md"
+    print -u2 "$WSDOCS_CALLER: $old_yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md ($(wsdocs::migration_guide))"
   else
     print -u2 "$WSDOCS_CALLER: no workspace.yml in ${1:-$PWD} or its ancestors"
   fi
@@ -45,7 +51,7 @@ wsdocs::refuse_old_layout() {
     [[ -e "${meta:h}/$rpath" ]] && beside=1
   done
   if (( ! inside && beside )); then
-    print -u2 "$WSDOCS_CALLER: $yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md"
+    print -u2 "$WSDOCS_CALLER: $yml is the old layout, where the meta repo sits beside the packages; see docs/migrations/workspace-nested-layout.md ($(wsdocs::migration_guide))"
     return 4
   fi
   return 0
@@ -114,11 +120,12 @@ wsdocs::repos() {
 
 # The .gitignore entries of the repositories under the root: the ones bootstrap.sh clones, then the
 # Tasks and Docs repos of sibling and path mode. None is the meta repo's files; a Tasks or Docs
-# symlink is, so it is not listed.
+# symlink is, so it is not listed. No trailing slash: `/p/` matches only a directory, and git takes a
+# package incorporated with --symlink for a file.
 wsdocs::gitignore_repos() {
   local rpath url block def mode   # not `path`: in zsh it is tied to PATH
   while IFS=$'\t' read -r rpath url; do
-    [[ -n "$rpath" ]] && print -r -- "/$rpath/"
+    [[ -n "$rpath" ]] && print -r -- "/$rpath"
   done < <(wsdocs::repos)
   for block def in tasks Tasks docs Docs; do
     [[ "$(wsyml::get ".workspace.$block.enabled" 2>/dev/null)" == false ]] && continue
@@ -129,7 +136,7 @@ wsdocs::gitignore_repos() {
       *) rpath="$def" ;;
     esac
     while [[ "$rpath" == ./* ]]; do rpath="${rpath#./}"; done
-    print -r -- "/${rpath%/}/"
+    print -r -- "/${rpath%/}"
   done
 }
 

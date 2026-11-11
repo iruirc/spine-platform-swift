@@ -23,7 +23,7 @@ yq not on PATH (required by this toolkit). Install: brew install yq
 workspace.yml not found in this directory or its ancestors; cd into the workspace root or a folder inside it first.
 
 ## error_old_layout
-This workspace uses the old layout, where the meta repo sits beside the packages in a *-meta folder. Move it to the new layout first: docs/migrations/workspace-nested-layout.md.
+This workspace uses the old layout, where the meta repo sits beside the packages in a *-meta folder. Move it to the new layout first: docs/migrations/workspace-nested-layout.md ({guide}).
 
 ## repair_prompt
 Apply? (y/N)

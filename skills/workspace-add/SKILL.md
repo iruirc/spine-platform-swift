@@ -49,7 +49,7 @@ Read `[LANG]` from `<root>`'s project config (`SPINE.md`, or `CLAUDE-spine-toolk
 
 ## Pre-flight
 
-Find `<root>` with `wsdocs::find_workspace_yml` (it walks up from the cwd, and also reports a `<name>-meta` folder of the old layout) and, once `wsyml::load` has read the file, `wsdocs::refuse_old_layout <root>/workspace.yml`: `workspace-docs-regen` runs the same two checks. No `workspace.yml` emits `error_missing_workspace_yml` and exits 1; the old layout, where the meta repo sits beside the packages, emits `error_old_layout` and exits 1. Both happen before any question and without touching a file.
+Find `<root>` with `wsdocs::find_workspace_yml` (it walks up from the cwd, and also reports a `<name>-meta` folder of the old layout) and, once `wsyml::load` has read the file, `wsdocs::refuse_old_layout <root>/workspace.yml`: `workspace-docs-regen` runs the same two checks. No `workspace.yml` emits `error_missing_workspace_yml` and exits 1; the old layout, where the meta repo sits beside the packages, emits `error_old_layout` (`{guide}`: the absolute path the stderr line gives in parentheses after `docs/migrations/workspace-nested-layout.md`) and exits 1. Both happen before any question and without touching a file.
 
 `--new` renders a manifest, so it also checks `swift --version`: no `swift` emits `preflight_required_swift_missing`, a toolchain older than 6.0 `preflight_required_swift_too_old`, and either exits 3. `--incorporate` renders no manifest and does not check.
 

@@ -93,6 +93,21 @@ setup() {
   done
 }
 
+@test "<root> is an absolute path in workspace-init, and swift-init's --config-dir takes an absolute path" {
+  local r="$(ws_repo_root)"
+  grep -qF -- '`<root>` is an absolute path: resolve it with' "$r/skills/workspace-init/SKILL.md" \
+    || { echo "workspace-init never says <root> is absolute"; return 1; }
+  grep -qF -- '`${root:A}`' "$r/skills/workspace-init/SKILL.md" \
+    || { echo "workspace-init never resolves <root> with \${root:A}"; return 1; }
+  grep -qF -- '`<dir>` is an absolute path; a relative one is resolved against the cwd before anything else uses it' "$r/agents/swift-init.md" \
+    || { echo "swift-init never says --config-dir is absolute and resolves a relative one"; return 1; }
+}
+
+@test "--resume treats an empty .workspace-init.state as valid" {
+  grep -qF -- 'An empty file is valid' "$(ws_repo_root)/skills/workspace-init/SKILL.md" \
+    || { echo "--resume does not say an empty state file is valid"; return 1; }
+}
+
 @test "the migration guide exists, walks the general order and has a section per real workspace" {
   local g="$ROOT/docs/migrations/workspace-nested-layout.md"
   [ -f "$g" ] || { echo "no $g"; return 1; }
@@ -128,4 +143,22 @@ setup() {
     on && !/^ *#!/ && (/(^|[[:space:]])#/ || /`/) {print NR ": " $0}' "$g"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ -z "$output" ] || { echo "comment or backtick in a shell block:"; echo "$output"; return 1; }
+}
+
+@test "the migration guide's shell blocks hold no <word> placeholder outside quotes: zsh reads it as a redirection" {
+  local g="$ROOT/docs/migrations/workspace-nested-layout.md"
+  # Drop what sits inside '...' and "..." on a line, then look for <word> or <two words>.
+  run awk '/^ *```(bash|zsh|sh)$/ {on = 1; next} on && /^ *```$/ {on = 0; next}
+    on { l = $0; gsub(/"[^"]*"/, "", l); gsub(/\047[^\047]*\047/, "", l)
+         if (l ~ /<[A-Za-z][A-Za-z _-]*>/) print NR ": " $0 }' "$g"
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -z "$output" ] || { echo "placeholder in a shell block:"; echo "$output"; return 1; }
+  # The scan itself must catch what it is for.
+  run awk '{ l = $0; gsub(/"[^"]*"/, "", l); gsub(/\047[^\047]*\047/, "", l); if (l ~ /<[A-Za-z][A-Za-z _-]*>/) print "hit" }' <<<'git remote add origin <your private meta url>'
+  [ "$output" = hit ] || { echo "the scan misses an unquoted placeholder"; return 1; }
+}
+
+@test "the rollback creates the old meta folder with mkdir -p" {
+  grep -qF -- 'mkdir -p "$M" && mv .git "$M/"' "$ROOT/docs/migrations/workspace-nested-layout.md" \
+    || { echo "the rollback does not mkdir -p"; return 1; }
 }

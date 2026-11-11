@@ -12,6 +12,9 @@ setup() {
   META="$PARENT"
   REGEN="$(ws_repo_root)/scripts/workspace-docs-regen.zsh"
   GOLDEN="$(ws_fixture_path docs-regen/expected)"
+  # The guide inside the installed plugin, which the old-layout messages give by absolute path.
+  GUIDE="$(cd -P -- "$(ws_repo_root)" && pwd)/docs/migrations/workspace-nested-layout.md"
+  [ -f "$GUIDE" ]
 }
 teardown() { ws_cleanup_tmpdirs; }
 
@@ -205,7 +208,7 @@ old_layout() {
   cd "$OLD/sharedPackages/AKit/Sources"
   run "$REGEN"
   [ "$status" -eq 4 ]
-  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]] || return 1
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md ($GUIDE)"* ]] || { echo "$output"; return 1; }
   [ "$(find "$OLD" -type f -exec md5 -q {} + | md5 -q)" = "$OLD_HASH" ]
 }
 
@@ -214,7 +217,7 @@ old_layout() {
   cd "$OLD"
   run "$REGEN"
   [ "$status" -eq 4 ]
-  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]] || return 1
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md ($GUIDE)"* ]] || { echo "$output"; return 1; }
   [ "$(find "$OLD" -type f -exec md5 -q {} + | md5 -q)" = "$OLD_HASH" ]
 }
 
@@ -223,7 +226,7 @@ old_layout() {
   cd "$OLD/RegenWS-meta"
   run "$REGEN"
   [ "$status" -eq 4 ]
-  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]] || return 1
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md ($GUIDE)"* ]] || { echo "$output"; return 1; }
   [ "$(find "$OLD" -type f -exec md5 -q {} + | md5 -q)" = "$OLD_HASH" ]
   [ ! -e "$OLD/RegenWS-meta/RegenWS.xcworkspace" ]
   [ ! -e "$OLD/RegenWS-meta/RegenWS.code-workspace" ]
@@ -235,7 +238,7 @@ old_layout() {
   cd "$OLD/RegenWS-meta"
   run "$REGEN" --check
   [ "$status" -eq 4 ] || { echo "$output"; return 1; }
-  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]]
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md ($GUIDE)"* ]] || { echo "$output"; return 1; }
 }
 
 @test "a new root that happens to be named <ws>-meta and holds its packages is still a root" {
@@ -252,8 +255,8 @@ old_layout() {
   run "$REGEN"
   [ "$status" -eq 0 ]
   grep -Fxq '# WORKSPACE_REPOS_BEGIN' "$META/.gitignore"
-  grep -Fxq '/sharedPackages/AKit/' "$META/.gitignore"
-  grep -Fxq '/domainPackages/CFeature/' "$META/.gitignore"
+  grep -Fxq '/sharedPackages/AKit' "$META/.gitignore"
+  grep -Fxq '/domainPackages/CFeature' "$META/.gitignore"
   grep -Fxq $'sharedPackages/AKit\tgit@github.com:user/AKit.git' "$META/bootstrap.sh"
   grep -Fxq -- '- sharedPackages/BEngine — engine package' "$META/SPINE.md"
   run "$REGEN" --check

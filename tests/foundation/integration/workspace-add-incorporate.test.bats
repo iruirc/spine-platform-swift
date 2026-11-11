@@ -32,7 +32,7 @@ standalone() {   # <name>
   [ "$status" -eq 0 ]
   [ ! -e "$STANDALONE" ]
   [ -f "$ROOT/packages/BareKit/Package.swift" ]
-  grep -Fxq '/packages/BareKit/' "$ROOT/.gitignore"
+  grep -Fxq '/packages/BareKit' "$ROOT/.gitignore"
   grep -Fxq $'packages/BareKit\tgit@github.com:user/BareKit.git' "$ROOT/bootstrap.sh"
   grep -Fxq '# Package: BareKit' "$ROOT/packages/BareKit/CLAUDE.md"
   grep -Fxq '<!-- WORKSPACE_PKG_BOUNDARY_BEGIN -->' "$ROOT/packages/BareKit/CLAUDE.md"
@@ -56,8 +56,25 @@ standalone() {   # <name>
   [ "$status" -eq 0 ]
   [ -L "$ROOT/packages/LinkKit" ]
   [ -f "$STANDALONE/Package.swift" ]
-  grep -Fxq '/packages/LinkKit/' "$ROOT/.gitignore"
+  grep -Fxq '/packages/LinkKit' "$ROOT/.gitignore"
   grep -Fxq $'packages/LinkKit\tgit@github.com:user/LinkKit.git' "$ROOT/bootstrap.sh"
+}
+
+@test "a package incorporated with --symlink stays out of git status of the meta repo after regen" {
+  standalone LinkKit
+  declare_pkg LinkKit git@github.com:user/LinkKit.git
+  git -C "$ROOT" -c user.name=t -c user.email=t@t commit -qam declare
+  cd "$ROOT"
+  run "$DRIVER" "$STANDALONE" LinkKit --symlink
+  [ "$status" -eq 0 ]
+  [ -L "$ROOT/packages/LinkKit" ]
+  # What regen rewrote is the meta repo's own files; commit those, and nothing is left over: the
+  # symlink, which git takes for a file, is ignored only by an entry without a trailing slash.
+  git -C "$ROOT" add -u
+  git -C "$ROOT" -c user.name=t -c user.email=t@t commit -qm regen
+  run git -C "$ROOT" status --porcelain
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || { echo "$output"; return 1; }
 }
 
 @test "incorporate into a package group lands under the group's dir" {
@@ -68,7 +85,7 @@ standalone() {   # <name>
   run "$DRIVER" "$STANDALONE" GroupKit
   [ "$status" -eq 0 ]
   [ -f "$ROOT/sharedPackages/GroupKit/Package.swift" ]
-  grep -Fxq '/sharedPackages/GroupKit/' "$ROOT/.gitignore"
+  grep -Fxq '/sharedPackages/GroupKit' "$ROOT/.gitignore"
 }
 
 @test "a url whose last component is not the package name prints warn_url_name_mismatch and still incorporates" {
@@ -151,7 +168,8 @@ standalone() {   # <name>
   cd "$old/minimal-ws-meta"
   run "$DRIVER" "$STANDALONE" BareKit
   [ "$status" -eq 1 ]
-  [[ "$output" == *"docs/migrations/workspace-nested-layout.md"* ]] || { echo "$output"; return 1; }
+  local guide; guide="$(cd -P -- "$(ws_repo_root)" && pwd)/docs/migrations/workspace-nested-layout.md"
+  [[ "$output" == *"docs/migrations/workspace-nested-layout.md ($guide)"* ]] || { echo "$output"; return 1; }
   [ -f "$STANDALONE/Package.swift" ]
 }
 

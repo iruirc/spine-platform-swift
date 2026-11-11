@@ -131,7 +131,7 @@ YML
   run "$(ws_repo_root)/tests/foundation/helpers/ws-init-driver.zsh" "$yml" "$root"
   [ "$status" -eq 0 ] || { echo "$output"; return 1; }
   [ -d "$root/work/Tasks/.git" ]
-  grep -Fxq -- '/work/Tasks/' "$root/.gitignore"
+  grep -Fxq -- '/work/Tasks' "$root/.gitignore"
   grep -Fxq -- '- Roots: /work/Tasks' "$root/SPINE.md"
   run git -C "$root" status --porcelain
   [ -z "$output" ] || { echo "$output"; return 1; }
