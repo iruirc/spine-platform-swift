@@ -1,0 +1,197 @@
+bad-app-dir-absolute.yml	.bootstrap.git_author
+bad-app-dir-absolute.yml	.defaults | has("platforms")
+bad-app-dir-absolute.yml	.defaults.tests
+bad-app-dir-absolute.yml	.package_groups[].name
+bad-app-dir-absolute.yml	.packages | length
+bad-app-dir-absolute.yml	.packages[] | select(.name == "OnePkg") | .allowed_deps[]?
+bad-app-dir-absolute.yml	.packages[] | select(.name == "OnePkg") | .archetype
+bad-app-dir-absolute.yml	.packages[] | select(.name == "OnePkg") | .deps[]
+bad-app-dir-absolute.yml	.packages[] | select(.name == "OnePkg") | .external_deps | length
+bad-app-dir-absolute.yml	.packages[] | select(.name == "OnePkg") | .git | keys | .[]
+bad-app-dir-absolute.yml	.packages[] | select(.name == "OnePkg") | .git."origin"
+bad-app-dir-absolute.yml	.packages[] | select(.name == "OnePkg") | .version
+bad-app-dir-absolute.yml	.packages[].name
+bad-app-dir-absolute.yml	.project | length
+bad-app-dir-absolute.yml	.project.apps | keys | .[]
+bad-app-dir-absolute.yml	.project.apps | length
+bad-app-dir-absolute.yml	.project.apps.ios.dir
+bad-app-dir-absolute.yml	.project.apps.ios.git | keys | .[]
+bad-app-dir-absolute.yml	.project.apps.ios.repo
+bad-app-dir-absolute.yml	.project.apps.ios.stack.architecture
+bad-app-dir-absolute.yml	.project.apps.ios.stack.async
+bad-app-dir-absolute.yml	.project.apps.ios.stack.di
+bad-app-dir-absolute.yml	.project.apps.ios.stack.min_platforms | keys | .[]?
+bad-app-dir-absolute.yml	.project.apps.ios.stack.tests
+bad-app-dir-absolute.yml	.project.apps.ios.stack.ui_framework
+bad-app-dir-absolute.yml	.project.name
+bad-app-dir-absolute.yml	.remotes[]
+bad-app-dir-absolute.yml	.toolkit.lang
+bad-app-dir-absolute.yml	.toolkit.mode
+bad-app-dir-absolute.yml	.toolkit.progress
+bad-app-dir-absolute.yml	.workspace.docs.enabled
+bad-app-dir-absolute.yml	.workspace.docs.mode
+bad-app-dir-absolute.yml	.workspace.docs.path
+bad-app-dir-absolute.yml	.workspace.docs.symlink_target
+bad-app-dir-absolute.yml	.workspace.name
+bad-app-dir-absolute.yml	.workspace.tasks.enabled
+bad-app-dir-absolute.yml	.workspace.tasks.mode
+bad-app-dir-absolute.yml	.workspace.tasks.path
+bad-app-dir-absolute.yml	.workspace.tasks.symlink_target
+bad-app-dir-parent.yml	.bootstrap.git_author
+bad-app-dir-parent.yml	.defaults | has("platforms")
+bad-app-dir-parent.yml	.defaults.tests
+bad-app-dir-parent.yml	.package_groups[].name
+bad-app-dir-parent.yml	.packages | length
+bad-app-dir-parent.yml	.packages[] | select(.name == "OnePkg") | .allowed_deps[]?
+bad-app-dir-parent.yml	.packages[] | select(.name == "OnePkg") | .archetype
+bad-app-dir-parent.yml	.packages[] | select(.name == "OnePkg") | .deps[]
+bad-app-dir-parent.yml	.packages[] | select(.name == "OnePkg") | .external_deps | length
+bad-app-dir-parent.yml	.packages[] | select(.name == "OnePkg") | .git | keys | .[]
+bad-app-dir-parent.yml	.packages[] | select(.name == "OnePkg") | .git."origin"
+bad-app-dir-parent.yml	.packages[] | select(.name == "OnePkg") | .version
+bad-app-dir-parent.yml	.packages[].name
+bad-app-dir-parent.yml	.project | length
+bad-app-dir-parent.yml	.project.apps | keys | .[]
+bad-app-dir-parent.yml	.project.apps | length
+bad-app-dir-parent.yml	.project.apps.ios.dir
+bad-app-dir-parent.yml	.project.apps.ios.git | keys | .[]
+bad-app-dir-parent.yml	.project.apps.ios.repo
+bad-app-dir-parent.yml	.project.apps.ios.stack.architecture
+bad-app-dir-parent.yml	.project.apps.ios.stack.async
+bad-app-dir-parent.yml	.project.apps.ios.stack.di
+bad-app-dir-parent.yml	.project.apps.ios.stack.min_platforms | keys | .[]?
+bad-app-dir-parent.yml	.project.apps.ios.stack.tests
+bad-app-dir-parent.yml	.project.apps.ios.stack.ui_framework
+bad-app-dir-parent.yml	.project.name
+bad-app-dir-parent.yml	.remotes[]
+bad-app-dir-parent.yml	.toolkit.lang
+bad-app-dir-parent.yml	.toolkit.mode
+bad-app-dir-parent.yml	.toolkit.progress
+bad-app-dir-parent.yml	.workspace.docs.enabled
+bad-app-dir-parent.yml	.workspace.docs.mode
+bad-app-dir-parent.yml	.workspace.docs.path
+bad-app-dir-parent.yml	.workspace.docs.symlink_target
+bad-app-dir-parent.yml	.workspace.name
+bad-app-dir-parent.yml	.workspace.tasks.enabled
+bad-app-dir-parent.yml	.workspace.tasks.mode
+bad-app-dir-parent.yml	.workspace.tasks.path
+bad-app-dir-parent.yml	.workspace.tasks.symlink_target
+bad-app-git-remote.yml	.bootstrap.git_author
+bad-app-git-remote.yml	.defaults | has("platforms")
+bad-app-git-remote.yml	.defaults.tests
+bad-app-git-remote.yml	.package_groups[].name
+bad-app-git-remote.yml	.packages | length
+bad-app-git-remote.yml	.packages[] | select(.name == "OnePkg") | .allowed_deps[]?
+bad-app-git-remote.yml	.packages[] | select(.name == "OnePkg") | .archetype
+bad-app-git-remote.yml	.packages[] | select(.name == "OnePkg") | .deps[]
+bad-app-git-remote.yml	.packages[] | select(.name == "OnePkg") | .external_deps | length
+bad-app-git-remote.yml	.packages[] | select(.name == "OnePkg") | .git | keys | .[]
+bad-app-git-remote.yml	.packages[] | select(.name == "OnePkg") | .git."origin"
+bad-app-git-remote.yml	.packages[] | select(.name == "OnePkg") | .version
+bad-app-git-remote.yml	.packages[].name
+bad-app-git-remote.yml	.project | length
+bad-app-git-remote.yml	.project.apps | keys | .[]
+bad-app-git-remote.yml	.project.apps | length
+bad-app-git-remote.yml	.project.apps.ios.dir
+bad-app-git-remote.yml	.project.apps.ios.git | keys | .[]
+bad-app-git-remote.yml	.project.apps.ios.git."x"
+bad-app-git-remote.yml	.project.apps.ios.repo
+bad-app-git-remote.yml	.project.apps.ios.stack.architecture
+bad-app-git-remote.yml	.project.apps.ios.stack.async
+bad-app-git-remote.yml	.project.apps.ios.stack.di
+bad-app-git-remote.yml	.project.apps.ios.stack.min_platforms | keys | .[]?
+bad-app-git-remote.yml	.project.apps.ios.stack.tests
+bad-app-git-remote.yml	.project.apps.ios.stack.ui_framework
+bad-app-git-remote.yml	.project.name
+bad-app-git-remote.yml	.remotes[]
+bad-app-git-remote.yml	.toolkit.lang
+bad-app-git-remote.yml	.toolkit.mode
+bad-app-git-remote.yml	.toolkit.progress
+bad-app-git-remote.yml	.workspace.docs.enabled
+bad-app-git-remote.yml	.workspace.docs.mode
+bad-app-git-remote.yml	.workspace.docs.path
+bad-app-git-remote.yml	.workspace.docs.symlink_target
+bad-app-git-remote.yml	.workspace.name
+bad-app-git-remote.yml	.workspace.tasks.enabled
+bad-app-git-remote.yml	.workspace.tasks.mode
+bad-app-git-remote.yml	.workspace.tasks.path
+bad-app-git-remote.yml	.workspace.tasks.symlink_target
+bad-defaults-platforms-empty.yml	.defaults.platforms | keys | .[]?
+bad-defaults-platforms-empty.yml	.defaults.platforms | tag
+bad-defaults-platforms-scalar.yml	.defaults.platforms | tag
+bad-defaults-platforms.yml	.defaults.platforms | keys | .[]?
+bad-defaults-platforms.yml	.defaults.platforms | tag
+bad-defaults-platforms.yml	.defaults.platforms.ios
+bad-external-dep-version.yml	.packages[] | select(.name == "A") | .external_deps[0] | has("version")
+bad-external-dep-version.yml	.packages[] | select(.name == "A") | .external_deps[0] | tag
+bad-external-dep-version.yml	.packages[] | select(.name == "A") | .external_deps[0].url
+bad-external-dep-version.yml	.packages[] | select(.name == "A") | .external_deps[0].version
+bad-external-dep-version.yml	.packages[] | select(.name == "A") | .external_deps[0].version | tag
+bad-external-dep-version.yml	.packages[] | select(.name == "A") | .external_deps[1].version | keys | .[]
+bad-group-ref.yml	.packages[] | select(.name == "A") | .group
+cyclic.yml	.packages[] | select(.name == "A") | .deps[]?
+defaults-tests-quick-nimble.yml	.bootstrap.commit_after_init
+defaults-tests-quick-nimble.yml	.bootstrap.initial_commit_message
+defaults-tests-quick-nimble.yml	.defaults.default_branch
+defaults-tests-quick-nimble.yml	.packages[] | select(.name == "OnePkg") | .allowed_deps[]
+defaults-tests-quick-nimble.yml	.packages[] | select(.name == "OnePkg") | .deps[]?
+defaults-tests-quick-nimble.yml	.packages[] | select(.name == "OnePkg") | .external_deps[]? | select(tag == "!!str") // (.url + ((.version // {}) | (select(tag == "!!map") | to_entries | map(" (" + .key + " " + (.value | tostring) + ")") | join("")) // (" (" + tostring + ")")))
+defaults-tests-quick-nimble.yml	.packages[] | select(.name == "OnePkg") | .external_deps[]? | select(tag == "!!str") // .url
+defaults-tests-quick-nimble.yml	.packages[] | select(.name == "OnePkg") | .group
+defaults-tests-quick-nimble.yml	.project.apps.ios | select(tag == "!!str")
+defaults-tests-quick-nimble.yml	.workspace.code_workspace
+defaults-tests-quick-nimble.yml	.workspace.xcworkspace
+defaults-tests-xctest.yml	.bootstrap.commit_after_init
+defaults-tests-xctest.yml	.bootstrap.initial_commit_message
+defaults-tests-xctest.yml	.defaults.default_branch
+defaults-tests-xctest.yml	.packages[] | select(.name == "OnePkg") | .allowed_deps[]
+defaults-tests-xctest.yml	.packages[] | select(.name == "OnePkg") | .deps[]?
+defaults-tests-xctest.yml	.packages[] | select(.name == "OnePkg") | .external_deps[]? | select(tag == "!!str") // (.url + ((.version // {}) | (select(tag == "!!map") | to_entries | map(" (" + .key + " " + (.value | tostring) + ")") | join("")) // (" (" + tostring + ")")))
+defaults-tests-xctest.yml	.packages[] | select(.name == "OnePkg") | .external_deps[]? | select(tag == "!!str") // .url
+defaults-tests-xctest.yml	.packages[] | select(.name == "OnePkg") | .group
+defaults-tests-xctest.yml	.project.apps.ios | select(tag == "!!str")
+defaults-tests-xctest.yml	.workspace.code_workspace
+defaults-tests-xctest.yml	.workspace.xcworkspace
+docs-disabled.yml	.project.apps.ios | select(tag == "!!str")
+docs-regen.yml	.bootstrap.commit_after_init
+docs-regen.yml	.bootstrap.initial_commit_message
+docs-regen.yml	.defaults.default_branch
+docs-regen.yml	.package_groups[] | select(.name == "common") | .dir
+docs-regen.yml	.packages[] | select(.name == "AKit") | .allowed_deps[]
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[0] | has("version")
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[0] | select(tag == "!!str") // .url
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[0] | tag
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[0].url
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[0].version | keys | .[0]
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[0].version | keys | .[]
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[0].version | tag
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[0].version."from"
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[]? | select(tag == "!!str") // (.url + ((.version // {}) | (select(tag == "!!map") | to_entries | map(" (" + .key + " " + (.value | tostring) + ")") | join("")) // (" (" + tostring + ")")))
+docs-regen.yml	.packages[] | select(.name == "AKit") | .external_deps[]? | select(tag == "!!str") // .url
+docs-regen.yml	.workspace.code_workspace
+docs-regen.yml	.workspace.xcworkspace
+grouped.yml	.package_groups[] | select(.name == "common") | .dir
+minimal.yml	.nope.missing
+nested-apps.yml	.project.apps.ios.git."origin"
+nested-apps.yml	.project.apps.ios.stack.min_platforms.ios
+nested-apps.yml	.project.apps.ios.stack.min_platforms.macos
+package-no-remote.yml	.project.apps.ios.git."origin"
+pkg-manifest.yml	.defaults.platforms | keys | .[]?
+pkg-manifest.yml	.defaults.platforms.ios
+pkg-manifest.yml	.defaults.platforms.macos
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[0] | has("version")
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[0] | select(tag == "!!str") // .url
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[0] | tag
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[0].url
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[0].version | keys | .[0]
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[0].version | keys | .[]
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[0].version | tag
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[0].version."from"
+pkg-manifest.yml	.packages[] | select(.name == "Core") | .external_deps[5].version
+with-project-full.yml	.project.apps.ios.stack.min_platforms.ios
+with-project-full.yml	.project.apps.ios.stack.min_platforms.macos
+with-project-minimal.yml	.project.apps.macos
+with-project-mixed.yml	.project.apps.ios.stack.min_platforms.ios
+with-project-shortform.yml	.project.apps.ios
+with-project-shortform.yml	.project.apps.ios.stack.min_platforms.macos
+with-project-stack-tests.yml	.project.apps.macos

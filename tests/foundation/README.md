@@ -6,10 +6,10 @@
 
 ## What a run costs
 
-`all` takes about six minutes, and `integration` is two thirds of it (measured on 1.33.2: 355 s,
-519 tests). Every integration file builds a temporary workspace through
+`all` takes about four minutes, and `integration` is two thirds of it (measured on 1.33.2: 252 s,
+521 tests). Every integration file builds a temporary workspace through
 `helpers/ws-init-driver.zsh`, which sources all of `templates/workspace/lib/`, renders the templates
-and runs `scripts/workspace-docs-regen.zsh` — about five seconds a build. `unit` is about a minute
+and runs `scripts/workspace-docs-regen.zsh` — a few seconds a build. `unit` is about a minute
 and a half.
 
 A change outside that path cannot move an integration test, so a task does not pay for it.

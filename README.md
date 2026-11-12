@@ -144,6 +144,8 @@ through it, or invoked by name by an agent.
   not load at all — no agents, no skills, no manifest.
 - The workspace skills need `yq` v4+ (`brew install yq`). `gh` is optional, needed only for
   `bootstrap.use_gh: true`; `xcodegen` is required when a `workspace.yml` carries a `project:` block.
+  With `jq` 1.7+ on PATH — macOS ships it — they read `workspace.yml` with it and run faster;
+  without it they use `yq`. `workspace-docs-regen` needs `jq` 1.7+ to write a `.code-workspace`.
 - Foundation tests need `bats-core` ≥ 1.10 (`brew install bats-core`).
 
 ## Internationalization
@@ -164,7 +166,7 @@ scripts/lint-core-refs.sh . --core "$SPINE_TOOLKIT_CORE"
 ```
 
 `changed` runs only the suites the branch touches; the full suite, `scripts/test-foundation.sh all`,
-takes about six minutes and runs before a merge and before a release. Which change needs which
+takes about four minutes and runs before a merge and before a release. Which change needs which
 suite, and why: `tests/foundation/README.md`.
 
 The foundation suite also checks that the Claude Code and Codex manifests have the same plugin

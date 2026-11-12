@@ -461,7 +461,7 @@ EOF
 @test "validate rejects an external dep's unquoted-float version, an unknown requirement key, and a two-key map" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-external-dep-version.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"external dep https://example.com/one.git version '1' must match M.m.p"* ]] || return 1
+  [[ "$output" == *"external dep https://example.com/one.git version '1.0' must match M.m.p"* ]] || return 1
   [[ "$output" == *"external dep https://example.com/two.git version key 'range' must be one of from|exact|branch|revision"* ]] || return 1
   [[ "$output" == *"external dep https://example.com/three.git version must have exactly one key (from|exact|branch|revision)"* ]] || return 1
 }

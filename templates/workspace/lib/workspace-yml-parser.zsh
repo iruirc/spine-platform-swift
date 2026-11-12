@@ -6,6 +6,22 @@ source "${${(%):-%x}:A:h}/workspace-archetypes.zsh"
 
 typeset -gA _WSYML_STATE
 
+# wsyml::get takes yq expressions and prints what `yq -o=tsv` prints, but a yq process costs about
+# twice a jq one, and a regen makes hundreds of calls. So where jq is on PATH it evaluates them,
+# with yq's two words it lacks — `keys` in document order, and `tag` — and yq's tsv output: a
+# scalar raw, an array of scalars on one line joined by tabs, a map or any other array no value.
+# A number keeps its spelling in jq 1.7, so `1.0` prints as written and tags as a float.
+typeset -g _WSYML_JQ_PRELUDE='def keys: keys_unsorted;
+def tag: if type == "object" then "!!map" elif type == "array" then "!!seq"
+  elif type == "string" then "!!str" elif type == "boolean" then "!!bool"
+  elif type == "null" then "!!null" elif (tostring | test("[.eE]")) then "!!float" else "!!int" end;
+def _wsyml_tsv: if type == "object" then error("map")
+  elif type == "array" then
+    if length == 0 then empty
+    elif all(.[]; type != "object" and type != "array") then map(tostring) | join("\t")
+    else error("array") end
+  else tostring end;'
+
 # The tokens of the tests axis. What each one means is the table in
 # skills/test-frameworks/SKILL.md; a guard keeps the two lists equal, so a value added to the axis
 # cannot land here and be missed in the templates, or the other way round.
@@ -35,6 +51,17 @@ wsyml::load() {
   fi
   _WSYML_STATE[json]="$json"
   _WSYML_STATE[path]="$_path"
+  # jq from 1.7 only, the version regen already asks of it: below that, or with no jq, yq. The
+  # version is cut at its first non-digit, non-dot character, as regen cuts it (jq-1.7.1-apple,
+  # jq-1.6rc2). WSYML_ENGINE=yq keeps the yq path reachable where jq is installed, for the test
+  # that holds the two equal.
+  local jqv
+  _WSYML_STATE[engine]=yq
+  if [[ "${WSYML_ENGINE:-}" != yq ]] && jqv="$(jq --version 2>/dev/null)"; then
+    jqv="${${jqv#jq-}%%[^0-9.]*}"
+    autoload -Uz is-at-least
+    [[ -n "$jqv" ]] && is-at-least 1.7 "$jqv" && _WSYML_STATE[engine]=jq
+  fi
   return 0
 }
 
@@ -45,7 +72,11 @@ wsyml::get() {
     return 4
   fi
   local val
-  val="$(print -r -- "${_WSYML_STATE[json]}" | yq -p=json -o=tsv eval "$expr" - 2>/dev/null)"
+  if [[ "${_WSYML_STATE[engine]:-}" == jq ]]; then
+    val="$(print -r -- "${_WSYML_STATE[json]}" | jq -r "$_WSYML_JQ_PRELUDE ($expr) | _wsyml_tsv" 2>/dev/null)"
+  else
+    val="$(print -r -- "${_WSYML_STATE[json]}" | yq -p=json -o=tsv eval "$expr" - 2>/dev/null)"
+  fi
   if [[ -z "$val" || "$val" == "null" ]]; then
     return 1
   fi
