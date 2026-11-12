@@ -14,10 +14,18 @@ setup() {
 }
 
 @test "the platform requires the core release that carries the criterion" {
-  grep -qF '{ "name": "spine-toolkit", "version": ">=2.32.0 <3" }' "$ROOT/.claude-plugin/plugin.json" \
-    || { echo "the spine-toolkit floor is not >=2.32.0 <3"; return 1; }
+  grep -qF '{ "name": "spine-toolkit", "version": ">=2.36.0 <3" }' "$ROOT/.claude-plugin/plugin.json" \
+    || { echo "the spine-toolkit floor is not >=2.36.0 <3"; return 1; }
 }
 
 @test "the none line names what was covered and each automatable gap" {
   grep -qF 'each automatable gap' "$A" || { echo "gaps are lost when there is no file"; return 1; }
+}
+
+@test "the validator writes code references in their own section and leaves measuring to itself" {
+  grep -qF '`## Code references`' "$A" || { echo "the validator still puts code in the case"; return 1; }
+  ! grep -qF 'live only in `**Code:**`' "$A" || { echo "the old Code field is still named"; return 1; }
+  ! grep -qF 'twelve fields' "$A" || { echo "the case still has twelve fields"; return 1; }
+  grep -qF '## What a case must prove' "$A" || { echo "no pointer to the writing rules"; return 1; }
+  grep -qF 'never an instruction for a person to measure' "$A" || { echo "the validator may still hand measuring to a person"; return 1; }
 }
