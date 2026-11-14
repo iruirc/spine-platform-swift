@@ -29,3 +29,22 @@ setup() {
   grep -qF '## What a case must prove' "$A" || { echo "no pointer to the writing rules"; return 1; }
   grep -qF 'never an instruction for a person to measure' "$A" || { echo "the validator may still hand measuring to a person"; return 1; }
 }
+
+@test "the validator keeps no instrument in the file and sends measuring to Validation.md" {
+  ! grep -qF '**By instrument:**' "$A" || { echo "the instrument field is still named"; return 1; }
+  ! grep -qF 'exact invocation' "$A" || { echo "the file still carries an instrument invocation"; return 1; }
+  ! grep -qF 'the measuring' "$A" || { echo "the measuring is still named"; return 1; }
+  grep -qF 'Measurements you can take yourself go to `Validation.md`' "$A" || { echo "measuring does not go to Validation.md"; return 1; }
+}
+
+@test "the case form follows manual_checks_style and the validator counts no fields" {
+  grep -qF 'manual_checks_style' "$A" || { echo "the style field is not named"; return 1; }
+  grep -qF '[STYLE]' "$A" || { echo "the file's style line is not named"; return 1; }
+  ! grep -qF 'twelve fields' "$A" || { echo "the case still has twelve fields"; return 1; }
+  ! grep -qF 'eleven fields' "$A" || { echo "the case still has eleven fields"; return 1; }
+  ! grep -qF 'five-column' "$A" || { echo "the step table is still counted"; return 1; }
+}
+
+@test "a deferred check first passes the question about the diff" {
+  grep -qF 'Does the diff change this behaviour?' "$A" || { echo "a deferred check skips the diff question"; return 1; }
+}
