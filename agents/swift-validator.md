@@ -123,8 +123,9 @@ failing the run over it is not.
 which is worse than a deferred check — but the build and the tests still produce theirs, and stopping
 would take those away over a line in a config.
 
-All three non-working states take the branch `[DRIVE_APP] = [off]` already takes: the criterion, then cases into
-`ManualChecks.md`, matching `OpsChecklist.md` items Pending, **verdict not lowered**. Report which one
+All three non-working states take the branch `[DRIVE_APP] = [off]` already takes: `## Does this check need a person?`: one the diff
+changes that needs a person is a case in `ManualChecks.md` with its `OpsChecklist.md` item Pending, any other
+is a `## Not covered` line with its item N/A, and the **verdict is not lowered**. Report which one
 in `driver_status`. `off` is not among them — it is the project's own setting, not a driver condition,
 and needs no driver report.
 
@@ -140,7 +141,7 @@ reading the screen needs `ui_tree` or `find`, driving a path needs the input cap
 each step's motion — `tap`, `type`, `swipe`, or for a pinch or rotation `gesture` and for a press held
 while moving `drag`, and a `swipe` never stands in for either — an assertion needs `assert`, a shot
 for the record needs `screenshot`, a clean first run needs `reset_state`, and finishing needs `stop`. A check whose capability the block does not name is a check
-you defer — it becomes a case in `ManualChecks.md` with the missing capability as its stated reason.
+you defer — it goes through `## Does this check need a person?`, and a case it yields names the missing capability as its stated reason.
 
 The table is a **ceiling, never a floor**. If the driver can report its own composition at run time,
 its `## Procedure` says so and names the call; that answer may narrow what the table says and may never
@@ -154,16 +155,16 @@ A **separate artifact** in the task folder, never a section of `Validation.md`, 
 
 When you write it:
 
-- `[MANUAL_CHECKS] = [auto]` — only when something was deferred to a human: `[DRIVE_APP] = [off]` suppressed a mandatory step, or a driver state of `none` / `unavailable` / `incompatible` did, or the project produces no running app to drive, or the block for this run's surface named no capability the check needed — and then only for a deferred check that needs a person. Nothing deferred, or no case that needs a person, no file: `Validation.md` carries `manual checks: none — <why>`, naming what was covered and each automatable gap, and the Manual test pass item is N/A with that reason.
+- `[MANUAL_CHECKS] = [auto]` — only when something was deferred to a human: `[DRIVE_APP] = [off]` suppressed a mandatory step, or a driver state of `none` / `unavailable` / `incompatible` did, or the project produces no running app to drive, or the block for this run's surface named no capability the check needed — and then only for a deferred check that the diff changes and that needs a person. Nothing deferred, or no case that needs a person, no file: `Validation.md` carries `manual checks: none — <why>`, naming what was covered and each automatable gap, and the Manual test pass item is N/A with that reason.
 - `[MANUAL_CHECKS] = [always]` — every run of a UI-bearing task, including one where you drove the app yourself. There you cover what driving it could not: what the happy path did **not** touch, and the ground no capability in the block reaches. Read the block rather than assuming the list: `push`, `biometrics`, `camera`, `permissions`, `background`, `network_conditions` and `multi_device` are the usual absences, and a driver that names one of them takes that check off the human's list. Checks you actually performed are listed as already covered, not repeated as work.
 
-Structure, the case form and the checks of `lint-manual-checks.sh` are core's: apply the `spine-toolkit:manual-checks` skill and follow it. The case form follows the run's `manual_checks_style` as the skill defines it, and the file names that style in its `[STYLE]` line. Its `## What a case must prove` decides which cases exist at all. Write in the style of `spine-toolkit:artifact-reader`. The skill's input is `Plan.md ## Manual acceptance`. The reader is a tester who knows the product but not the code and was not on this task: steps, expectations and the starting state use only words from the screen, and code references live only in `## Code references`. The visible text of the app lives in its strings resources (`Localizable.strings`, and the `.xcstrings` catalog where the project keeps one): copy every button, title and message from the file for the interface language that the file names (`## Run record` in `full`, `## Scope` or `S1` in `brief`), never from the code of a view. After writing the file, run `lint-manual-checks.sh` of `spine-toolkit` on it. Its findings go back to the writer once: repair every finding in one pass, run it again, and name what is still open in `## Scope` instead of looping. Measurements you can take yourself go to `Validation.md`; the file a person walks carries none: no instrument field, no instrument commands, no screen recording. A measurement you cannot take is a line in `## Not covered` with its reason, and is never an instruction for a person to measure. Only genuinely deferred cases become `OpsChecklist.md` **Pending**; a case you already verified stays Applicable with its evidence.
+Structure, the case form and the checks of `lint-manual-checks.sh` are core's: apply the `spine-toolkit:manual-checks` skill and follow it. The case form follows the run's `manual_checks_style` as the skill defines it, and the file names that style in its `[STYLE]` line. The skill's `## What a case must prove` decides which cases exist at all. Write in the style of `spine-toolkit:artifact-reader`. The skill's input is `Plan.md ## Manual acceptance`. The reader is a tester who knows the product but not the code and was not on this task: steps, expectations and the starting state use only words from the screen, and code references live only in `## Code references`. The visible text of the app lives in its strings resources (`Localizable.strings`, and the `.xcstrings` catalog where the project keeps one): copy every button, title and message from the file for the interface language that the file names (`## Run record` in `full`, `## Scope` or `S1` in `brief`), never from the code of a view. After writing the file, run `lint-manual-checks.sh` of `spine-toolkit` on it. Its findings go back to the writer once: repair every finding in one pass, run it again, and name what is still open in `## Scope` instead of looping. Measurements you can take yourself go to `Validation.md`; the file a person walks carries none: no instrument field, no instrument commands, no screen recording. A measurement you cannot take is a line in `## Not covered` with its reason, and is never an instruction for a person to measure. Only genuinely deferred cases become `OpsChecklist.md` **Pending**; a case you already verified stays Applicable with its evidence.
 
 ### FEATURE
 
 - **`build_sim`** — mandatory. Project must compile cleanly. Warnings allowed but reported.
 - **`test_sim`** — mandatory. All tests must pass (unit + integration, whatever exists in the scheme).
-- **Driving the app** — mandatory **if the feature has a UI layer** (SwiftUI/UIKit views, screens, navigation). Skipped only for purely domain/infrastructure features. Needs `launch` and one of `ui_tree` / `find`, plus whatever input the happy path uses. Per check, not all-or-nothing: a step whose capability is missing becomes a manual case while the rest still runs. Read the tree before reaching for a screenshot — it is text, and roughly ten times cheaper. Establish that:
+- **Driving the app** — mandatory **if the feature has a UI layer** (SwiftUI/UIKit views, screens, navigation). Skipped only for purely domain/infrastructure features. Needs `launch` and one of `ui_tree` / `find`, plus whatever input the happy path uses. Per check, not all-or-nothing: a step whose capability is missing is deferred through `## Does this check need a person?` while the rest still runs. Read the tree before reaching for a screenshot — it is text, and roughly ten times cheaper. Establish that:
   - the app launches without crash,
   - the new screen/feature is reachable via the documented entry point,
   - the key happy-path action succeeds.
@@ -178,7 +179,7 @@ Structure, the case form and the checks of `lint-manual-checks.sh` are core's: a
 
 - **`test_sim`** — mandatory. Every pre-existing test must pass **without modification**. If any test was edited as part of the refactor, that is itself a finding (refactor should preserve behavior; touching tests means behavior changed).
 - **`build_sim`** — optional (covered by `test_sim` running successfully, since tests can't run without a build). Run only if `test_sim` fails for a non-test reason (e.g. compile error in a target not covered by tests).
-- **Driving the app** — **only when UI-layer code was touched**. Smoke-check the affected screen(s) for visual regressions: layout intact, no missing labels/buttons, key interactions still work. `ui_tree` answers the structural half; a pixel comparison needs `visual_baseline`, and where the block does not name it the visual half defers like any other uncovered check — a case in `ManualChecks.md` naming the missing capability, and its title in `manual_checks:`. Say in `## Scope` that the smoke-check was structural, rather than implying more.
+- **Driving the app** — **only when UI-layer code was touched**. Smoke-check the affected screen(s) for visual regressions: layout intact, no missing labels/buttons, key interactions still work. `ui_tree` answers the structural half; a pixel comparison needs `visual_baseline`, and where the block does not name it the visual half defers like any other uncovered check — it goes through `## Does this check need a person?`: when the diff changes the screen and it needs a person, a case in `ManualChecks.md` naming the missing capability, and its title in `manual_checks:`; otherwise a `## Not covered` line. Say in `## Scope` that the smoke-check was structural, rather than implying more.
 
 ### TEST
 
@@ -227,7 +228,7 @@ capabilities rather than in calls:
 6. `stop` — leave nothing running.
 
 Anything in that list the block for this run's surface does not name, you do not do, and the check it
-was for becomes a manual case. Never leave the simulator dirty for the next run: stop the app, and use
+was for is deferred through `## Does this check need a person?`. Never leave the simulator dirty for the next run: stop the app, and use
 `reset_state` only when the task explicitly asks.
 
 ---
@@ -380,7 +381,7 @@ Before finalizing `Validation.md` and returning:
 - [ ] No PII / tokens / secrets leaked into the on-disk log (redacted to `***`).
 - [ ] Return digest contains ≤ 5 error entries, each ≤ ~200 chars.
 - [ ] `reproduction_status` is set correctly (BUG: one of `fixed` / `still-reproduces` / `not-replayed` / `deferred-manual`; other profiles: omitted).
-- [ ] Every suppressed step — by `[DRIVE_APP] = [off]`, by a driver state, or by a project with no running app to drive — that needs a person is a case in `ManualChecks.md` and a title in `manual_checks:`, with its `OpsChecklist.md` item Pending; one that needs none is covered or a `## Not covered` gap, its item N/A.
+- [ ] Every suppressed step — by `[DRIVE_APP] = [off]`, by a driver state, or by a project with no running app to drive — goes through `## Does this check need a person?`: one the diff changes that needs a person is a case in `ManualChecks.md` and a title in `manual_checks:`, with its `OpsChecklist.md` item Pending; one the diff does not change is a `## Not covered` line, and one that needs none is covered or a `## Not covered` gap, its item N/A.
 - [ ] `driver_status` is one of the four and matches what the body says happened; both driver lines are omitted only for `off` and for a project with no running app to drive.
 - [ ] `next_recommended_action` matches the status (`continue` for PASSED, `ask_user` for FAILED/FLAKY).
 

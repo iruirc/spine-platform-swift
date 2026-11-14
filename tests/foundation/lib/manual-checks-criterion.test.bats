@@ -48,3 +48,17 @@ setup() {
 @test "a deferred check first passes the question about the diff" {
   grep -qF 'Does the diff change this behaviour?' "$A" || { echo "a deferred check skips the diff question"; return 1; }
 }
+
+@test "no line outside the criterion pointer routes a deferred check to a case without the criterion" {
+  stale="$(grep -n -E 'becomes? (a )?(manual )?cases?|become manual cases' "$A" | grep -vF '## Does this check need a person?' || true)"
+  [ -z "$stale" ] || { echo "stale routing: $stale"; return 1; }
+}
+
+@test "the closing checklist names the outcome of a check the diff does not change" {
+  grep -qE '^- \[ \].*the diff does not change' "$A" || { echo "the closing checklist has no diff-unchanged outcome"; return 1; }
+}
+
+@test "the manual-checks paragraph names the skill, not an ambiguous Its" {
+  ! grep -qF 'Its `## What a case must prove`' "$A" || { echo "ambiguous Its before the skill's section"; return 1; }
+  ! grep -qF 'Its input is' "$A" || { echo "ambiguous Its before the skill's input"; return 1; }
+}
