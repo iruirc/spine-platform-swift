@@ -7,6 +7,11 @@ setup() {
   A="$ROOT/agents/swift-validator.md"
 }
 
+# The ManualChecks passage of a validator: from its "### `ManualChecks.md`" heading to the next heading.
+manual_checks_passage() {
+  awk '/^### `ManualChecks\.md`/ { on = 1; print; next } on && /^##(#)? / { exit } on { print }' "$1"
+}
+
 @test "the validator applies the criterion before it writes a case" {
   grep -qF '## Does this check need a person?' "$A" || { echo "no pointer to the criterion"; return 1; }
   grep -qF 'no case that needs a person, no file' "$A" || { echo "auto still writes a file for any deferred check"; return 1; }
@@ -14,8 +19,8 @@ setup() {
 }
 
 @test "the platform requires the core release that carries the criterion" {
-  grep -qF '{ "name": "spine-toolkit", "version": ">=2.36.0 <3" }' "$ROOT/.claude-plugin/plugin.json" \
-    || { echo "the spine-toolkit floor is not >=2.36.0 <3"; return 1; }
+  grep -qF '{ "name": "spine-toolkit", "version": ">=2.37.0 <3" }' "$ROOT/.claude-plugin/plugin.json" \
+    || { echo "the spine-toolkit floor is not >=2.37.0 <3"; return 1; }
 }
 
 @test "the none line names what was covered and each automatable gap" {
@@ -61,4 +66,15 @@ setup() {
 @test "the manual-checks paragraph names the skill, not an ambiguous Its" {
   ! grep -qF 'Its `## What a case must prove`' "$A" || { echo "ambiguous Its before the skill's section"; return 1; }
   ! grep -qF 'Its input is' "$A" || { echo "ambiguous Its before the skill's input"; return 1; }
+}
+
+@test "a step the validator cannot perform is deferred, not deferred to a human" {
+  ! grep -qF 'deferred to a human' "$A" || { echo "the validator still defers to a human"; return 1; }
+}
+
+@test "the manual-checks paragraph sends a driver-only deferral to the collective pass by name" {
+  p="$(manual_checks_passage "$A")"
+  grep -qF '`manual_checks_pass`' <<<"$p" || { echo "the paragraph does not name manual_checks_pass"; return 1; }
+  grep -qF '**Runner:** agent' <<<"$p" || { echo "the paragraph does not name the agent runner"; return 1; }
+  grep -qF '## Marks for a collective pass' <<<"$p" || { echo "the paragraph does not point at the marks section"; return 1; }
 }
