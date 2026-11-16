@@ -78,3 +78,9 @@ manual_checks_passage() {
   grep -qF '**Runner:** agent' <<<"$p" || { echo "the paragraph does not name the agent runner"; return 1; }
   grep -qF '## Marks for a collective pass' <<<"$p" || { echo "the paragraph does not point at the marks section"; return 1; }
 }
+
+@test "a Runner agent check stays a case and counts for writing the file" {
+  p="$(manual_checks_passage "$A")"
+  grep -qF 'stays a case of the file' <<<"$p" || { echo "the paragraph does not keep the Runner agent check a case"; return 1; }
+  grep -qF 'counts as a case when deciding whether the file is written' <<<"$p" || { echo "the paragraph does not count the Runner agent check for writing the file"; return 1; }
+}
