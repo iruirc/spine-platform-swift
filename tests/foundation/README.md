@@ -37,5 +37,6 @@ choice. With nothing changed it runs nothing.
 While iterating on one file, run it alone with `bats <file>` and narrow it with
 `bats --filter '<regex>'`.
 
-Before merging a branch and before a release, run `all`, whatever the branch touched. The run is
+Before merging a branch and before a release, run `all`, whatever the branch touched. Working
+through a plan, run it once, at the end of the plan (`spine-ops/WORKSPACE.md`). The run is
 green only with no `not ok`; compare its `ok` count with `main`.
