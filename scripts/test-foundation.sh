@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
-# Adapted from spine-toolkit scripts/test-foundation.sh sha256:511f1a25ea4bb33b90fe459c4a767221a7570eb4ee9ad20a90e51cb34ed17a1f
+# Adapted from spine-toolkit scripts/test-foundation.sh sha256:5d0f4602cca67ab3daaa92007e0163bc24db75fa7eb319be5acf2c5027230a16
 # Adapted from spine-toolkit's test runner. Plugins share no code; update both or neither.
 # Run Foundation bats tests.
-# Usage: scripts/test-foundation.sh [unit|integration|all|changed]
+# Usage: scripts/test-foundation.sh [unit|integration|all|changed|touched <file>...]
 #   changed  runs what the branch touches since its merge base with $TEST_BASE (default main),
 #            or on main what is not pushed, uncommitted and untracked files included, plus unit
 #            when the spine-toolkit checkout beside it has changes; the map is
 #            tests/foundation/README.md.
+#   touched  runs the test files under lib/ that name any of the given repo-relative files, and
+#            nothing else: no map, no diff against a base, nothing from integration/. Never
+#            records the tree.
+#   all      when green and the tree did not change during the run, records the tree it verified
+#            in .git/spine-verified-trees (the git common dir), the last 20 trees, newest last.
+#            `unit` and `integration` record nothing.
 set -euo pipefail
 
 target="${1:-all}"
@@ -80,15 +86,81 @@ changed_suites() {
     { if [ "$need_unit" -eq 1 ]; then grep -v "^$lib/" || true; else cat; fi; }
 }
 
+# Prints the bats arguments for the given files, one per line, and why to stderr. A file is named
+# by a test that holds its path as text; the selection is sorted and has no repeats.
+touched_suites() {   # <file>...
+  local f picked selected=""
+  for f in "$@"; do
+    picked="$(grep -lF -- "$f" "$lib"/*.bats 2>/dev/null || true)"
+    if [ -z "$picked" ]; then
+      echo "touched: $f -> no test names it" >&2
+    else
+      echo "touched: $f -> $(printf '%s\n' "$picked" | sed 's|.*/||' | tr '\n' ' ' | sed 's/ $//')" >&2
+      selected="$selected"$'\n'"$picked"
+    fi
+  done
+  printf '%s\n' "$selected" | sed '/^$/d' | sort -u
+}
+
+# Prints the tree hash the worktree would commit - tracked, modified and untracked files, as
+# `git add -A` sees them - built in a scratch copy of the index so the real one is not touched.
+# Exits 1 outside git or when $root is not the repository top level.
+worktree_tree() {
+  local top idx tmp tree="" rc=0
+  top="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" || return 1
+  [ "$top" = "$(cd -- "$root" && pwd -P)" ] || return 1
+  idx="$(git -C "$root" rev-parse --path-format=absolute --git-path index 2>/dev/null)" || return 1
+  tmp="$(mktemp)" || return 1
+  # An empty file is not an index to git; with no index to copy, let git start a fresh one.
+  if [ -f "$idx" ]; then cp "$idx" "$tmp" || rc=1; else rm -f "$tmp"; fi
+  if [ "$rc" -eq 0 ]; then
+    GIT_INDEX_FILE="$tmp" git -C "$root" add -A >/dev/null 2>&1 &&
+      tree="$(GIT_INDEX_FILE="$tmp" git -C "$root" write-tree 2>/dev/null)" || rc=1
+  fi
+  rm -f "$tmp"
+  [ "$rc" -eq 0 ] || return 1
+  printf '%s\n' "$tree"
+}
+
+# Appends <tree> to the stamp in the git common dir and keeps the last 20 lines. The new content
+# is written beside the stamp and moved over it, so a reader never sees a half-written file.
+record_green_tree() {   # <tree>
+  local tree="$1" stamp tmp
+  stamp="$(git -C "$root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/spine-verified-trees" || return 1
+  [ ! -d "$stamp" ] || return 1   # mv would put the new file inside it
+  tmp="$(mktemp "$stamp.XXXXXX" 2>/dev/null)" || return 1
+  { { [ ! -e "$stamp" ] || tail -n 19 "$stamp"; printf '%s\n' "$tree"; } >"$tmp" 2>/dev/null &&
+      mv "$tmp" "$stamp" 2>/dev/null; } || { rm -f "$tmp"; return 1; }
+}
+
 case "$target" in
   unit)        bats "$lib" ;;
   integration) bats "$integration" ;;
-  all)         bats "$lib" "$integration" ;;
+  all)
+    before="$(worktree_tree || true)"
+    rc=0
+    bats "$lib" "$integration" || rc=$?
+    after="$(worktree_tree || true)"
+    if [ "$rc" -eq 0 ] && [ -n "$before" ] && [ "$before" = "$after" ]; then
+      record_green_tree "$before" || echo "test-foundation: could not record the verified tree" >&2
+    fi
+    exit "$rc" ;;
   changed)
     list="$(changed_suites)"
     [ -n "$list" ] || exit 0
     suites=()
     while IFS= read -r s; do suites+=("$s"); done <<< "$list"
     bats "${suites[@]}" ;;
-  *)           echo "usage: $0 [unit|integration|all|changed]" >&2; exit 2 ;;
+  touched)
+    shift
+    [ "$#" -gt 0 ] || { echo "usage: $0 [unit|integration|all|changed|touched <file>...]" >&2; exit 2; }
+    list="$(touched_suites "$@")"
+    if [ -z "$list" ]; then
+      echo "touched: no test names these files" >&2
+      exit 0
+    fi
+    chosen=()
+    while IFS= read -r s; do chosen+=("$s"); done <<< "$list"
+    bats "${chosen[@]}" ;;
+  *)           echo "usage: $0 [unit|integration|all|changed|touched <file>...]" >&2; exit 2 ;;
 esac
