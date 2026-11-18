@@ -10,6 +10,9 @@
 #   touched  runs the test files under lib/ that name any of the given repo-relative files, and
 #            nothing else: no map, no diff against a base, nothing from integration/. Never
 #            records the tree.
+#            Every lib/ test that mentions SPINE_TOOLKIT_CORE, one that reads the spine-toolkit
+#            checkout beside this repository, is added to the selection whatever was touched,
+#            because the verified tree does not cover that checkout.
 #   all      when green and the tree did not change during the run, records the tree it verified
 #            in .git/spine-verified-trees (the git common dir), the last 20 trees, newest last.
 #            `unit` and `integration` record nothing.
@@ -87,9 +90,10 @@ changed_suites() {
 }
 
 # Prints the bats arguments for the given files, one per line, and why to stderr. A file is named
-# by a test that holds its path as text; the selection is sorted and has no repeats.
+# by a test that holds its path as text; the selection is sorted and has no repeats. Tests that
+# read the spine-toolkit checkout are always in it.
 touched_suites() {   # <file>...
-  local f picked selected=""
+  local f picked core_tests selected=""
   for f in "$@"; do
     picked="$(grep -lF -- "$f" "$lib"/*.bats 2>/dev/null || true)"
     if [ -z "$picked" ]; then
@@ -99,6 +103,13 @@ touched_suites() {   # <file>...
       selected="$selected"$'\n'"$picked"
     fi
   done
+  # Tests that read the spine-toolkit checkout beside this one run whatever was touched: the stamp
+  # hashes this tree only, and no file of a release names them.
+  core_tests="$(grep -lF -- 'SPINE_TOOLKIT_CORE' "$lib"/*.bats 2>/dev/null || true)"
+  if [ -n "$core_tests" ]; then
+    echo "touched: tests that read the spine-toolkit checkout -> $(printf '%s\n' "$core_tests" | sed 's|.*/||' | tr '\n' ' ' | sed 's/ $//')" >&2
+    selected="$selected"$'\n'"$core_tests"
+  fi
   printf '%s\n' "$selected" | sed '/^$/d' | sort -u
 }
 

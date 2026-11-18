@@ -3,8 +3,9 @@
 `lib/` holds the unit suite: guards on skill, agent and manifest text, and the zsh libraries of
 `templates/workspace/lib/` called one function at a time. `integration/` builds whole workspaces.
 `scripts/test-foundation.sh` runs them: `unit`, `integration`, `all`, or `changed`.
-`touched <file>...` runs the `lib/` tests that name those files, and only a green `all` on an unchanged
-tree records it in `.git/spine-verified-trees`, which a release reads to skip a rerun.
+`touched <file>...` runs the `lib/` tests that name those files, and always the ones that read the
+spine-toolkit checkout beside this repository. Only a green `all` on an unchanged tree records it in
+`.git/spine-verified-trees`, which a release reads to skip a rerun.
 
 ## What a run costs
 
