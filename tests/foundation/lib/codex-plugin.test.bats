@@ -61,7 +61,8 @@ PY
 }
 
 @test "skills only spine-toolkit or Claude Code can drive require explicit Codex invocation" {
-  # spine-toolkit ships no Codex manifest, and workspace-init also calls the Claude-only swift-init.
+  # Only spine-toolkit or Claude Code drive these skills, and workspace-init also calls the
+  # Claude-only swift-init.
   for skill in manifest swift-setup workspace-init; do
     grep -qx '  allow_implicit_invocation: false' "$ROOT/skills/$skill/agents/openai.yaml" \
       || { echo "$skill: no policy.allow_implicit_invocation: false"; return 1; }
