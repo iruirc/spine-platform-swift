@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# Adapted from spine-toolkit scripts/test-foundation.sh sha256:5d0f4602cca67ab3daaa92007e0163bc24db75fa7eb319be5acf2c5027230a16
+# Adapted from spine-toolkit scripts/test-foundation.sh sha256:a017999b78c730634aad75bfd510cbc7f34a1209b387e239eee7ea33f3bb6f31
 # Adapted from spine-toolkit's test runner. Plugins share no code; update both or neither.
 # Run Foundation bats tests.
-# Usage: scripts/test-foundation.sh [unit|integration|all|changed|touched <file>...]
+# Usage: scripts/test-foundation.sh [unit|integration|all|changed|touched [<file>...]]
 #   changed  runs what the branch touches since its merge base with $TEST_BASE (default main),
 #            or on main what is not pushed, uncommitted and untracked files included, plus unit
 #            when the spine-toolkit checkout beside it has changes; the map is
 #            tests/foundation/README.md.
 #   touched  runs the test files under lib/ that name any of the given repo-relative files, and
-#            nothing else: no map, no diff against a base, nothing from integration/. Never
-#            records the tree.
+#            nothing else: no map, no diff against a base, nothing from integration/. With no
+#            files it takes what the next commit would hold, the files that differ from HEAD,
+#            staged, unstaged or untracked; none, and it says so and runs nothing. In both forms a
+#            changed tests/foundation/lib/*.bats runs itself, a foundation fixture runs the whole
+#            lib/ directory, and a helper runs the lib/ tests that load it, directly or through
+#            another helper; a helper no lib test loads is reported and runs nothing. It has no
+#            --list. Never records the tree.
 #            Every lib/ test that mentions SPINE_TOOLKIT_CORE, one that reads the spine-toolkit
 #            checkout beside this repository, is added to the selection whatever was touched,
 #            because the verified tree does not cover that checkout.
@@ -89,12 +94,62 @@ changed_suites() {
     { if [ "$need_unit" -eq 1 ]; then grep -v "^$lib/" || true; else cat; fi; }
 }
 
+# Prints the files of the repo that differ from HEAD - what the next commit would hold: staged,
+# unstaged and untracked. A file staged and modified again comes out once. A deleted file stays in
+# the list, so the tests that name it are selected. quotePath is off, as in diff_files.
+head_files() {
+  { git -C "$root" -c core.quotePath=false diff --name-only --no-renames HEAD
+    git -C "$root" -c core.quotePath=false ls-files --others --exclude-standard; } | sort -u
+}
+
+# Prints the lib/*.bats files that load the helper tests/foundation/helpers/<name>.<ext>: the ones
+# holding the text helpers/<name> (that is how load and source spell it), and those holding the
+# text of a helper that itself holds it, down the chain. Each helper is read once, so a cycle ends.
+helper_loaders() {   # <repo-relative helper path>
+  local name todo seen h hn
+  name="${1##*/}"; name="${name%.*}"
+  seen=" $name "; todo="$name"
+  while [ -n "$todo" ]; do
+    name="${todo%% *}"; todo="${todo#"$name"}"; todo="${todo# }"
+    grep -lF -- "helpers/$name" "$lib"/*.bats 2>/dev/null || true
+    for h in "$root"/tests/foundation/helpers/*; do
+      [ -f "$h" ] && grep -qF -- "helpers/$name" "$h" || continue
+      hn="${h##*/}"; hn="${hn%.*}"
+      case "$seen" in *" $hn "*) continue ;; esac
+      seen="$seen$hn "; todo="$todo $hn"
+    done
+  done | sort -u
+}
+
 # Prints the bats arguments for the given files, one per line, and why to stderr. A file is named
-# by a test that holds its path as text; the selection is sorted and has no repeats. Tests that
-# read the spine-toolkit checkout are always in it.
+# by a test that holds its path as text; a changed lib/*.bats is its own pick, a foundation
+# fixture picks the whole lib/ directory, and a helper picks the tests that load it
+# (helper_loaders). The selection is sorted and has no repeats.
+# Tests that read the spine-toolkit checkout are always in it.
 touched_suites() {   # <file>...
-  local f picked core_tests selected=""
+  local f picked core_tests selected="" all=0
   for f in "$@"; do
+    case "$f" in
+      tests/foundation/fixtures/*)
+        echo "touched: $f -> all of tests/foundation/lib" >&2; all=1; continue ;;
+      tests/foundation/helpers/*)
+        picked="$(helper_loaders "$f")"
+        if [ -z "$picked" ]; then
+          echo "touched: $f -> no test loads it" >&2
+        else
+          echo "touched: $f -> $(printf '%s\n' "$picked" | sed 's|.*/||' | tr '\n' ' ' | sed 's/ $//')" >&2
+          selected="$selected"$'\n'"$picked"
+        fi
+        continue ;;
+      tests/foundation/lib/*.bats)
+        if [ -f "$root/$f" ]; then
+          echo "touched: $f -> itself" >&2
+          selected="$selected"$'\n'"$root/$f"
+        else
+          echo "touched: $f -> removed, nothing to run" >&2
+        fi
+        continue ;;
+    esac
     picked="$(grep -lF -- "$f" "$lib"/*.bats 2>/dev/null || true)"
     if [ -z "$picked" ]; then
       echo "touched: $f -> no test names it" >&2
@@ -103,6 +158,10 @@ touched_suites() {   # <file>...
       selected="$selected"$'\n'"$picked"
     fi
   done
+  if [ "$all" -eq 1 ]; then
+    printf '%s\n' "$lib"
+    return 0
+  fi
   # Tests that read the spine-toolkit checkout beside this one run whatever was touched: the stamp
   # hashes this tree only, and no file of a release names them.
   core_tests="$(grep -lF -- 'SPINE_TOOLKIT_CORE' "$lib"/*.bats 2>/dev/null || true)"
@@ -164,7 +223,15 @@ case "$target" in
     bats "${suites[@]}" ;;
   touched)
     shift
-    [ "$#" -gt 0 ] || { echo "usage: $0 [unit|integration|all|changed|touched <file>...]" >&2; exit 2; }
+    if [ "$#" -eq 0 ]; then
+      files=()
+      while IFS= read -r f; do [ -z "$f" ] || files+=("$f"); done < <(head_files)
+      if [ "${#files[@]}" -eq 0 ]; then
+        echo "touched: nothing differs from HEAD" >&2
+        exit 0
+      fi
+      set -- "${files[@]}"
+    fi
     list="$(touched_suites "$@")"
     if [ -z "$list" ]; then
       echo "touched: no test names these files" >&2
@@ -173,5 +240,5 @@ case "$target" in
     chosen=()
     while IFS= read -r s; do chosen+=("$s"); done <<< "$list"
     bats "${chosen[@]}" ;;
-  *)           echo "usage: $0 [unit|integration|all|changed|touched <file>...]" >&2; exit 2 ;;
+  *)           echo "usage: $0 [unit|integration|all|changed|touched [<file>...]]" >&2; exit 2 ;;
 esac
