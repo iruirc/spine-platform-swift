@@ -45,3 +45,19 @@ setup() {
 @test "the reviewer points at the lint first" {
   grep -qF 'lint-validation-scope.sh' "$R" || { echo "no lint in the reviewer"; return 1; }
 }
+
+@test "a re-run still runs the app when a package it runs is among the app's local references" {
+  grep -qF 'the app runs too when a package it runs' "$V" || { echo "the app can be carried"; return 1; }
+}
+
+@test "the search roots are the brief's, and fetched dependency copies are not packages of the task" {
+  grep -qF "brief's \`Search roots:\` line" "$V" || { echo "no Search roots: line"; return 1; }
+  for d in '.build/checkouts' 'SourcePackages' 'Pods' 'Carthage'; do
+    grep -qF -- "$d" "$V" || { echo "no $d exclusion"; return 1; }
+  done
+}
+
+@test "the reviewer checks the set against the manifests and re-runs none but to confirm a finding" {
+  grep -qF 'swift-validator.md' "$R" || { echo "no pointer to the validator"; return 1; }
+  grep -qF 'unless to confirm a specific finding' "$R" || { echo "no confirm exception"; return 1; }
+}
