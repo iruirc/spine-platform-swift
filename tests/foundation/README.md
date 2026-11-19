@@ -7,8 +7,9 @@
 spine-toolkit checkout beside this repository. `touched` with no files takes what the next commit
 would hold, the files that differ from `HEAD` (staged, unstaged and untracked), and says so and runs
 nothing when there are none; a changed `lib/*.bats` runs itself, a fixture runs the whole `lib/`, and
-a helper runs the `lib/` tests that load it, directly or through another helper. Only a green `all` on an unchanged tree records it in
-`.git/spine-verified-trees`, which a release reads to skip a rerun.
+a helper runs the `lib/` tests that load it, directly or through another helper. Only a green `all`
+on an unchanged tree records it in `.git/spine-verified-trees`, which a release reads to skip a
+rerun.
 
 ## What a run costs
 
