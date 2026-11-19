@@ -8,8 +8,9 @@
 #            when the spine-toolkit checkout beside it has changes; the map is
 #            tests/foundation/README.md.
 #   touched  runs the test files under lib/ that name any of the given repo-relative files, and
-#            nothing else: no map, no diff against a base, nothing from integration/. With no
-#            files it takes what the next commit would hold, the files that differ from HEAD,
+#            nothing else: no map, no diff against a base, nothing from integration/. A file under
+#            skills/ is named by a test that names its skill. With no files it takes what the
+#            next commit would hold, the files that differ from HEAD,
 #            staged, unstaged or untracked; none, and it says so and runs nothing. In both forms a
 #            changed tests/foundation/lib/*.bats runs itself, a foundation fixture runs the whole
 #            lib/ directory, and a helper runs the lib/ tests that load it, directly or through
@@ -47,6 +48,16 @@ diff_files() {   # <repo> <base>
     echo "error: $repo has no merge base with '$base_ref'; set TEST_BASE" >&2; return 2; }
   { git -C "$repo" diff --name-only "$base"
     git -C "$repo" ls-files --others --exclude-standard; } | sort -u
+}
+
+# The tests that name the skill a file under skills/ belongs to: skills/<name> followed by
+# anything but [a-z0-9-], so that task-report does not pick the tests of task-report-x. A test that
+# reads "$ROOT/skills/<s>/locales/$l.md" through a variable names the skill, not the file.
+skill_tests() {   # <file under skills/>
+  local name
+  name="${1#skills/}"; name="${name%%/*}"
+  name="$(printf '%s' "$name" | sed 's/[][\\.*^$+?(){}|]/\\&/g')"
+  grep -lE -- "skills/$name([^a-z0-9-]|\$)" "$lib"/*.bats 2>/dev/null || true
 }
 
 # Prints the bats arguments for the changed files, one per line, and why to stderr.
@@ -124,7 +135,8 @@ helper_loaders() {   # <repo-relative helper path>
 }
 
 # Prints the bats arguments for the given files, one per line, and why to stderr. A file is named
-# by a test that holds its path as text; a changed lib/*.bats is its own pick, a foundation
+# by a test that holds its path as text, a file under skills/ by a test that names its skill
+# (skill_tests); a changed lib/*.bats is its own pick, a foundation
 # fixture picks the whole lib/ directory, and a helper picks the tests that load it
 # (helper_loaders). The selection is sorted and has no repeats.
 # Tests that read the spine-toolkit checkout are always in it.
@@ -152,7 +164,10 @@ touched_suites() {   # <file>...
         fi
         continue ;;
     esac
-    picked="$(grep -lF -- "$f" "$lib"/*.bats 2>/dev/null || true)"
+    case "$f" in
+      skills/*) picked="$(skill_tests "$f")" ;;
+      *) picked="$(grep -lF -- "$f" "$lib"/*.bats 2>/dev/null || true)" ;;
+    esac
     if [ -z "$picked" ]; then
       echo "touched: $f -> no test names it" >&2
     else

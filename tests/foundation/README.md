@@ -3,7 +3,8 @@
 `lib/` holds the unit suite: guards on skill, agent and manifest text, and the zsh libraries of
 `templates/workspace/lib/` called one function at a time. `integration/` builds whole workspaces.
 `scripts/test-foundation.sh` runs them: `unit`, `integration`, `all`, or `changed`.
-`touched <file>...` runs the `lib/` tests that name those files and always the ones that read the
+`touched <file>...` runs the `lib/` tests that name those files (a file under `skills/` is named by a
+test that names its skill), and always the ones that read the
 spine-toolkit checkout beside this repository. `touched` with no files takes what the next commit
 would hold, the files that differ from `HEAD` (staged, unstaged and untracked), and says so and runs
 nothing when there are none; a changed `lib/*.bats` runs itself, a fixture runs the whole `lib/`, and

@@ -213,6 +213,33 @@ uses-outer2.test.bats" ]
   grep -qF -- "touched: no test names these files" <<<"$stderr_text"
 }
 
+@test "a locale file selects the tests that name its skill" {
+  mkdir -p "$R/skills/x/locales"
+  echo l >"$R/skills/x/locales/ru.md"
+  printf '# reads skills/x/ through a variable\n' >"$R/tests/foundation/lib/x.test.bats"
+  commit skill-x
+  echo more >>"$R/skills/x/locales/ru.md"
+  touched
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "x.test.bats" ]
+}
+
+@test "a skill whose name is a prefix of another does not select the other's tests" {
+  mkdir -p "$R/skills/arch-mvvm-x"
+  echo s >"$R/skills/arch-mvvm-x/SKILL.md"
+  printf '# names skills/arch-mvvm-x\n' >"$R/tests/foundation/lib/mvvm-x.test.bats"
+  commit mvvm-x
+  echo more >>"$R/skills/arch-mvvm/locales-note.md"
+  touched
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "mvvm.test.bats" ]
+  commit note
+  echo more >>"$R/skills/arch-mvvm-x/SKILL.md"
+  touched
+  [ "$status" -eq 0 ]
+  [ "$(names)" = "mvvm-x.test.bats" ]
+}
+
 @test "touched selects from lib only, never from integration" {
   echo more >>"$R/scripts/a.sh"
   touched
