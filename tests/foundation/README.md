@@ -3,7 +3,7 @@
 `lib/` holds the unit suite: guards on skill, agent and manifest text, and the zsh libraries of
 `templates/workspace/lib/` called one function at a time. `integration/` builds whole workspaces.
 `scripts/test-foundation.sh` runs them: `unit`, `integration`, `all`, or `changed`.
-`touched <file>...` runs the `lib/` tests that name those files, and always the ones that read the
+`touched <file>...` runs the `lib/` tests that name those files and always the ones that read the
 spine-toolkit checkout beside this repository. `touched` with no files takes what the next commit
 would hold, the files that differ from `HEAD` (staged, unstaged and untracked), and says so and runs
 nothing when there are none; a changed `lib/*.bats` runs itself, a fixture runs the whole `lib/`, and
@@ -28,10 +28,11 @@ what it tests.
 
 ## What to run
 
-Per task and per commit, run what the change touches — `scripts/test-foundation.sh changed` picks it
-from the branch's diff against `main` (set `TEST_BASE` for another base) — on `main` itself, from
-what is not pushed — uncommitted and untracked files included, and prints which file led to which
-choice. With nothing changed it runs nothing.
+Inside a plan, before every commit, run `scripts/test-foundation.sh touched` with no files; outside
+a plan, run `scripts/test-foundation.sh changed`. `spine-ops/WORKSPACE.md` → Tests says which and why.
+`changed` picks the tests from the branch's diff against `main` (set `TEST_BASE` for another base) —
+on `main` itself, from what is not pushed — uncommitted and untracked files included, and prints which
+file led to which choice. With nothing changed it runs nothing.
 
 | The change touches | Run |
 |---|---|
