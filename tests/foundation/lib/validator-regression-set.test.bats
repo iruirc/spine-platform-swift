@@ -61,3 +61,13 @@ setup() {
   grep -qF 'swift-validator.md' "$R" || { echo "no pointer to the validator"; return 1; }
   grep -qF 'unless to confirm a specific finding' "$R" || { echo "no confirm exception"; return 1; }
 }
+
+@test "a re-run counts uncommitted edits, and a BUG replay is carried only when the commits miss its path" {
+  grep -qF 'uncommitted edits reaching their package too' "$V" || { echo "no uncommitted edits on a re-run"; return 1; }
+  grep -qF "for BUG a replay is carried when the commits miss the scenario's path" "$V" || { echo "item 5 has no BUG carry"; return 1; }
+  local bug
+  bug="$(sed -n '/^### BUG/,/^### REFACTOR/p' "$V")"
+  grep -qF "the replay is carried from the last green Validation" <<<"$bug" || { echo "the BUG bullet has no carried replay"; return 1; }
+  grep -qF 'return its status as it was (`fixed` only if that Validation replayed, otherwise `deferred-manual`)' <<<"$bug" || { echo "the carried status is not its own"; return 1; }
+  grep -qF 'under `## Scope`' <<<"$bug" || { echo "the carried Validation is not named under Scope"; return 1; }
+}
