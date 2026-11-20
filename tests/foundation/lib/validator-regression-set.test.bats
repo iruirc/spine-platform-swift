@@ -128,3 +128,8 @@ setup() {
   grep -qF 'the file the brief gives in `known_failures`' "$V" || { echo "the registry is not the brief's field"; return 1; }
   grep -qF '5. The registry of known failures' "$V" || { echo "the registry is not in the inputs"; return 1; }
 }
+
+@test "a null rerun runs every module of the set that no carried source covers" {
+  grep -qF 'With `rerun` null or absent, run every module of the set that no carried source covers' "$V" || { echo "no null-rerun rule"; return 1; }
+  ! grep -qF 'run the whole set' "$V" || { echo "still runs the whole set"; return 1; }
+}
