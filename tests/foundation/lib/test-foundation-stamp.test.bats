@@ -174,3 +174,140 @@ FAKE
   [ "$status" -eq 0 ]
   [ ! -e "$S" ]
 }
+
+commit() { git -C "$R" add -A; git -C "$R" -c user.name=t -c user.email=t@t commit -qm "${1:-c}"; }
+tree() { git -C "$R" rev-parse 'HEAD^{tree}'; }
+
+# docs/guide.md, committed: the map sends it to all of lib/, and stderr names it.
+guide() {
+  mkdir -p "$R/docs"
+  echo guide >"$R/docs/guide.md"
+  commit guide
+}
+
+# A green all on the committed tree, with the fake bats' record of it cleared.
+verified_all() {
+  run "$R/scripts/test-foundation.sh" all
+  [ "$status" -eq 0 ]
+  rm -f "$BATS_TEST_TMPDIR/bats-args"
+}
+
+@test "verified checks the change since the verified tree and records it via that tree" {
+  guide
+  verified_all
+  a="$(tree)"
+  echo more >>"$R/docs/guide.md"
+  commit
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  [ "$(cat "$BATS_TEST_TMPDIR/bats-args")" = "$R/tests/foundation/lib" ]
+  grep -qF -- "verified: docs/guide.md -> unit" <<<"$stderr"
+  [ "$(tail -1 "$S")" = "$(tree) via $a" ]
+}
+
+@test "the difference is taken from the verified tree, not from HEAD" {
+  guide
+  verified_all
+  echo more >>"$R/docs/guide.md"
+  commit
+  echo more >>"$R/tests/foundation/lib/other.test.bats"
+  commit
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  grep -qF -- "verified: docs/guide.md -> unit" <<<"$stderr"
+  [ "$(cat "$BATS_TEST_TMPDIR/bats-args")" = "$R/tests/foundation/lib" ]
+}
+
+@test "a chain step takes the newest verified tree, a via line included" {
+  guide
+  verified_all
+  echo more >>"$R/docs/guide.md"
+  commit
+  run "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  b="$(tree)"
+  rm -f "$BATS_TEST_TMPDIR/bats-args"
+  echo more >>"$R/tests/foundation/lib/other.test.bats"
+  commit
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  [ "$(cat "$BATS_TEST_TMPDIR/bats-args")" = "$(printf '%s\n' "$R/tests/foundation/lib/other.test.bats" "$R/tests/foundation/lib/toolkit.test.bats")" ]
+  [ "$(tail -1 "$S")" = "$(tree) via $b" ]
+}
+
+@test "verified without a verified ancestor refuses and runs nothing" {
+  echo more >>"$R/tests/foundation/lib/a.test.bats"
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 2 ]
+  grep -qF -- "verified: no tree in the history of HEAD passed a full run; run all" <<<"$stderr"
+  [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
+  [ ! -e "$S" ]
+}
+
+@test "verified on the verified tree itself runs nothing" {
+  verified_all
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  grep -qF -- "verified: nothing differs from the verified tree $(tree)" <<<"$stderr"
+  [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
+  [ "$(wc -l <"$S" | tr -d ' ')" -eq 1 ]
+}
+
+@test "a red verified keeps the exit code and records nothing" {
+  guide
+  verified_all
+  echo more >>"$R/docs/guide.md"
+  FAKE_BATS_RC=3 run "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 3 ]
+  [ "$(wc -l <"$S" | tr -d ' ')" -eq 1 ]
+}
+
+@test "a tree that changed during verified is not recorded" {
+  guide
+  verified_all
+  echo more >>"$R/docs/guide.md"
+  FAKE_BATS_SIDE="echo x >'$R/late.txt'" run "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <"$S" | tr -d ' ')" -eq 1 ]
+}
+
+@test "a file deleted since the verified tree is in the difference" {
+  guide
+  verified_all
+  git -C "$R" rm -q docs/guide.md
+  commit
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  grep -qF -- "verified: docs/guide.md -> unit" <<<"$stderr"
+}
+
+@test "verified on a workspace template runs lib and integration" {
+  verified_all
+  mkdir -p "$R/templates/workspace" && echo x >"$R/templates/workspace/x.md"
+  commit
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  [ "$(cat "$BATS_TEST_TMPDIR/bats-args")" = "$(printf '%s\n' "$R/tests/foundation/lib" "$R/tests/foundation/integration")" ]
+}
+
+@test "verified runs the tests that read the toolkit checkout with nothing changed beside" {
+  verified_all
+  echo more >>"$R/tests/foundation/lib/other.test.bats"
+  commit
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  grep -qxF "$R/tests/foundation/lib/toolkit.test.bats" "$BATS_TEST_TMPDIR/bats-args"
+  grep -qF -- "verified: tests that read the spine-toolkit checkout -> toolkit.test.bats" <<<"$stderr"
+}
+
+@test "verified outside the repository root refuses" {
+  O="$BATS_TEST_TMPDIR/outer"
+  git init -q "$O"
+  cp -R "$R" "$O/plugin"
+  rm -rf "$O/plugin/.git"
+  run --separate-stderr "$O/plugin/scripts/test-foundation.sh" verified
+  [ "$status" -eq 2 ]
+  grep -qF -- "verified: the script is not at the repository top level" <<<"$stderr"
+  [ ! -e "$O/.git/spine-verified-trees" ]
+  [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
+}
