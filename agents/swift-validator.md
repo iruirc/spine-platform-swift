@@ -43,7 +43,8 @@ In this order:
 2. `<task_path>/Task.md` — `[TASK_TYPE]`, scope, files involved, and `[DRIVE_APP]` or `[DRIVER]` if this task overrides a project default (see "The drive_app switch" and "The driver"). For `[DRIVE_APP]` and `[MANUAL_CHECKS]` the stage brief outranks both files, and so does the owner's directive it carries, on everything it names — the simulator or device included.
 3. `<task_path>/Plan.md` — what was supposed to be done.
 4. The record of what actually landed. The implementing stage (Execute / Fix / Refactor / Write) writes no artifact file of its own — `Plan.md`'s per-phase checkboxes say what was supposed to land, and the task's per-phase git commits say what did. For BUG, also `<task_path>/Reproduce.md` — mandatory, you will replay that scenario.
-5. Project root: locate `.xcodeproj` / `.xcworkspace` / `Package.swift`. If multiple, prefer the workspace.
+5. The registry of known failures — the file the brief gives in `known_failures`, read as `### Failures outside the task` says; a missing file is an empty registry.
+6. Project root: locate `.xcodeproj` / `.xcworkspace` / `Package.swift`. If multiple, prefer the workspace.
 
 If `Task.md`, `Plan.md`, or — for BUG — `Reproduce.md` is missing, fail fast: status = FAILED, reason = `missing artifact: <name>`.
 
@@ -177,7 +178,7 @@ A project script that runs the whole workspace is not Validation's: run it only 
 
 ### Failures outside the task
 
-A failing test that does not reach what the task changed is classified by core's rule, `spine-toolkit:phase-verification` → "Failures outside the task": it holds when a failure is outside the task, the registry it matches, the retry (the failed classes only, in a separate run, up to 3 times), the status each case gives and the order of statuses. This agent restates none of it. The registry is the file the brief names as `known_failures`; a missing file is an empty registry, and you never write it. A failure outside the task is a row of `## Outside the task` in `Validation.md`, in the form of `spine-toolkit:task-documents` → "Validation.md", and an item of `outside_failures` in the return. A `permanent` entry whose test passed is the line `KF-<N> no longer fails` under that table and its ID is in `known_failures_cleared`. Every profile below applies this to its `test_sim` suites. A failure inside the task is FAILED, whatever the registry says.
+A failing test that does not reach what the task changed is classified by core's rule, `spine-toolkit:phase-verification` → "Failures outside the task": it holds when a failure is outside the task, the registry it matches, the retry (the failed classes only, in a separate run, up to 3 times), the status each case gives and the order of statuses. This agent restates none of it. The registry is the file the brief gives in its `known_failures` field; a missing file is an empty registry, and you never write it. A failure outside the task is a row of `## Outside the task` in `Validation.md`, in the form of `spine-toolkit:task-documents` → "Validation.md", and an item of `outside_failures` in the return. A `permanent` entry whose test passed is the line `KF-<N> no longer fails` under that table and its ID is in `known_failures_cleared`. Every profile below applies this to its `test_sim` suites. A failure inside the task, a TEST task's added tests aside, is FAILED, whatever the registry says.
 
 ### FEATURE
 
@@ -288,7 +289,7 @@ This is a hard contract with the `workflow-*` profiles and the orchestrator. Sam
 
 Semantics:
 
-- **PASSED** — every mandatory step either ran or was deferred with its reason named, build is clean (warnings tolerated), all tests passed, and for BUG profile the reproduction scenario no longer reproduces or was deferred. A deferred check never lowers the verdict; a check that errored out is not deferred, it is FAILED.
+- **PASSED** — every mandatory step either ran or was deferred with its reason named, build is clean (warnings tolerated), all tests passed bar the failures outside the task that `### Failures outside the task` gives PASSED, and for BUG profile the reproduction scenario no longer reproduces or was deferred. A deferred check never lowers the verdict; a check that errored out is not deferred, it is FAILED.
 - **PASSED_WITH_FLAKES** — what PASSED says, and at least one failure outside the task, with no registry entry, failed and then passed on its retry (`outcome` `flaky`); every other failure is `known`. The failures are named in `## Outside the task` and in `outside_failures`; nothing is hidden. Failures that are all `known` leave PASSED, as core's table gives it.
 - **FAILED** — at least one mandatory step did not run, or build/tests/reproduction failed, or a failure outside the task stayed red on its retry.
 - **FLAKY** — TEST-profile only; a test the task added showed non-deterministic results across re-runs. A failure outside the task is never FLAKY.
