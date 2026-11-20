@@ -138,7 +138,7 @@ packages/Core/Package.swift: external dep https://github.com/apple/swift-testing
   printf '#!/bin/sh\necho "Apple Swift version 5.9 (swiftlang-5.9.0)"\n' > "$bin/swift"
   run env PATH="$bin:$PATH" zsh -c "source '$(ws_lib_path workspace-package.zsh)'; wspkg::tools_version"
   [ "$status" -eq 3 ]
-  [[ "$output" == *"older than 6.0"* ]]
+  [[ "$output" == *"older than 6.0"* ]] || false
 }
 
 @test "tools_version exits 3 when no swift is on PATH" {
@@ -146,7 +146,7 @@ packages/Core/Package.swift: external dep https://github.com/apple/swift-testing
   zsh_bin="$(command -v zsh)"
   run env PATH="$bin" "$zsh_bin" -c "source '$(ws_lib_path workspace-package.zsh)'; wspkg::tools_version"
   [ "$status" -eq 3 ]
-  [[ "$output" == *"swift not on PATH"* ]]
+  [[ "$output" == *"swift not on PATH"* ]] || false
 }
 
 @test "adopt_to puts both pairs into a template-shaped manifest and runs again without changing it" {
@@ -195,12 +195,12 @@ packages/Core/Package.swift: external dep https://github.com/apple/swift-testing
   [ -z "$output" ] || { echo "xctest asked for packages: $output"; return 1; }
   run pkg "$(ws_fixture_path workspace-yml/defaults-tests-quick-nimble.yml)" 'wspkg::test_framework_manifest_deps'
   [ "$status" -eq 0 ]
-  [[ "$output" == *'.package(url: "https://github.com/Quick/Quick.git"'* ]]
-  [[ "$output" == *'.package(url: "https://github.com/Quick/Nimble.git"'* ]]
+  [[ "$output" == *'.package(url: "https://github.com/Quick/Quick.git"'* ]] || false
+  [[ "$output" == *'.package(url: "https://github.com/Quick/Nimble.git"'* ]] || false
   run pkg "$(ws_fixture_path workspace-yml/defaults-tests-quick-nimble.yml)" 'wspkg::test_framework_target_deps'
   [ "$status" -eq 0 ]
-  [[ "$output" == *'.product(name: "Quick", package: "Quick"),'* ]]
-  [[ "$output" == *'.product(name: "Nimble", package: "Nimble"),'* ]]
+  [[ "$output" == *'.product(name: "Quick", package: "Quick"),'* ]] || false
+  [[ "$output" == *'.product(name: "Nimble", package: "Nimble"),'* ]] || false
 }
 
 @test "every framework placeholder of the manifest template sits alone on its line" {

@@ -62,19 +62,19 @@ teardown() {
 @test "validate rejects missing workspace.name" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/missing-name.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"workspace.name is required"* ]]
+  [[ "$output" == *"workspace.name is required"* ]] || false
 }
 
 @test "validate rejects empty packages" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/empty-packages.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"packages must have"* ]]
+  [[ "$output" == *"packages must have"* ]] || false
 }
 
 @test "validate rejects duplicate package name" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/duplicate-pkg.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"duplicate package name"* ]]
+  [[ "$output" == *"duplicate package name"* ]] || false
 }
 
 @test "validate reports a duplicate package name once and checks none of its fields" {
@@ -87,19 +87,19 @@ teardown() {
 @test "validate rejects unknown group reference" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-group-ref.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"unknown group"* ]]
+  [[ "$output" == *"unknown group"* ]] || false
 }
 
 @test "validate rejects unknown deps reference" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-dep-ref.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"unknown package 'Nope'"* ]]
+  [[ "$output" == *"unknown package 'Nope'"* ]] || false
 }
 
 @test "validate rejects git remote key not in top-level remotes" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-remote-key.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"unknown remote 'gitolite'"* ]]
+  [[ "$output" == *"unknown remote 'gitolite'"* ]] || false
 }
 
 @test "validate rejects an app dir that is absolute or leaves the workspace" {
@@ -107,14 +107,14 @@ teardown() {
   for f in bad-app-dir-absolute bad-app-dir-parent; do
     run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/$f.yml)' && wsyml::validate"
     [ "$status" -eq 2 ]
-    [[ "$output" == *"project.apps.ios.dir must be relative and stay inside the workspace"* ]]
+    [[ "$output" == *"project.apps.ios.dir must be relative and stay inside the workspace"* ]] || false
   done
 }
 
 @test "validate rejects an app git remote not in top-level remotes" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-app-git-remote.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"project.apps.ios uses unknown remote 'x'"* ]]
+  [[ "$output" == *"project.apps.ios uses unknown remote 'x'"* ]] || false
 }
 
 @test "validate rejects an app git url that is empty" {
@@ -135,13 +135,13 @@ teardown() {
 @test "validate rejects bad archetype" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-archetype.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"invalid archetype 'widget'"* ]]
+  [[ "$output" == *"invalid archetype 'widget'"* ]] || false
 }
 
 @test "validate rejects non-semver version" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-version.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"invalid version 'v1'"* ]]
+  [[ "$output" == *"invalid version 'v1'"* ]] || false
 }
 
 @test "validate enforces archetype rules, with allowed_deps as exceptions" {
@@ -151,7 +151,7 @@ teardown() {
   [[ "$output" == *"package 'E' allowed_deps entry 'library' is not a package"* ]] || return 1
   [[ "$output" != *"package 'B'"* ]] || return 1
   [[ "$output" != *"package 'D'"* ]] || return 1
-  [[ "$output" == *"2 error(s)."* ]]
+  [[ "$output" == *"2 error(s)."* ]] || false
 }
 
 @test "every archetype's default rule is what ARCHETYPE_RULES.md tabulates" {
@@ -170,13 +170,13 @@ teardown() {
 @test "validate rejects tasks.path that is absolute" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-absolute-path.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"tasks.path must be relative to the workspace root"* ]]
+  [[ "$output" == *"tasks.path must be relative to the workspace root"* ]] || false
 }
 
 @test "validate rejects tasks.enabled that is not a boolean" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-bad-enabled.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"tasks.enabled must be boolean"* ]]
+  [[ "$output" == *"tasks.enabled must be boolean"* ]] || false
 }
 
 @test "validate accepts tasks.enabled: false" {
@@ -187,31 +187,31 @@ teardown() {
 @test "validate rejects tasks.mode that is not sibling|path|symlink" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-bad-mode.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"tasks.mode must be one of sibling|path|symlink"* ]]
+  [[ "$output" == *"tasks.mode must be one of sibling|path|symlink"* ]] || false
 }
 
 @test "validate rejects tasks.mode=symlink without symlink_target" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-symlink-no-target.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"tasks.mode=symlink requires non-empty tasks.symlink_target"* ]]
+  [[ "$output" == *"tasks.mode=symlink requires non-empty tasks.symlink_target"* ]] || false
 }
 
 @test "validate rejects docs.path that is absolute" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/docs-absolute-path.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"docs.path must be relative to the workspace root"* ]]
+  [[ "$output" == *"docs.path must be relative to the workspace root"* ]] || false
 }
 
 @test "validate rejects docs.mode that is not sibling|path|symlink" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/docs-bad-mode.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"docs.mode must be one of sibling|path|symlink"* ]]
+  [[ "$output" == *"docs.mode must be one of sibling|path|symlink"* ]] || false
 }
 
 @test "validate rejects docs.mode=symlink without symlink_target" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/docs-symlink-no-target.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"docs.mode=symlink requires non-empty docs.symlink_target"* ]]
+  [[ "$output" == *"docs.mode=symlink requires non-empty docs.symlink_target"* ]] || false
 }
 
 @test "validate accepts docs.enabled: false" {
@@ -247,7 +247,7 @@ YML
 @test "validate rejects malformed git_author" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-author.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"git_author"* ]]
+  [[ "$output" == *"git_author"* ]] || false
 }
 
 @test "validate accepts with-project-full.yml" {
@@ -259,25 +259,25 @@ YML
 @test "validate rejects bad app key (watchos)" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-bad-app-key.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"apps.watchos rejected (MVP supports ios|macos only)"* ]]
+  [[ "$output" == *"apps.watchos rejected (MVP supports ios|macos only)"* ]] || false
 }
 
 @test "validate rejects repo-package collision" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-repo-pkg-collision.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"repo name 'CoreKit' collides with package name 'CoreKit'"* ]]
+  [[ "$output" == *"repo name 'CoreKit' collides with package name 'CoreKit'"* ]] || false
 }
 
 @test "validate rejects duplicate repo names across apps" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-duplicate-repos.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"duplicate repo name 'MyApp' in project.apps"* ]]
+  [[ "$output" == *"duplicate repo name 'MyApp' in project.apps"* ]] || false
 }
 
 @test "validate rejects bad stack.di" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-bad-stack-di.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"stack.di 'nonexistent'"* ]]
+  [[ "$output" == *"stack.di 'nonexistent'"* ]] || false
 }
 
 @test "validate accepts stack.architecture mvi" {
@@ -324,7 +324,7 @@ packages:
 EOF
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$tmp' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"stack.architecture 'mvvm-router'"* ]]
+  [[ "$output" == *"stack.architecture 'mvvm-router'"* ]] || false
 }
 
 @test "validate rejects bad stack.min_platforms.ios (non-semver)" {
@@ -349,7 +349,7 @@ packages:
 EOF
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$tmp' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"min_platforms.ios 'vBadVersion'"* ]]
+  [[ "$output" == *"min_platforms.ios 'vBadVersion'"* ]] || false
 }
 
 @test "validate accepts with-project-shortform.yml (string-form apps.<platform>)" {
@@ -373,7 +373,7 @@ EOF
 @test "wsarch::boundary_text returns text for engine" {
   run zsh -c "source '$(ws_lib_path workspace-archetypes.zsh)'; wsarch::boundary_text engine"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Engine package"* ]]
+  [[ "$output" == *"Engine package"* ]] || false
 }
 
 @test "wsarch::boundary_text errors on unknown archetype" {
@@ -384,19 +384,19 @@ EOF
 @test "validate rejects toolkit.lang that is not en|ru" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/toolkit-bad-lang.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"toolkit.lang must be one of en|ru; got 'de'"* ]]
+  [[ "$output" == *"toolkit.lang must be one of en|ru; got 'de'"* ]] || false
 }
 
 @test "validate rejects toolkit.mode that is not manual|auto" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/toolkit-bad-mode.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"toolkit.mode must be one of manual|auto; got 'semi'"* ]]
+  [[ "$output" == *"toolkit.mode must be one of manual|auto; got 'semi'"* ]] || false
 }
 
 @test "validate rejects toolkit.progress that is not quiet|normal|live" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/toolkit-bad-progress.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"toolkit.progress must be one of quiet|normal|live; got 'verbose'"* ]]
+  [[ "$output" == *"toolkit.progress must be one of quiet|normal|live; got 'verbose'"* ]] || false
 }
 
 @test "validate accepts a toolkit block that sets only some keys" {
@@ -419,43 +419,43 @@ EOF
 @test "wsyml::toolkit rejects a key it does not know" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/minimal.yml)' && wsyml::toolkit colour"
   [ "$status" -eq 4 ]
-  [[ "$output" == *"unknown key 'colour'"* ]]
+  [[ "$output" == *"unknown key 'colour'"* ]] || false
 }
 
 @test "validate rejects a defaults.platforms key it does not support and a version that is not semver" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-platforms.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"defaults.platforms.watchos rejected"* ]]
-  [[ "$output" == *"defaults.platforms.ios 'seventeen' must match semver"* ]]
+  [[ "$output" == *"defaults.platforms.watchos rejected"* ]] || false
+  [[ "$output" == *"defaults.platforms.ios 'seventeen' must match semver"* ]] || false
 }
 
 @test "validate rejects a defaults.tests value outside the accepted tokens" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-tests.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"defaults.tests 'spock' must be swift-testing|xctest|quick-nimble"* ]]
+  [[ "$output" == *"defaults.tests 'spock' must be swift-testing|xctest|quick-nimble"* ]] || false
 
   # A glob is not a token: membership is compared literally, so `*` must not pass as a member.
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-tests-glob.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"defaults.tests '*' must be swift-testing|xctest|quick-nimble"* ]]
+  [[ "$output" == *"defaults.tests '*' must be swift-testing|xctest|quick-nimble"* ]] || false
 }
 
 @test "validate rejects an app stack.tests outside the accepted tokens" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-app-stack-tests.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"project.apps.ios.stack.tests 'spock' must be swift-testing|xctest|quick-nimble"* ]]
+  [[ "$output" == *"project.apps.ios.stack.tests 'spock' must be swift-testing|xctest|quick-nimble"* ]] || false
 }
 
 @test "validate rejects a defaults.platforms that is not a map" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-platforms-scalar.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"defaults.platforms must be a map of ios/macos to a version"* ]]
+  [[ "$output" == *"defaults.platforms must be a map of ios/macos to a version"* ]] || false
 }
 
 @test "validate rejects a defaults.platforms that is an empty map" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/bad-defaults-platforms-empty.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"defaults.platforms must have at least one entry"* ]]
+  [[ "$output" == *"defaults.platforms must have at least one entry"* ]] || false
 }
 
 @test "validate rejects an external dep's unquoted-float version, an unknown requirement key, and a two-key map" {
@@ -499,7 +499,7 @@ EOF
   [ "$status" -eq 2 ]
   [[ "$output" == *"package 'A' has empty git URL for remote 'origin'"* ]] || return 1
   [[ "$output" != *"package 'B'"* ]] || return 1
-  [[ "$output" == *"1 error(s)."* ]]
+  [[ "$output" == *"1 error(s)."* ]] || false
 }
 
 # The skeleton with its example keys switched on: prose lines (##) dropped, example lines (#) uncommented.

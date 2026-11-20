@@ -38,8 +38,8 @@ both_repos() {
   both_repos
   run "$BOOT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"clone projects/App"* ]]
-  [[ "$output" == *"clone packages/Pkg"* ]]
+  [[ "$output" == *"clone projects/App"* ]] || false
+  [[ "$output" == *"clone packages/Pkg"* ]] || false
   [ -d "$ROOT/ws/projects/App/.git" ]
   [ -d "$ROOT/ws/packages/Pkg/.git" ]
 }
@@ -50,9 +50,9 @@ both_repos() {
   before="$(git -C "$ROOT/ws/projects/App" rev-parse HEAD)"
   run "$BOOT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"ok projects/App"* ]]
-  [[ "$output" == *"ok packages/Pkg"* ]]
-  [[ "$output" != *"clone "* ]]
+  [[ "$output" == *"ok projects/App"* ]] || false
+  [[ "$output" == *"ok packages/Pkg"* ]] || false
+  [[ "$output" != *"clone "* ]] || false
   [ "$(git -C "$ROOT/ws/projects/App" rev-parse HEAD)" = "$before" ]
 }
 
@@ -71,7 +71,7 @@ both_repos() {
   ln -s "$ROOT/elsewhere" "$ROOT/ws/packages/Pkg"
   run "$BOOT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"ok packages/Pkg"* ]]
+  [[ "$output" == *"ok packages/Pkg"* ]] || false
 }
 
 @test "a plain folder without .git is an error, and the others are still cloned" {
@@ -79,8 +79,8 @@ both_repos() {
   mkdir -p "$ROOT/ws/packages/Pkg"
   run "$BOOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"error packages/Pkg: exists and is not a git repository"* ]]
-  [[ "$output" == *"clone projects/App"* ]]
+  [[ "$output" == *"error packages/Pkg: exists and is not a git repository"* ]] || false
+  [[ "$output" == *"clone projects/App"* ]] || false
   [ -d "$ROOT/ws/projects/App/.git" ]
 }
 
@@ -88,7 +88,7 @@ both_repos() {
   fill_repos "projects/App\t$ROOT/remotes/app.git\npackages/Pkg\t"
   run "$BOOT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"skip packages/Pkg (no remote)"* ]]
+  [[ "$output" == *"skip packages/Pkg (no remote)"* ]] || false
   [ ! -e "$ROOT/ws/packages/Pkg" ]
 }
 
@@ -96,7 +96,7 @@ both_repos() {
   fill_repos "projects/App\t$ROOT/remotes/missing.git\npackages/Pkg\t$ROOT/remotes/pkg.git"
   run "$BOOT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"error projects/App: git clone failed"* ]]
+  [[ "$output" == *"error projects/App: git clone failed"* ]] || false
   [ -d "$ROOT/ws/packages/Pkg/.git" ]
 }
 
@@ -112,7 +112,7 @@ both_repos() {
   run /bin/bash "$BOOT"
   [ "$status" -eq 0 ]
   run git -C "$(ws_repo_root)" ls-files -s templates/workspace/meta-repo/bootstrap.sh.tmpl
-  [[ "$output" == 100755* ]]
+  [[ "$output" == 100755* ]] || false
 }
 
 @test "a dangling symlink at a repository path is an error, and the others are still cloned" {
@@ -123,7 +123,7 @@ both_repos() {
   run "$BOOT"
   [ "$status" -eq 1 ]
   [[ "$output" == *"error packages/Pkg: exists and is not a git repository"* ]] || { echo "$output"; return 1; }
-  [[ "$output" == *"clone projects/App"* ]]
+  [[ "$output" == *"clone projects/App"* ]] || false
   [ -d "$ROOT/ws/projects/App/.git" ]
   [ -L "$ROOT/ws/packages/Pkg" ]
 }

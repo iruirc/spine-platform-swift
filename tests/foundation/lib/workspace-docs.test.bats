@@ -99,12 +99,12 @@ open FullProj.xcworkspace
 @test "an app nested under projects/ keeps its dir in the xcworkspace ref and the folder path" {
   local yml="$(ws_fixture_path workspace-yml/nested-apps.yml)"
   run docs "$yml" 'wsdocs::xcworkspace'
-  [[ "$output" == *'<FileRef location="group:projects/App/App.xcodeproj"></FileRef>'* ]]
-  [[ "$output" == *'<FileRef location="group:packages/OnePkg"></FileRef>'* ]]
+  [[ "$output" == *'<FileRef location="group:projects/App/App.xcodeproj"></FileRef>'* ]] || false
+  [[ "$output" == *'<FileRef location="group:packages/OnePkg"></FileRef>'* ]] || false
   run docs "$yml" 'wsdocs::code_workspace_folders'
-  [[ "$output" == '[{"name": "Nested", "path": "."},'* ]]
-  [[ "$output" == *'{"name": "App", "path": "projects/App"}'* ]]
-  [[ "$output" == *'{"name": "Tasks", "path": "Tasks"}'* ]]
+  [[ "$output" == '[{"name": "Nested", "path": "."},'* ]] || false
+  [[ "$output" == *'{"name": "App", "path": "projects/App"}'* ]] || false
+  [[ "$output" == *'{"name": "Tasks", "path": "Tasks"}'* ]] || false
 }
 
 @test "Tasks in path mode is named after its last segment; disabled Docs and xcworkspace are left out" {
@@ -130,7 +130,7 @@ cd Modes
 
 @test "pkg_meta climbs one .. per segment of the package dir, without a trailing slash" {
   run docs "$(ws_fixture_path workspace-yml/grouped.yml)" 'wsdocs::pkg_meta BEngine'
-  [[ "$output" == *'**Workspace**: GroupedWS (../..)'* ]]
+  [[ "$output" == *'**Workspace**: GroupedWS (../..)'* ]] || false
 }
 
 @test "external deps: a map version, a bare-string version, a bare-string entry, and no version" {

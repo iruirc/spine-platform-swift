@@ -57,7 +57,7 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   cd "$META"
   run "$REGEN" --check
   [ "$status" -eq 1 ]
-  [[ "$output" == *'+- `public struct Engine`'* ]]
+  [[ "$output" == *'+- `public struct Engine`'* ]] || false
   [ "${lines[${#lines[@]}-1]}" = "workspace-docs-regen: regenerated=0 drifted=1 malformed=0 missing=0 pending=0" ]
   cmp "$GOLDEN/sharedPackages/BEngine/CLAUDE.md" "$PARENT/sharedPackages/BEngine/CLAUDE.md"
   run "$REGEN"
@@ -149,7 +149,7 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   cd "$META"
   run "$REGEN"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"missing WORKSPACE_LAYERS_END"* ]]
+  [[ "$output" == *"missing WORKSPACE_LAYERS_END"* ]] || false
   cmp "$GOLDEN/README.md" "$META/README.md"
   cp "$META/ARCHITECTURE.md" "$BATS_TEST_TMPDIR/broken.md"
   run "$REGEN" --repair
@@ -196,7 +196,7 @@ norm() { sed 's|^// swift-tools-version: .*|// swift-tools-version: <toolchain>|
   cd "$META"
   run "$REGEN" --repair
   [ "$status" -eq 1 ]
-  [[ "$output" == *"missing WORKSPACE_LAYERS_END"* ]]
+  [[ "$output" == *"missing WORKSPACE_LAYERS_END"* ]] || false
 }
 
 @test "runs from a folder deep inside a package and finds the root workspace.yml" {
@@ -368,7 +368,7 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   cd "$META"
   PATH="$bin:$PATH" run "$REGEN"
   [ "$status" -eq 3 ]
-  [[ "$output" == *"jq 1.7 or newer is required"*"found: jq-1.6"* ]]
+  [[ "$output" == *"jq 1.7 or newer is required"*"found: jq-1.6"* ]] || false
 }
 
 @test "regen rejects a jq pre-release version without a bad math expression" {
@@ -378,7 +378,7 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   PATH="$bin:$PATH" run "$REGEN"
   [ "$status" -eq 3 ]
   [[ "$output" == *"jq 1.7 or newer is required"*"found: jq-1.6rc2"* ]] || return 1
-  [[ "$output" != *"bad math expression"* ]]
+  [[ "$output" != *"bad math expression"* ]] || false
 }
 
 @test "--check exits 0 with a jq older than 1.7 on a clean workspace" {
@@ -409,14 +409,14 @@ $PARENT/sharedPackages/BEngine/CLAUDE.md:0" ]
   printf '// a comment VS Code allows\n' >> "$cw"
   run "$REGEN"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"is not plain JSON"* ]]
+  [[ "$output" == *"is not plain JSON"* ]] || false
 }
 
 @test "outside a workspace the script exits 4" {
   cd "$(ws_mktemp_dir)"
   run "$REGEN"
   [ "$status" -eq 4 ]
-  [[ "$output" == *"no workspace.yml"* ]]
+  [[ "$output" == *"no workspace.yml"* ]] || false
 }
 
 @test "--check shows a manifest that lost a dependency and writes nothing" {

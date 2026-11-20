@@ -389,7 +389,7 @@ YML
   run proj "$(ws_fixture_path workspace-yml/with-project-minimal.yml)" 'wsproj::package_path ios Nope'
   [ "$status" -eq 2 ]
   [[ "$output" == *"package 'Nope' is not declared"* ]] || { echo "$output"; return 1; }
-  [[ "$output" != *"has no dir"* ]]
+  [[ "$output" != *"has no dir"* ]] || false
 }
 
 @test "wsproj::package_path names the group without a dir as the cause" {

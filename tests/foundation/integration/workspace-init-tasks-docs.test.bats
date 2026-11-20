@@ -70,7 +70,7 @@ EOF
   [ ! -d "$root/Docs/.git" ]
   run readlink "$root/Docs"
   [ "$status" -eq 0 ]
-  [[ "$output" == "$root/manual-docs" ]]
+  [[ "$output" == "$root/manual-docs" ]] || false
 }
 
 @test "ws-init-driver honors docs.enabled=false" {

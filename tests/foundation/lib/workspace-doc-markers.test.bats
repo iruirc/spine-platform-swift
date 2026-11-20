@@ -34,25 +34,25 @@ teardown() { ws_cleanup_tmpdirs; }
 @test "wsmark::lint flags missing END" {
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$(ws_fixture_path markers/missing-end.md)'"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"missing WORKSPACE_PKG_LIST_END"* ]]
+  [[ "$output" == *"missing WORKSPACE_PKG_LIST_END"* ]] || false
 }
 
 @test "wsmark::lint flags orphan END" {
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$(ws_fixture_path markers/orphan-end.md)'"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"orphan WORKSPACE_PKG_LIST_END"* ]]
+  [[ "$output" == *"orphan WORKSPACE_PKG_LIST_END"* ]] || false
 }
 
 @test "wsmark::lint flags duplicate BEGIN" {
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$(ws_fixture_path markers/duplicate-begin.md)'"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"duplicate WORKSPACE_PKG_LIST_BEGIN"* ]]
+  [[ "$output" == *"duplicate WORKSPACE_PKG_LIST_BEGIN"* ]] || false
 }
 
 @test "wsmark::lint flags cross-nested pairs" {
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$(ws_fixture_path markers/cross-nested.md)'"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"crosses"* ]]
+  [[ "$output" == *"crosses"* ]] || false
 }
 
 @test "wsmark::repair fixes missing END (auto-confirm)" {
@@ -76,7 +76,7 @@ teardown() { ws_cleanup_tmpdirs; }
   cp "$(ws_fixture_path markers/duplicate-begin.md)" "$tmp"
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; printf '%s\n' 'NEW' | wsmark::write '$tmp' PKG_LIST"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"multiple"* ]]
+  [[ "$output" == *"multiple"* ]] || false
 }
 
 @test "wsmark::write refuses on missing BEGIN" {
@@ -84,7 +84,7 @@ teardown() { ws_cleanup_tmpdirs; }
   printf '# Hi\nno markers\n' > "$tmp"
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; printf '%s\n' 'NEW' | wsmark::write '$tmp' PKG_LIST"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"no WORKSPACE_PKG_LIST_BEGIN"* ]]
+  [[ "$output" == *"no WORKSPACE_PKG_LIST_BEGIN"* ]] || false
 }
 
 @test "wsmark::lint flags a second pair of one marker" {
@@ -92,7 +92,7 @@ teardown() { ws_cleanup_tmpdirs; }
   printf '%s\n' '<!-- WORKSPACE_X_BEGIN -->' one '<!-- WORKSPACE_X_END -->' '<!-- WORKSPACE_X_BEGIN -->' two '<!-- WORKSPACE_X_END -->' > "$tmp"
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$tmp'"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"4: second WORKSPACE_X pair (first closed at line 3)"* ]]
+  [[ "$output" == *"4: second WORKSPACE_X pair (first closed at line 3)"* ]] || false
 }
 
 @test "wsmark::lint on three pairs of one marker names the first close" {
@@ -100,7 +100,7 @@ teardown() { ws_cleanup_tmpdirs; }
   printf '%s\n' '<!-- WORKSPACE_X_BEGIN -->' one '<!-- WORKSPACE_X_END -->' '<!-- WORKSPACE_X_BEGIN -->' two '<!-- WORKSPACE_X_END -->' '<!-- WORKSPACE_X_BEGIN -->' three '<!-- WORKSPACE_X_END -->' > "$tmp"
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$tmp'"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"7: second WORKSPACE_X pair (first closed at line 3)"* ]]
+  [[ "$output" == *"7: second WORKSPACE_X pair (first closed at line 3)"* ]] || false
 }
 
 @test "wsmark::repair_to drops a second pair's markers, keeps its text, and asks nothing" {
@@ -242,7 +242,7 @@ SWIFT
   grep -v 'WORKSPACE_PKG_MANIFEST_DEPS_END' "$dir/Package.swift" > "$dir/Broken.swift"
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$dir/Broken.swift'"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"missing WORKSPACE_PKG_MANIFEST_DEPS_END"* ]]
+  [[ "$output" == *"missing WORKSPACE_PKG_MANIFEST_DEPS_END"* ]] || false
 }
 
 @test "wsmark::has answers for both comment styles" {
@@ -306,7 +306,7 @@ SWIFT
   [ "$output" = "" ]
   run grep -A1 'WORKSPACE_PKG_MANIFEST_DEPS_BEGIN' "$tmp"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"WORKSPACE_PKG_MANIFEST_DEPS_END"* ]]
+  [[ "$output" == *"WORKSPACE_PKG_MANIFEST_DEPS_END"* ]] || false
 }
 
 repair() {
@@ -322,7 +322,7 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   [ "$status" -eq 0 ]
   diff <(printf '%s\n' '# T' '<!-- WORKSPACE_X_BEGIN -->' '<!-- WORKSPACE_X_END -->' 'generated a' 'user note' 'tail') "$d/out.md"
   [[ "$output" == *"in.md: X — 1 line(s) left below the restored _END; check for duplicates"* ]] || return 1
-  [[ "$output" == *"in.md: X — duplicate pair unwrapped, its text kept"* ]]
+  [[ "$output" == *"in.md: X — duplicate pair unwrapped, its text kept"* ]] || false
 }
 
 @test "repair keeps every unmarked line when it restores two pairs and unwraps a third" {
@@ -338,7 +338,7 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   run repair "$d/in.md" "$d/out.md"
   [[ "$output" == *"A — 2 line(s) left below"* ]] || return 1
   [[ "$output" == *"C — 1 line(s) left below"* ]] || return 1
-  [[ "$output" == *"B — duplicate pair unwrapped"* ]]
+  [[ "$output" == *"B — duplicate pair unwrapped"* ]] || false
 }
 
 @test "a well-formed file repairs to itself and reports nothing" {
@@ -386,7 +386,7 @@ unmarked() { grep -vE '^[[:space:]]*(<!-- |// )WORKSPACE_[A-Z_]+_(BEGIN|END)( --
   [ "$status" -eq 0 ]
   run zsh -c "source '$(ws_lib_path workspace-doc-markers.zsh)'; wsmark::lint '$d/bad.sh'"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"missing WORKSPACE_A_END"* ]]
+  [[ "$output" == *"missing WORKSPACE_A_END"* ]] || false
 }
 @test "wsmark::repair_to restores a missing END as a hash comment" {
   d="$(ws_mktemp_dir)"; printf '# WORKSPACE_A_BEGIN\n' > "$d/.gitignore"

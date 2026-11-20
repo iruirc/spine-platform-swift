@@ -2,7 +2,7 @@
 
 `lib/` holds the unit suite: guards on skill, agent and manifest text, and the zsh libraries of
 `templates/workspace/lib/` called one function at a time. `integration/` builds whole workspaces.
-`scripts/test-foundation.sh` runs them: `unit`, `integration`, `all`, or `changed`.
+`scripts/test-foundation.sh` runs them: `unit`, `integration`, `all`, `changed`, or `verified`.
 `touched <file>...` runs the `lib/` tests that name those files (a file under `skills/` is named by a
 test that names its skill), and always the ones that read the
 spine-toolkit checkout beside this repository. `touched` with no files takes what the next commit
@@ -48,6 +48,7 @@ file led to which choice. With nothing changed it runs nothing.
 While iterating on one file, run it alone with `bats <file>` and narrow it with
 `bats --filter '<regex>'`.
 
-Before merging a branch and before a release, run `all`, whatever the branch touched. Working
-through a plan, run it once, at the end of the plan (`spine-ops/WORKSPACE.md`). The run is
+Run `all` once on a branch, at the end of a plan or before merging, whatever the branch touched;
+after a green `all`, check each further fix with `verified` (`spine-ops/WORKSPACE.md`). A release
+runs the full suite only on a tree neither of them recorded. The run is
 green only with no `not ok`; compare its `ok` count with `main`.

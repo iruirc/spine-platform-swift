@@ -134,7 +134,7 @@ standalone() {   # <name>
   # the file reads to the caller exactly like having written a new one.
   [ "${output#*not overwritten}" != "$output" ]
   run cat "$ROOT/packages/HasCLAUDE/CLAUDE.md"
-  [[ "$output" == *"USER_OWNED_CONTENT"* ]]
+  [[ "$output" == *"USER_OWNED_CONTENT"* ]] || false
 }
 
 @test "an occupied target stops the run before workspace.yml, the package or the docs change" {
@@ -146,7 +146,7 @@ standalone() {   # <name>
   cd "$ROOT"
   run "$DRIVER" "$STANDALONE" BareKit
   [ "$status" -eq 3 ] || { echo "$status $output"; return 1; }
-  [[ "$output" == *"already exists"* ]]
+  [[ "$output" == *"already exists"* ]] || false
   [ -f "$STANDALONE/Package.swift" ]
   [ "$(cat "$ROOT/packages/BareKit/keep")" = mine ]
   [ ! -e "$ROOT/packages/BareKit/Package.swift" ]

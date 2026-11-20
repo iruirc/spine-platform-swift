@@ -12,5 +12,5 @@ teardown() { ws_cleanup_tmpdirs; }
 @test "wsgraph::check_acyclic rejects cyclic.yml" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; source '$(ws_lib_path workspace-graph.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/cyclic.yml)'; wsgraph::check_acyclic"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"cycle"* ]]
+  [[ "$output" == *"cycle"* ]] || false
 }
