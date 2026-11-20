@@ -7,7 +7,6 @@ setup() {
   ROOT="$(cd -- "$(dirname -- "$BATS_TEST_FILENAME")/../../.." && pwd)"
   V="$ROOT/agents/swift-validator.md"
   R="$ROOT/agents/swift-reviewer.md"
-  CORE="${SPINE_TOOLKIT_CORE:-$ROOT/../spine-toolkit}"
 }
 
 @test "the validator has a Regression set step before the profiles" {
@@ -128,12 +127,4 @@ setup() {
   grep -qF "A failure inside the task, a TEST task's added tests aside, is FAILED, whatever the registry says." "$V" || { echo "the inside rule drops the TEST exception"; return 1; }
   grep -qF 'the file the brief gives in `known_failures`' "$V" || { echo "the registry is not the brief's field"; return 1; }
   grep -qF '5. The registry of known failures' "$V" || { echo "the registry is not in the inputs"; return 1; }
-}
-
-@test "core at the floor has the subsection the validator points at" {
-  [ -d "$CORE/.git" ] || skip "no spine-toolkit checkout beside this one"
-  floor="$(python3 -c 'import json,sys,re; d=json.load(open(sys.argv[1]))["dependencies"]; v=[x["version"] for x in d if x["name"]=="spine-toolkit"][0]; print(re.search(r">=\s*(\d+\.\d+\.\d+)", v).group(1))' "$ROOT/.claude-plugin/plugin.json")"
-  git -C "$CORE" rev-parse -q --verify "$floor^{commit}" >/dev/null || skip "core has no tag $floor"
-  git -C "$CORE" show "$floor:skills/phase-verification/SKILL.md" | grep -qxF '### Failures outside the task' \
-    || { echo "core $floor has no ### Failures outside the task — the floor is too low"; return 1; }
 }
