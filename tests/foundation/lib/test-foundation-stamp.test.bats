@@ -311,3 +311,17 @@ verified_all() {
   [ ! -e "$O/.git/spine-verified-trees" ]
   [ ! -e "$BATS_TEST_TMPDIR/bats-args" ]
 }
+
+@test "verified finds the verified tree in a long history" {
+  # 2000 commits: more log than a pipe holds, so git log is still writing when the base is found
+  # near the top, and a reader that stops there must not fail the run.
+  { printf 'commit refs/heads/main\ncommitter t <t@t> 0 +0000\ndata 0\nfrom %s\n\n' "$(git -C "$R" rev-parse HEAD)"
+    for i in $(seq 2 2000); do printf 'commit refs/heads/main\ncommitter t <t@t> 0 +0000\ndata 0\n\n'; done
+  } | git -C "$R" fast-import --quiet
+  guide
+  verified_all
+  echo more >>"$R/docs/guide.md"
+  run --separate-stderr "$R/scripts/test-foundation.sh" verified
+  [ "$status" -eq 0 ]
+  [ "$(cat "$BATS_TEST_TMPDIR/bats-args")" = "$R/tests/foundation/lib" ]
+}
