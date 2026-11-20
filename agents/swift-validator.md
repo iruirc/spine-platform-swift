@@ -289,7 +289,7 @@ This is a hard contract with the `workflow-*` profiles and the orchestrator. Sam
 Semantics:
 
 - **PASSED** — every mandatory step either ran or was deferred with its reason named, build is clean (warnings tolerated), all tests passed, and for BUG profile the reproduction scenario no longer reproduces or was deferred. A deferred check never lowers the verdict; a check that errored out is not deferred, it is FAILED.
-- **PASSED_WITH_FLAKES** — what PASSED says, and the only failures are outside the task and flaky: each failed, then passed on its retry, and none is a `permanent` entry of the registry still failing or a `red` one. The failures are named in `## Outside the task` and in `outside_failures`; nothing is hidden. A `permanent` entry still failing is PASSED, as core's table gives it.
+- **PASSED_WITH_FLAKES** — what PASSED says, and at least one failure outside the task, with no registry entry, failed and then passed on its retry (`outcome` `flaky`); every other failure is `known`. The failures are named in `## Outside the task` and in `outside_failures`; nothing is hidden. Failures that are all `known` leave PASSED, as core's table gives it.
 - **FAILED** — at least one mandatory step did not run, or build/tests/reproduction failed, or a failure outside the task stayed red on its retry.
 - **FLAKY** — TEST-profile only; a test the task added showed non-deterministic results across re-runs. A failure outside the task is never FLAKY.
 

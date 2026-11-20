@@ -40,7 +40,7 @@ setup() {
 }
 
 @test "the toolkit floor is the release that ships the Impact line and the closing block" {
-  # 2.31.0 shipped them; the floor now, 2.44.0, carries them too.
+  # 2.31.0 shipped them; the floor now, 2.44.0, carries them too, and adds the failures outside the task and PASSED_WITH_FLAKES.
   grep -qF '"version": ">=2.44.0 <3"' "$ROOT/.claude-plugin/plugin.json" \
     || { echo "plugin.json floor is not >=2.44.0 <3"; return 1; }
 }

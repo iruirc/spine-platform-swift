@@ -19,6 +19,7 @@ manual_checks_passage() {
 }
 
 @test "the platform requires the core release that carries the criterion" {
+  # 2.44.0 carries the criterion too, and classifies failures outside the task, returns PASSED_WITH_FLAKES and carries green whole-module runs.
   grep -qF '{ "name": "spine-toolkit", "version": ">=2.44.0 <3" }' "$ROOT/.claude-plugin/plugin.json" \
     || { echo "the spine-toolkit floor is not >=2.44.0 <3"; return 1; }
 }
